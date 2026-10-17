@@ -12,6 +12,9 @@ export 'package:calcetto_mvp/features/home/home_page.dart';
 export 'package:calcetto_mvp/features/leagues/league_page.dart';
 export 'package:calcetto_mvp/features/matches/match_page.dart';
 
+const _splashDuration = Duration(
+    milliseconds: int.fromEnvironment('HAYKO_SPLASH_MS', defaultValue: 900));
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(() async* {
@@ -19,7 +22,8 @@ Future<void> main() async {
         await rootBundle.loadString('assets/fonts/OFL.txt'));
   });
   final initialization = _initializeApplication();
-  runApp(CalcettoApp(initialization: initialization));
+  runApp(CalcettoApp(
+      initialization: initialization, minimumSplashDuration: _splashDuration));
 }
 
 Future<void> _initializeApplication() async {
