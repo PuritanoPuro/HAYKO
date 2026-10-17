@@ -28,12 +28,11 @@ class _LeagueCreationState extends State<LeagueCreation> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Nuova lega')),
-      body: ListView(padding: const EdgeInsets.all(24), children: [
+      body: ListView(padding: const EdgeInsets.all(20), children: [
         TextFormField(
             maxLength: 60,
             decoration: const InputDecoration(labelText: 'Nome lega'),
             onChanged: (v) => name = v),
-        const SizedBox(height: 12),
         SegmentedButton<String>(segments: const [
           ButtonSegment(
               value: 'amateur',
@@ -46,48 +45,39 @@ class _LeagueCreationState extends State<LeagueCreation> {
         ], selected: {
           type
         }, onSelectionChanged: (v) => setState(() => type = v.first)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
         if (type == 'amateur')
-          Text('Un gruppo di amici: partite, giocatori e statistiche.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const Text('Un gruppo di amici: partite, giocatori e statistiche.'),
         if (type == 'competition') ...[
-          DropdownButtonFormField<String>(
-              initialValue: kind,
+          DropdownButton<String>(
+              value: kind,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Tipo competizione'),
               items: const [
                 DropdownMenuItem(value: 'league', child: Text('Campionato')),
                 DropdownMenuItem(
                     value: 'knockout', child: Text('Torneo a eliminazione'))
               ],
               onChanged: (v) => setState(() => kind = v!)),
-          const SizedBox(height: 12),
           if (kind == 'league')
             SwitchListTile(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
                 title: const Text('Andata e ritorno'),
                 subtitle: Text(doubleLeg
                     ? 'Ogni coppia si incontra due volte'
                     : 'Solo andata: ogni coppia si incontra una volta'),
                 value: doubleLeg,
                 onChanged: (v) => setState(() => doubleLeg = v)),
-          if (kind == 'league') const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-              initialValue: format,
+          DropdownButton<int>(
+              value: format,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Formato partita'),
               items: [
                 for (var n = 2; n <= 11; n++)
                   DropdownMenuItem(value: n, child: Text('${n}v$n'))
               ],
               onChanged: (v) => setState(() => format = v!)),
-          const SizedBox(height: 12),
           const Text(
               'Dopo la creazione aggiungi le squadre, i giocatori e i numeri di maglia nella sezione Squadre.'),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
         FilledButton(onPressed: submit, child: const Text('Crea lega')),
       ]));
 }

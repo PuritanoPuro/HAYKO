@@ -223,7 +223,7 @@ class _TeamEditorState extends State<TeamEditor> {
                 widget.team == null ? 'Nuova squadra' : 'Modifica squadra')),
         body: Column(children: [
           Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               child: Column(children: [
                 TextFormField(
                     initialValue: name,

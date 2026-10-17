@@ -89,7 +89,7 @@ class _GoalPageState extends State<GoalPage> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Annulla'))
             ]),
-            body: ListView(padding: const EdgeInsets.all(24), children: [
+            body: ListView(padding: const EdgeInsets.all(20), children: [
               if (stage != 'team')
                 TextButton(
                     onPressed: () =>

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
-import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 
 class LeagueSettingsPage extends StatefulWidget {
   final League league;
@@ -87,7 +86,7 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
       data: leagueTheme(context, l),
       child: Scaffold(
           appBar: AppBar(title: const Text('Impostazioni lega')),
-          body: ListView(padding: const EdgeInsets.all(24), children: [
+          body: ListView(padding: const EdgeInsets.all(20), children: [
             Text(l.name, style: const TextStyle(fontSize: 26)),
             Row(children: [
               CircleAvatar(backgroundColor: Color(l.primaryColor)),
@@ -120,10 +119,10 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
               const Divider(height: 40),
               TextButton.icon(
                   onPressed: busy ? null : remove,
-                  icon: const Icon(Icons.delete_outline,
-                      color: HaykoColors.danger),
+                  icon:
+                      const Icon(Icons.delete_outline, color: Colors.redAccent),
                   label: const Text('Elimina lega',
-                      style: TextStyle(color: HaykoColors.danger)))
+                      style: TextStyle(color: Colors.redAccent)))
             ],
           ])));
 }

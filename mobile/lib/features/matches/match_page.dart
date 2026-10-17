@@ -258,7 +258,7 @@ class _MatchPageState extends State<MatchPage> {
                   onPressed: refresh,
                   icon: const Icon(Icons.refresh))
           ]),
-          body: ListView(padding: const EdgeInsets.all(24), children: [
+          body: ListView(padding: const EdgeInsets.all(20), children: [
             Text(dateLabel(m.scheduledAt), textAlign: TextAlign.center),
             if (m.venue.isNotEmpty) Text(m.venue, textAlign: TextAlign.center),
             if (m.status == 'scheduled' && widget.league.canRecord(m))

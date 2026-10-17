@@ -31,7 +31,7 @@ class CompetitionTeams extends StatelessWidget {
     }
     final locked = calendarLocked(league, c);
     final winners = competitionWinners(league, c);
-    return ListView(padding: const EdgeInsets.all(24), children: [
+    return ListView(padding: const EdgeInsets.all(16), children: [
       const Text('Squadre partecipanti', style: TextStyle(fontSize: 24)),
       if (league.manage)
         FilledButton.icon(
@@ -110,7 +110,7 @@ class _TeamDetailsState extends State<TeamDetails> {
           (a, b) => (p.numbers[a.id] ?? 100).compareTo(p.numbers[b.id] ?? 100));
     return Scaffold(
         appBar: AppBar(title: Text(p.name)),
-        body: ListView(padding: const EdgeInsets.all(24), children: [
+        body: ListView(padding: const EdgeInsets.all(16), children: [
           if (widget.league.manage)
             FilledButton.icon(
                 onPressed: () async {
@@ -166,7 +166,7 @@ class _CompetitionStatisticsState extends State<CompetitionStatistics> {
             .where((tie) => selectedPhase == 0 || tie.round == selectedPhase)
             .toList()
         : <TournamentTie>[];
-    return ListView(padding: const EdgeInsets.all(24), children: [
+    return ListView(padding: const EdgeInsets.all(16), children: [
       Text(c.kind == 'league' ? 'Classifica squadre' : 'Tabellone',
           style: const TextStyle(fontSize: 24)),
       if (c.kind == 'league')
@@ -352,7 +352,7 @@ class _CompetitionCalendarState extends State<CompetitionCalendar> {
         c.kind == 'knockout' ? tournamentTies(l, c) : leagueFixtures(l, c);
     final rounds = fixtures.map((t) => t.round).toSet().toList()..sort();
     final locked = calendarLocked(l, c);
-    return ListView(padding: const EdgeInsets.all(24), children: [
+    return ListView(padding: const EdgeInsets.all(16), children: [
       const Text('Calendario', style: TextStyle(fontSize: 24)),
       Text(
           '${c.name} · ${c.format}v${c.format} · ${c.kind == 'knockout' ? 'Eliminazione' : c.doubleLeg ? 'Andata e ritorno' : 'Solo andata'}'),

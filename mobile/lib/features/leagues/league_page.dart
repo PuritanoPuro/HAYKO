@@ -64,7 +64,7 @@ class _LeaguePageState extends State<LeaguePage> {
         l.matches.reversed.where((m) => m.status == matchStatus).toList();
     return Column(children: [
       Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(children: [
             for (final status in ['scheduled', 'live', 'finished'])
               Expanded(
@@ -121,7 +121,7 @@ class _LeaguePageState extends State<LeaguePage> {
                           )))),
           ])),
       Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Row(children: [
             Icon(
                 matchStatus == 'live'
@@ -137,7 +137,7 @@ class _LeaguePageState extends State<LeaguePage> {
           ])),
       Expanded(
           child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 96),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
               children: [
             if (matches.isEmpty)
               Padding(
