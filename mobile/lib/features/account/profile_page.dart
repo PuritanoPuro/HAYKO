@@ -101,12 +101,11 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
               color: HaykoColors.fieldSurface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: HaykoColors.chalk)),
+              borderRadius: BorderRadius.circular(12)),
           child: Row(children: [
             CircleAvatar(
                 radius: 18,
-                backgroundColor: const Color(0xffff7a3d),
+                backgroundColor: HaykoColors.orange,
                 child: Text(initials,
                     style: const TextStyle(
                         color: HaykoColors.fieldBackground,

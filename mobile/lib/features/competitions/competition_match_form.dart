@@ -93,7 +93,7 @@ class _CompetitionMatchFormState extends State<CompetitionMatchForm> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Nuova partita')),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
+      body: ListView(padding: const EdgeInsets.all(24), children: [
         Text('${c.format}v${c.format}', style: const TextStyle(fontSize: 22)),
         if (widget.initialTeams != null)
           Card(

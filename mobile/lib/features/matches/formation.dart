@@ -252,7 +252,7 @@ class _NewMatchPageState extends State<NewMatchPage> {
       Material(
           elevation: 2,
           child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
               child: Column(children: [
                 if (widget.league.presets.any((p) =>
                     !p.archived &&
@@ -300,7 +300,7 @@ class _NewMatchPageState extends State<NewMatchPage> {
       Expanded(
           child: ListView.builder(
               key: ValueKey('team-roster-$t'),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
               itemCount: players.length,
               itemBuilder: (context, index) {
                 final p = players[index];
@@ -357,7 +357,7 @@ class _NewMatchPageState extends State<NewMatchPage> {
                 ? selectionBody(t)
                 : ListView(
                     key: ValueKey(step),
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     children: [
                         if (step == 0) ...[
                           DropdownButton<int>(

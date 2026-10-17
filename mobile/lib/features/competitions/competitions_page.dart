@@ -93,7 +93,7 @@ class _CompetitionsPageState extends State<CompetitionsPage> {
         : options.firstWhere((c) => c.id == selected,
             orElse: () => options.first);
     final rows = c == null ? <TeamStats>[] : teamStandings(l, c);
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(24), children: [
       const Text('Competizioni', style: TextStyle(fontSize: 24)),
       if (l.manage)
         OutlinedButton.icon(
@@ -242,7 +242,7 @@ class _CompetitionFormState extends State<CompetitionForm> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Nuova competizione')),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
+      body: ListView(padding: const EdgeInsets.all(24), children: [
         TextField(
             controller: name,
             maxLength: 60,

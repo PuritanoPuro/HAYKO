@@ -8,4 +8,7 @@ abstract final class HaykoColors {
   static const fieldLine = Color(0xff2a5646);
   static const chalk = Color(0xfff2f5ee);
   static const mutedText = Color(0xffa9c2b6);
+  static const orange = Color(0xffff7a3d);
+  static const lime = Color(0xffe3f24a);
+  static const danger = Color(0xffffb4ab);
 }

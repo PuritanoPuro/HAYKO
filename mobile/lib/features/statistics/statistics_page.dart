@@ -23,7 +23,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         shrinkWrap: widget.embedded,
         primary: widget.embedded ? false : null,
         physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         children: [
           DropdownButton<int>(
               value: format ?? 0,

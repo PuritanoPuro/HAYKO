@@ -52,7 +52,7 @@ class _TeamPresetsPageState extends State<TeamPresetsPage> {
     final presets = widget.league.presets.where((p) => !p.archived).toList();
     return Scaffold(
         appBar: AppBar(title: const Text('Squadre salvate')),
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: ListView(padding: const EdgeInsets.all(24), children: [
           if (widget.league.manage)
             FilledButton.icon(
                 onPressed: busy ? null : () => edit(),
