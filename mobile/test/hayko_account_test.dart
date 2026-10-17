@@ -14,7 +14,7 @@ Map<String, dynamic> row(String status) => {
       'state': {
         'id': 'league',
         'matches': [
-          {'id': 'match', 'status': status}
+          <String, dynamic>{'id': 'match', 'status': status}
         ]
       },
       'revision': 0,
@@ -105,21 +105,33 @@ void main() {
       () async {
     final offline = LeagueStore(
         'userA', (name, params) async => throw StateError('offline'));
-    await offline.queue(row('live'));
-    await offline.queue(row('finished'));
+    final started = row('live');
+    started['state']['matches'][0]['goals'] = <Map<String, dynamic>>[];
+    final scored = row('live');
+    scored['state']['matches'][0]['goals'] = [
+      {'id': 'goal-1', 'team': 0, 'scorer': 'p'}
+    ];
+    final finished = row('finished');
+    finished['state']['matches'][0]['goals'] =
+        scored['state']['matches'][0]['goals'];
+    await offline.queue(started);
+    await offline.queue(scored);
+    await offline.queue(finished);
     await offline.flush();
-    expect(offline.pending, 2);
-    final states = <String>[], revisions = <int>[];
+    expect(offline.pending, 3);
+    final states = <String>[], revisions = <int>[], goalCounts = <int>[];
     final online = LeagueStore('userA', (name, params) async {
       states.add(params['p_state']['matches'][0]['status'] as String);
       revisions.add(params['p_revision'] as int);
+      goalCounts.add((params['p_state']['matches'][0]['goals'] as List).length);
       return revisions.length;
     });
     await online.initialize();
-    expect(online.pending, 2);
+    expect(online.pending, 3);
     await online.flush();
-    expect(states, ['live', 'finished']);
-    expect(revisions, [0, 1]);
+    expect(states, ['live', 'live', 'finished']);
+    expect(goalCounts, [0, 1, 1]);
+    expect(revisions, [0, 1, 2]);
     expect(online.pending, 0);
   });
   test('una richiesta lenta non blocca un nuovo salvataggio locale', () async {

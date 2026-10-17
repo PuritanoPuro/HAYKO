@@ -1,3 +1,4 @@
+import 'package:calcetto_mvp/features/leagues/invite_code_dialog.dart';
 import 'dart:async';
 import 'package:calcetto_mvp/core/config/hayko_config.dart';
 import 'package:calcetto_mvp/features/account/league_store.dart';
@@ -387,27 +388,7 @@ class _LeagueSocialState extends State<LeagueSocial> {
           text: kind == 'code' ? '$token' : 'hayko://join?invite=$token'));
       if (!mounted) return;
       if (kind == 'code') {
-        await showDialog<void>(
-            context: context,
-            builder: (c) => AlertDialog(
-                  title: const Text('Codice invito copiato'),
-                  content: Column(mainAxisSize: MainAxisSize.min, children: [
-                    SelectableText('$token',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2)),
-                    const SizedBox(height: 16),
-                    const Text(
-                        'Valido per 7 giorni. Chi lo usa invia una richiesta di accesso da approvare.'),
-                  ]),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(c),
-                        child: const Text('Chiudi'))
-                  ],
-                ));
+        await showInviteCodeDialog(context, '$token');
       } else {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Link invito copiato')));

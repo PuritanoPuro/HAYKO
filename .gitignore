@@ -31,3 +31,6 @@ __pycache__/
 **/Pods/
 **/.symlinks/
 **/ephemeral/
+
+# SQL test dependencies
+node_modules/
