@@ -90,6 +90,12 @@ void main() {
     final email =
         tester.widgetList<AccountField>(find.byType(AccountField)).last;
     expect(email.readOnly, isTrue);
+    expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).first)
+            .style
+            .fontFamily,
+        'BricolageGrotesque');
     await tester.enterText(find.byType(TextFormField).at(2), 'Fil');
     await tester.scrollUntilVisible(find.text('Salva profilo'), 200,
         scrollable: find.byType(Scrollable).first);

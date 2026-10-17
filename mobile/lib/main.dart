@@ -18,7 +18,11 @@ Future<void> main() async {
     yield LicenseEntryWithLineBreaks(const ['Bricolage Grotesque'],
         await rootBundle.loadString('assets/fonts/OFL.txt'));
   });
+  final initialization = _initializeApplication();
+  runApp(CalcettoApp(initialization: initialization));
+}
+
+Future<void> _initializeApplication() async {
   await Cloud.initialize();
   await InviteLinks.initialize();
-  runApp(const CalcettoApp());
 }

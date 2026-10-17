@@ -153,11 +153,8 @@ class _AccountFieldState extends State<AccountField> {
                       keyboardType: widget.keyboard,
                       autofillHints: widget.autofillHints,
                       validator: widget.validator,
-                      style: TextStyle(
-                        fontFamily:
-                            Theme.of(context).platform == TargetPlatform.iOS
-                                ? '.SF UI Text'
-                                : 'Roboto',
+                      style: const TextStyle(
+                        fontFamily: 'BricolageGrotesque',
                         fontSize: 16,
                         height: 1.5,
                         letterSpacing: 0,
