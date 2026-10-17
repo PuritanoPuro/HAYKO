@@ -1,0 +1,36 @@
+name: calcetto_mvp
+description: MVP locale per statistiche di calcetto
+publish_to: none
+version: 0.2.0+2
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  app_links: ^7.2.2
+  flutter_svg: ^2.3.0
+  shared_preferences: ^2.3.0
+  flutter_local_notifications: 19.5.0
+  timezone: ^0.10.1
+  supabase_flutter: ^2.8.0
+dev_dependencies:
+  flutter_lints: ^3.0.0
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brand/hayko_falcon_no_black.svg
+    - assets/brand/hayko_wordmark_clean.svg
+    - assets/fonts/OFL.txt
+  fonts:
+    - family: BricolageGrotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque-400.ttf
+          weight: 400
+        - asset: assets/fonts/BricolageGrotesque-600.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque-700.ttf
+          weight: 700
+        - asset: assets/fonts/BricolageGrotesque-800.ttf
+          weight: 800

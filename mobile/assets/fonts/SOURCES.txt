@@ -1,0 +1,11 @@
+Bricolage Grotesque
+Copyright 2022 The Bricolage Grotesque Project Authors.
+License: SIL Open Font License 1.1 (see OFL.txt).
+Official upstream: https://github.com/ateliertriay/bricolage
+Downloaded from Google Fonts, 2026-10-16:
+https://github.com/google/fonts/tree/main/ofl/bricolagegrotesque
+
+The four TTF files are static instances generated with FontTools 4.61.1
+from the official BricolageGrotesque[opsz,wdth,wght].ttf.
+Axes: opsz=14, wdth=100, wght=400/600/700/800, matching the Figma home.
+No glyph outlines were redrawn. No runtime font download is required.

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Match command v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "match_id", "command_id", "expected_revision", "type", "payload"],
+  "properties": {
+    "protocol_version": {"const": 1},
+    "match_id": {"type": "string", "format": "uuid"},
+    "command_id": {"type": "string", "format": "uuid"},
+    "expected_revision": {"type": "integer", "minimum": 0},
+    "type": {"enum": ["start", "finish", "goal", "void_goal", "transfer_recorder"]},
+    "payload": {"type": "object"}
+  },
+  "allOf": [
+    {"if": {"properties": {"type": {"enum": ["start", "finish"]}}},
+     "then": {"properties": {"payload": {"additionalProperties": false}}}},
+    {"if": {"properties": {"type": {"const": "goal"}}},
+     "then": {"properties": {"payload": {
+       "type": "object", "additionalProperties": false, "required": ["team", "own_goal", "scorer", "assist", "keeper"],
+       "properties": {
+         "team": {"enum": [0, 1]}, "own_goal": {"type": "boolean"},
+         "scorer": {"type": ["string", "null"], "format": "uuid"},
+         "assist": {"type": ["string", "null"], "format": "uuid"},
+         "keeper": {"type": ["string", "null"], "format": "uuid"},
+         "occurred_at": {"type": ["string", "null"], "format": "date-time"}
+       }
+     }}}},
+    {"if": {"properties": {"type": {"const": "void_goal"}}},
+     "then": {"properties": {"payload": {"additionalProperties": false, "required": ["goal_id"],
+       "properties": {"goal_id": {"type": "string", "format": "uuid"}}}}}},
+    {"if": {"properties": {"type": {"const": "transfer_recorder"}}},
+     "then": {"properties": {"payload": {"additionalProperties": false, "required": ["recorder"],
+       "properties": {"recorder": {"type": "string", "format": "uuid"}}}}}}
+  ]
+}

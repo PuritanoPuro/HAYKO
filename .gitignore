@@ -1,0 +1,33 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+**/cloud-config.local.json
+**/cloud-config.json
+*.pem
+*.p12
+*.key
+*.keystore
+*.jks
+**/key.properties
+**/google-services.json
+**/GoogleService-Info.plist
+# Backups, editors, generated files
+.DS_Store
+*.backup*
+*.bak
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+.idea/
+.vscode/
+*.iml
+**/build/
+**/coverage/
+**/.dart_tool/
+**/.gradle/
+**/.cxx/
+**/Pods/
+**/.symlinks/
+**/ephemeral/
