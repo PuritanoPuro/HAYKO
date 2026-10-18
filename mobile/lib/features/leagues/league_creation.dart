@@ -4,7 +4,9 @@ import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 
 class LeagueCreation extends StatefulWidget {
-  const LeagueCreation({super.key});
+  const LeagueCreation({super.key, this.initialType = 'amateur'});
+
+  final String initialType;
 
   @override
   State<LeagueCreation> createState() => _LeagueCreationState();
@@ -12,9 +14,16 @@ class LeagueCreation extends StatefulWidget {
 
 class _LeagueCreationState extends State<LeagueCreation> {
   final name = TextEditingController();
-  String type = 'amateur', kind = 'league';
+  late String type;
+  String kind = 'league';
   int format = 5;
   bool doubleLeg = false;
+
+  @override
+  void initState() {
+    super.initState();
+    type = widget.initialType;
+  }
 
   @override
   void dispose() {
@@ -84,9 +93,9 @@ class _LeagueCreationState extends State<LeagueCreation> {
                       height: 1.5,
                       color: HaykoColors.mutedText)),
             if (type == 'competition') ...[
-              DropdownButton<String>(
+              _DropdownField<String>(
+                  label: 'Tipologia competizione',
                   value: kind,
-                  isExpanded: true,
                   items: const [
                     DropdownMenuItem(
                         value: 'league', child: Text('Campionato')),
@@ -94,25 +103,28 @@ class _LeagueCreationState extends State<LeagueCreation> {
                         value: 'knockout', child: Text('Torneo a eliminazione'))
                   ],
                   onChanged: (v) => setState(() => kind = v!)),
+              const SizedBox(height: 12),
               if (kind == 'league')
-                SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Andata e ritorno'),
-                    subtitle: Text(doubleLeg
-                        ? 'Ogni coppia si incontra due volte'
-                        : 'Solo andata: ogni coppia si incontra una volta'),
+                _DoubleLegField(
                     value: doubleLeg,
                     onChanged: (v) => setState(() => doubleLeg = v)),
-              DropdownButton<int>(
+              if (kind == 'league') const SizedBox(height: 12),
+              _DropdownField<int>(
+                  label: 'Tipologia partita',
                   value: format,
-                  isExpanded: true,
                   items: [
                     for (var n = 2; n <= 11; n++)
                       DropdownMenuItem(value: n, child: Text('${n}v$n'))
                   ],
                   onChanged: (v) => setState(() => format = v!)),
+              const SizedBox(height: 12),
               const Text(
-                  'Dopo la creazione aggiungi le squadre, i giocatori e i numeri di maglia nella sezione Squadre.'),
+                  'Dopo la creazione aggiungi le squadre, i giocatori e i numeri di maglia nella sezione Squadre.',
+                  style: TextStyle(
+                      fontFamily: 'BricolageGrotesque',
+                      fontSize: 14,
+                      height: 20 / 14,
+                      color: HaykoColors.mutedText)),
             ],
             const SizedBox(height: 12),
             FilledButton(
@@ -208,4 +220,99 @@ class _TypeChip extends StatelessWidget {
           ),
         ),
       ));
+}
+
+class _DropdownField<T> extends StatelessWidget {
+  const _DropdownField(
+      {required this.label,
+      required this.value,
+      required this.items,
+      required this.onChanged});
+
+  final String label;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            border: Border.all(color: HaykoColors.fieldLine),
+            borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: const TextStyle(
+                  fontFamily: 'BricolageGrotesque',
+                  fontSize: 12,
+                  height: 16 / 12,
+                  fontWeight: FontWeight.w600,
+                  color: HaykoColors.mutedText)),
+          const SizedBox(height: 4),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                isExpanded: true,
+                isDense: true,
+                icon: const Icon(Icons.arrow_drop_down, size: 18),
+                style: const TextStyle(
+                    fontFamily: 'BricolageGrotesque',
+                    fontSize: 16,
+                    height: 1.5,
+                    color: HaykoColors.chalk),
+                dropdownColor: HaykoColors.fieldSurface,
+                items: items,
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ]),
+      );
+}
+
+class _DoubleLegField extends StatelessWidget {
+  const _DoubleLegField({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Andata e ritorno',
+                  style: TextStyle(
+                      fontFamily: 'BricolageGrotesque',
+                      fontSize: 16,
+                      height: 1.5)),
+              Text(
+                  value
+                      ? 'Ogni coppia si incontra due volte'
+                      : 'Ogni coppia si incontra una volta',
+                  style: const TextStyle(
+                      fontFamily: 'BricolageGrotesque',
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600,
+                      color: HaykoColors.mutedText)),
+            ]),
+          ),
+          SizedBox(
+              width: 32,
+              height: 32,
+              child: Transform.scale(
+                  scale: .72,
+                  child: Switch(value: value, onChanged: onChanged))),
+        ]),
+      );
 }
