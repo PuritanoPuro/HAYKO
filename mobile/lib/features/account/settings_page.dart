@@ -42,7 +42,7 @@ class SettingsPage extends StatelessWidget {
                               Text(
                                   'Il tuo profilo è visibile soltanto a te. L’email viene usata per l’accesso e il recupero della password.'),
                               Text(
-                                  'I membri approvati di una lega possono vedere i giocatori, le partite e le statistiche di quella lega.'),
+                                  'I giocatori approvati di una lega possono vedere i giocatori, le partite e le statistiche di quella lega.'),
                               Text(
                                   'Le leghe vengono sincronizzate con il tuo account. Una copia sul dispositivo permette di continuare una partita senza connessione.'),
                             ])))),

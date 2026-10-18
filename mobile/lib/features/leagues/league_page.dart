@@ -303,7 +303,7 @@ class _LeaguePageState extends State<LeaguePage> {
                   }),
             if (l.shared)
               IconButton(
-                  tooltip: 'Membri e inviti',
+                  tooltip: 'Giocatori e inviti',
                   icon: Stack(clipBehavior: Clip.none, children: [
                     const Icon(Icons.group_add),
                     if (hasPendingRequests)

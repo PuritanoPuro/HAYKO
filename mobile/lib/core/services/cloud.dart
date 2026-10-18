@@ -503,10 +503,10 @@ class _LeagueSocialState extends State<LeagueSocial> {
     final admin = role == 'admin';
     if (!await confirm(
         context,
-        admin ? 'Rendere questo membro admin?' : 'Rendere questo admin membro?',
+        admin ? 'Rendere questo giocatore admin?' : 'Rimuovere il ruolo admin?',
         admin
-            ? '${member['name']} potrà gestire inviti, richieste e membri della lega.'
-            : '${member['name']} non potrà più gestire inviti, richieste e membri.')) {
+            ? '${member['name']} potrà gestire inviti, richieste e giocatori della lega.'
+            : '${member['name']} tornerà al ruolo Giocatore e non potrà più gestire inviti, richieste e giocatori.')) {
       return;
     }
     await run(() async {
@@ -521,7 +521,7 @@ class _LeagueSocialState extends State<LeagueSocial> {
   @override
   Widget build(BuildContext context) {
     return AccountScaffold(
-      title: 'Membri e inviti',
+      title: 'Giocatori e inviti',
       toolbarHeight: 64,
       children: [
         if (l.myPlayer == null)
@@ -632,7 +632,7 @@ String _socialRoleName(String? role) => role == 'president'
     ? 'Presidente'
     : role == 'admin'
         ? 'Admin'
-        : 'Membro';
+        : 'Giocatore';
 
 String _initials(String name) {
   final words = name.split('·').first.trim().split(RegExp(r'\s+'));
