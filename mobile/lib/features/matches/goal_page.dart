@@ -88,7 +88,13 @@ class _GoalPageState extends State<GoalPage> {
             appBar: AppBar(
                 toolbarHeight: stage == 'team' ? 88 : null,
                 title: Text(titles[stage]!),
-                actions: stage == 'team'
+                leading: stage == 'scorer'
+                    ? IconButton(
+                        tooltip: 'Passaggio precedente',
+                        onPressed: () => setState(() => stage = 'team'),
+                        icon: const Icon(Icons.arrow_back))
+                    : null,
+                actions: stage == 'team' || stage == 'scorer'
                     ? null
                     : [
                         TextButton(
@@ -96,9 +102,10 @@ class _GoalPageState extends State<GoalPage> {
                             child: const Text('Annulla'))
                       ]),
             body: ListView(
-                padding: EdgeInsets.all(stage == 'team' ? 24 : 20),
+                padding: EdgeInsets.all(
+                    stage == 'team' || stage == 'scorer' ? 24 : 20),
                 children: [
-                  if (stage != 'team')
+                  if (stage != 'team' && stage != 'scorer')
                     TextButton(
                         onPressed: () => setState(
                             () => stage = steps[steps.indexOf(stage) - 1]),
@@ -127,20 +134,44 @@ class _GoalPageState extends State<GoalPage> {
                       ),
                     _GoalCancelButton(onPressed: () => Navigator.pop(context)),
                   ],
-                  if (stage == 'scorer')
-                    SwitchListTile(
-                        title: const Text('Autogol'),
+                  if (stage == 'scorer') ...[
+                    _OwnGoalToggle(
                         value: own,
-                        onChanged: (v) => setState(() {
-                              own = v;
+                        onChanged: (value) => setState(() {
+                              own = value;
                               scorer = assist = null;
                             })),
+                    const SizedBox(height: 12),
+                    for (final id in sorted) ...[
+                      _GoalPlayerOption(
+                          label: competitive
+                              ? competitionPlayerLabel(
+                                  l, m, own ? 1 - team : team, id)
+                              : l.playerName(id),
+                          subtitle: m.names[own ? 1 - team : team],
+                          color: competitive
+                              ? m.teamColors[own ? 1 - team : team]
+                              : l.players
+                                  .firstWhere((player) => player.id == id)
+                                  .color,
+                          onTap: () {
+                            scorer = id;
+                            assist = null;
+                            next();
+                          }),
+                      const SizedBox(height: 12),
+                    ],
+                    _GoalCancelButton(
+                        label: 'Non indicato',
+                        onPressed: () {
+                          scorer = assist = null;
+                          next();
+                        }),
+                  ],
                   if (stage == 'keeper' && plan.mode == 'rotation')
                     Text(
                         'Turno previsto: ${l.playerName(suggested)}. Seleziona chi era realmente in porta.'),
-                  if (stage == 'scorer' ||
-                      stage == 'assist' ||
-                      stage == 'keeper') ...[
+                  if (stage == 'assist' || stage == 'keeper') ...[
                     ...sorted
                         .where((id) => stage != 'assist' || id != scorer)
                         .map((id) =>
@@ -275,8 +306,109 @@ class _GoalTeamOption extends StatelessWidget {
       );
 }
 
+class _OwnGoalToggle extends StatelessWidget {
+  const _OwnGoalToggle({required this.value, required this.onChanged});
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 56,
+        child: SwitchListTile(
+          key: const ValueKey('own-goal-toggle'),
+          value: value,
+          onChanged: onChanged,
+          title: const Text('Autogol',
+              style: TextStyle(fontSize: 16, height: 24 / 16)),
+          tileColor: HaykoColors.fieldSurface,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          activeThumbColor: HaykoColors.chalk,
+          activeTrackColor: HaykoColors.fieldLine,
+          inactiveThumbColor: HaykoColors.mutedText,
+          inactiveTrackColor: HaykoColors.fieldLine,
+        ),
+      );
+}
+
+class _GoalPlayerOption extends StatelessWidget {
+  const _GoalPlayerOption(
+      {required this.label,
+      required this.subtitle,
+      required this.color,
+      required this.onTap});
+
+  final String label;
+  final String subtitle;
+  final int color;
+  final VoidCallback onTap;
+
+  String get initials {
+    final words = label
+        .replaceAll(RegExp(r'[#·].*'), '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return '?';
+    return words.take(2).map((word) => word[0].toUpperCase()).join();
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            height: 72,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Color(color),
+                  foregroundColor: contrastColor(color),
+                  child: Text(initials,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          height: 16 / 12,
+                          fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              const TextStyle(fontSize: 16, height: 24 / 16)),
+                      Text(subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: HaykoColors.mutedText,
+                              fontSize: 12,
+                              height: 16 / 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
 class _GoalCancelButton extends StatelessWidget {
-  const _GoalCancelButton({required this.onPressed});
+  const _GoalCancelButton({this.label = 'Annulla', required this.onPressed});
+  final String label;
   final VoidCallback onPressed;
 
   @override
@@ -293,7 +425,7 @@ class _GoalCancelButton extends StatelessWidget {
                 fontSize: 16, height: 24 / 16, fontWeight: FontWeight.w700),
           ),
           onPressed: onPressed,
-          child: const Text('Annulla'),
+          child: Text(label),
         ),
       );
 }
