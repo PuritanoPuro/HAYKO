@@ -92,6 +92,8 @@ void main() {
   });
   testWidgets('rimozione preset conserva partite e identita storiche',
       (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final p = TeamPreset('p', 'Salvata', ['a', 'b']);
     final m = Match(id: 'm', format: 2, names: [
       'A',
@@ -114,7 +116,7 @@ void main() {
         MaterialApp(home: TeamPresetsPage(league: l, save: () async {})));
     await tester.tap(find.text('Salvata'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Elimina squadra'));
+    await tester.tap(find.text('Elimina squadra'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Conferma'));
     await tester.pumpAndSettle();

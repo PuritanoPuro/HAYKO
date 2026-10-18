@@ -3,6 +3,8 @@ import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/features/competitions/competition_roster_editor.dart';
+import 'package:calcetto_mvp/features/account/components.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 
 Future<Player?> addLeaguePlayer(
     BuildContext context, League l, Save? save) async {
@@ -104,9 +106,20 @@ class _TeamEditorState extends State<TeamEditor> {
   }
 
   Future<void> add() async {
+    if (!competitive && selected.length >= format) {
+      showError(context, 'La squadra ha già $format giocatori.');
+      return;
+    }
     setState(() => busy = true);
-    await addLeaguePlayer(context, widget.league, widget.save);
-    if (mounted) setState(() => busy = false);
+    final player = await addLeaguePlayer(context, widget.league, widget.save);
+    if (mounted) {
+      setState(() {
+        if (player != null && !selected.contains(player.id)) {
+          selected.add(player.id);
+        }
+        busy = false;
+      });
+    }
   }
 
   Future<void> submit() async {
@@ -234,6 +247,148 @@ class _TeamEditorState extends State<TeamEditor> {
     }
   }
 
+  Widget teamNameField() => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: HaykoColors.fieldLine)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Nome squadra',
+              style: TextStyle(
+                  color: HaykoColors.mutedText,
+                  fontSize: 12,
+                  height: 16 / 12,
+                  fontWeight: FontWeight.w600)),
+          Expanded(
+            child: TextFormField(
+                initialValue: name,
+                maxLength: 60,
+                style: const TextStyle(fontSize: 16, height: 1.5),
+                decoration: const InputDecoration(
+                    isDense: true,
+                    counterText: '',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.zero),
+                onChanged: (value) => name = value),
+          ),
+        ]),
+      );
+
+  Widget formatField() => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: HaykoColors.fieldLine)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Tipologia partita',
+              style: TextStyle(
+                  color: HaykoColors.mutedText,
+                  fontSize: 12,
+                  height: 16 / 12,
+                  fontWeight: FontWeight.w600)),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: format,
+                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                  items: [
+                    for (var value = 2; value <= 11; value++)
+                      DropdownMenuItem(
+                          value: value, child: Text('${value}v$value'))
+                  ],
+                  onChanged: busy || widget.initialFormat != null
+                      ? null
+                      : (value) => setState(() {
+                            format = value!;
+                            selected.clear();
+                          })),
+            ),
+          ),
+        ]),
+      );
+
+  Widget colorField() => Material(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: busy
+              ? null
+              : () async {
+                  final value = await chooseColor(context, color);
+                  if (value != null && mounted) setState(() => color = value);
+                },
+          child: SizedBox(
+            height: 76,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Colore squadra',
+                            style: TextStyle(
+                                color: HaykoColors.mutedText,
+                                fontSize: 12,
+                                height: 16 / 12,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(
+                            '#${color.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+                            style: const TextStyle(fontSize: 16, height: 1.5)),
+                      ]),
+                ),
+                Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                        color: Color(color), shape: BoxShape.circle)),
+              ]),
+            ),
+          ),
+        ),
+      );
+
+  Widget savedTeamEditor(List<Player> players) {
+    final members = players.where((player) => selected.contains(player.id));
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        teamNameField(),
+        const SizedBox(height: 12),
+        formatField(),
+        const SizedBox(height: 12),
+        colorField(),
+        const SizedBox(height: 12),
+        AccountButton('+ Giocatore',
+            outline: true, onPressed: busy ? null : add),
+        const SizedBox(height: 12),
+        for (final player in members) ...[
+          _TeamMemberRow(
+              player: player,
+              current: widget.league.myPlayer == player.id,
+              onRemove:
+                  busy ? null : () => setState(() => select(player, false))),
+          const SizedBox(height: 12),
+        ],
+        AccountButton('Salva squadra',
+            onPressed: busy || selected.length != format ? null : submit),
+        const SizedBox(height: 12),
+        _DangerButton(
+            label: 'Elimina squadra', onPressed: busy ? null : removeTeam),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (competitive) {
@@ -247,86 +402,182 @@ class _TeamEditorState extends State<TeamEditor> {
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return Scaffold(
         appBar: AppBar(
+            toolbarHeight: 64,
             title: Text(
-                widget.team == null ? 'Nuova squadra' : 'Modifica squadra'),
-            actions: [
-              if (widget.team != null)
-                IconButton(
-                    tooltip: 'Elimina squadra',
-                    onPressed: busy ? null : removeTeam,
-                    icon: const Icon(Icons.delete_outline))
-            ]),
-        body: Column(children: [
-          Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(children: [
-                TextFormField(
-                    initialValue: name,
-                    maxLength: 60,
-                    decoration:
-                        const InputDecoration(labelText: 'Nome squadra'),
-                    onChanged: (v) => name = v),
-                ColorChoice(
-                    label: 'Colore squadra',
-                    color: color,
-                    changed: (v) => setState(() => color = v)),
-                DropdownButton<int>(
-                    isExpanded: true,
-                    value: format,
-                    items: [
-                      for (var n = 2; n <= 11; n++)
-                        DropdownMenuItem(value: n, child: Text('$n giocatori'))
-                    ],
-                    onChanged: busy || widget.initialFormat != null
-                        ? null
-                        : (v) => setState(() {
-                              format = v!;
-                              selected.clear();
-                            })),
-                Row(children: [
-                  Expanded(
-                      child: Text(competitive
-                          ? '${selected.length} giocatori · minimo $format'
-                          : '${selected.length} / $format selezionati')),
-                  FilledButton(
-                      onPressed: busy ||
-                              (competitive
-                                  ? selected.length < format
-                                  : selected.length != format)
-                          ? null
-                          : submit,
-                      child: const Text('Salva squadra'))
-                ]),
-                TextButton.icon(
-                    onPressed: busy ? null : add,
-                    icon: const Icon(Icons.person_add),
-                    label: const Text('+ Giocatore')),
-              ])),
-          Expanded(
-              child: ListView(
-                  children: players
-                      .map((p) => Card(
-                          color: selected.contains(p.id)
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : null,
-                          child: Row(children: [
-                            Expanded(
-                                child: CheckboxListTile(
-                                    title: Text(p.name),
-                                    secondary: CircleAvatar(
-                                        radius: 9,
-                                        backgroundColor: Color(p.color)),
-                                    value: selected.contains(p.id),
-                                    onChanged: busy
-                                        ? null
-                                        : (v) =>
-                                            setState(() => select(p, v!)))),
-                            if (competitive && selected.contains(p.id))
-                              TextButton(
-                                  onPressed: busy ? null : () => number(p.id),
-                                  child: Text('#${numbers[p.id] ?? '—'}')),
-                          ])))
-                      .toList())),
-        ]));
+                widget.team == null ? 'Nuova squadra' : 'Modifica squadra',
+                style: const TextStyle(
+                    fontSize: 20, height: 1.3, fontWeight: FontWeight.w700))),
+        body: widget.team != null
+            ? savedTeamEditor(players)
+            : Column(children: [
+                Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(children: [
+                      TextFormField(
+                          initialValue: name,
+                          maxLength: 60,
+                          decoration:
+                              const InputDecoration(labelText: 'Nome squadra'),
+                          onChanged: (v) => name = v),
+                      ColorChoice(
+                          label: 'Colore squadra',
+                          color: color,
+                          changed: (v) => setState(() => color = v)),
+                      DropdownButton<int>(
+                          isExpanded: true,
+                          value: format,
+                          items: [
+                            for (var n = 2; n <= 11; n++)
+                              DropdownMenuItem(
+                                  value: n, child: Text('$n giocatori'))
+                          ],
+                          onChanged: busy || widget.initialFormat != null
+                              ? null
+                              : (v) => setState(() {
+                                    format = v!;
+                                    selected.clear();
+                                  })),
+                      Row(children: [
+                        Expanded(
+                            child: Text(competitive
+                                ? '${selected.length} giocatori · minimo $format'
+                                : '${selected.length} / $format selezionati')),
+                        FilledButton(
+                            onPressed: busy ||
+                                    (competitive
+                                        ? selected.length < format
+                                        : selected.length != format)
+                                ? null
+                                : submit,
+                            child: const Text('Salva squadra'))
+                      ]),
+                      TextButton.icon(
+                          onPressed: busy ? null : add,
+                          icon: const Icon(Icons.person_add),
+                          label: const Text('+ Giocatore')),
+                    ])),
+                Expanded(
+                    child: ListView(
+                        children: players
+                            .map((p) => Card(
+                                color: selected.contains(p.id)
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                    : null,
+                                child: Row(children: [
+                                  Expanded(
+                                      child: CheckboxListTile(
+                                          title: Text(p.name),
+                                          secondary: CircleAvatar(
+                                              radius: 9,
+                                              backgroundColor: Color(p.color)),
+                                          value: selected.contains(p.id),
+                                          onChanged: busy
+                                              ? null
+                                              : (v) => setState(
+                                                  () => select(p, v!)))),
+                                  if (competitive && selected.contains(p.id))
+                                    TextButton(
+                                        onPressed:
+                                            busy ? null : () => number(p.id),
+                                        child:
+                                            Text('#${numbers[p.id] ?? '—'}')),
+                                ])))
+                            .toList())),
+              ]));
   }
+}
+
+class _TeamMemberRow extends StatelessWidget {
+  const _TeamMemberRow(
+      {required this.player, required this.current, required this.onRemove});
+  final Player player;
+  final bool current;
+  final VoidCallback? onRemove;
+
+  String get initials {
+    final words = player.name.trim().split(RegExp(r'\s+'));
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 80,
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: current ? Border.all(color: HaykoColors.chalk) : null),
+        child: Row(children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Color(player.color),
+                    child: Text(initials,
+                        style: TextStyle(
+                            color: contrastColor(player.color),
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w600))),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${player.name}${current ? ' · Tu' : ''}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 16, height: 1.5)),
+                        const Text('Nella squadra',
+                            style: TextStyle(
+                                color: HaykoColors.mutedText,
+                                fontSize: 12,
+                                height: 16 / 12,
+                                fontWeight: FontWeight.w600)),
+                      ]),
+                ),
+              ]),
+            ),
+          ),
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: IconButton(
+                tooltip: 'Rimuovi dalla squadra',
+                onPressed: onRemove,
+                color: const Color(0xffffb4ab),
+                icon: const Icon(Icons.delete, size: 24)),
+          ),
+        ]),
+      );
+}
+
+class _DangerButton extends StatelessWidget {
+  const _DangerButton({required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 52,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xffffb4ab),
+              backgroundColor: HaykoColors.fieldSurface,
+              side: const BorderSide(color: Color(0xffffb4ab)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              textStyle: const TextStyle(
+                  fontFamily: 'BricolageGrotesque',
+                  fontSize: 16,
+                  height: 1.5,
+                  fontWeight: FontWeight.w700)),
+          child: Text(label),
+        ),
+      );
 }
