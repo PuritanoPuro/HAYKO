@@ -167,13 +167,23 @@ class _AccountFieldState extends State<AccountField> {
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
+                        suffixIconConstraints: const BoxConstraints(
+                            minWidth: 32,
+                            maxWidth: 32,
+                            minHeight: 24,
+                            maxHeight: 24),
                         suffixIcon: widget.password
                             ? IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                    width: 32, height: 24),
+                                visualDensity: VisualDensity.compact,
                                 tooltip: hidden
                                     ? 'Mostra password'
                                     : 'Nascondi password',
                                 onPressed: () =>
                                     setState(() => hidden = !hidden),
+                                iconSize: 20,
                                 icon: Icon(hidden
                                     ? Icons.visibility_outlined
                                     : Icons.visibility_off_outlined),
