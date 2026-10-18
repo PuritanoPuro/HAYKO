@@ -298,7 +298,9 @@ class _LeaguePageState extends State<LeaguePage> {
     final players = List<Player>.from(l.players)
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+      // Keeps the final edit action clear of the 48 px floating button and
+      // its Scaffold margin at every scroll position.
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 88),
       children: [
         _LeagueOutlineButton(
             label: 'Squadre salvate', onPressed: openSavedTeams),
