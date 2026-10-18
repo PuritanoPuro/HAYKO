@@ -633,18 +633,22 @@ class _TeamSetupField extends StatelessWidget {
                       fontSize: 12,
                       height: 16 / 12,
                       fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  maxLength: 60,
-                  style: const TextStyle(fontSize: 16, height: 1.5),
-                  decoration: const InputDecoration(
-                      isDense: true,
-                      counterText: '',
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.zero),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextField(
+                    controller: controller,
+                    maxLength: 60,
+                    style: const TextStyle(fontSize: 16, height: 1.5),
+                    decoration: const InputDecoration(
+                        isCollapsed: true,
+                        counterText: '',
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero),
+                  ),
                 ),
               ),
             ]),
