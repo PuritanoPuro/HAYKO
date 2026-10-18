@@ -71,6 +71,10 @@ void main() {
         tester.element(find.text('Seleziona formazione')),
         alignment: 0.5);
     await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+        tester.element(find.text('Seleziona formazione')),
+        alignment: 0.5);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Seleziona formazione'));
     await tester.pumpAndSettle();
     final counter = find.byKey(const ValueKey('selection-counter'));
@@ -83,6 +87,55 @@ void main() {
     expect(tester.getRect(counter), counterBefore);
     expect(tester.getRect(button), buttonBefore);
     expect(tester.widget<FilledButton>(button).onPressed, isNull);
+  });
+  testWidgets('ricerca formazione filtra senza spostare i selezionati',
+      (tester) async {
+    final league = League('l', 'L', [
+      for (final name in [
+        'Alfa',
+        'Beta',
+        'Gamma',
+        'Delta',
+        'Epsilon',
+        'Zeta',
+        'Eta',
+        'Theta',
+        'Iota',
+        'Kappa'
+      ])
+        Player(name, name)
+    ], []);
+    await tester.pumpWidget(MaterialApp(home: NewMatchPage(league: league)));
+    await tester.ensureVisible(find.byKey(const ValueKey('event-venue')));
+    await tester.enterText(
+        find.byKey(const ValueKey('event-venue')), 'Campo test');
+    tester.testTextInput.hide();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+        tester.element(find.text('Seleziona formazione')),
+        alignment: 0.5);
+    await tester.pumpAndSettle();
+    await Scrollable.ensureVisible(
+        tester.element(find.text('Seleziona formazione')),
+        alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seleziona formazione'));
+    await tester.pumpAndSettle();
+
+    final beta = find.byKey(const ValueKey('team-player-0-Beta'));
+    final positionBefore = tester.getTopLeft(beta);
+    await tester.tap(find.text('Beta'));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(beta), positionBefore);
+
+    await tester.tap(find.byKey(const ValueKey('player-search')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('player-search')), 'bEt');
+    await tester.pumpAndSettle();
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Alfa'), findsNothing);
+    expect(find.text('+ Giocatore'), findsOneWidget);
   });
   testWidgets('portieri riordinabili trascinando un contenitore',
       (tester) async {

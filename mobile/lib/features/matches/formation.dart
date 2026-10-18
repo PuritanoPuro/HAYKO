@@ -34,10 +34,13 @@ class _NewMatchPageState extends State<NewMatchPage> {
   final colors = [0xff8ebcff, 0xffffab64];
   DateTime scheduled = DateTime.now();
   final venue = TextEditingController();
+  final playerSearch = TextEditingController();
+  final playerSearchFocus = FocusNode();
   String? competitionId, fixtureKey;
   @override
   void initState() {
     super.initState();
+    playerSearchFocus.addListener(_refreshPlayerSearch);
     scheduled = DateTime(scheduled.year, scheduled.month, scheduled.day,
         scheduled.hour, scheduled.minute);
     colors[0] = widget.league.primaryColor;
@@ -91,7 +94,15 @@ class _NewMatchPageState extends State<NewMatchPage> {
       n.dispose();
     }
     venue.dispose();
+    playerSearch.dispose();
+    playerSearchFocus
+      ..removeListener(_refreshPlayerSearch)
+      ..dispose();
     super.dispose();
+  }
+
+  void _refreshPlayerSearch() {
+    if (mounted) setState(() {});
   }
 
   List<Player> get alphabetical => [...widget.league.players]
@@ -136,6 +147,8 @@ class _NewMatchPageState extends State<NewMatchPage> {
       presetIds[t] = preset.id;
       names[t].text = label;
     }
+    playerSearch.clear();
+    playerSearchFocus.unfocus();
     setState(() {
       if (order[t].length != teams[t].length ||
           order[t].any((p) => !teams[t].contains(p))) {
@@ -289,20 +302,22 @@ class _NewMatchPageState extends State<NewMatchPage> {
   }
 
   Widget selectionBody(int t) {
-    final selectedPlayers =
-        alphabetical.where((player) => teams[t].contains(player.id)).toList();
-    final availablePlayers = alphabetical
+    final query = playerSearch.text.trim().toLowerCase();
+    final matchingPlayers = alphabetical
         .where((player) =>
-            !teams[t].contains(player.id) && !teams[1 - t].contains(player.id))
+            query.isEmpty || player.name.toLowerCase().contains(query))
         .toList();
-    final assignedPlayers = alphabetical
+    final selectablePlayers = matchingPlayers
+        .where((player) => !teams[1 - t].contains(player.id))
+        .toList();
+    final assignedPlayers = matchingPlayers
         .where((player) => teams[1 - t].contains(player.id))
         .toList();
     final players = [
-      ...selectedPlayers,
-      ...availablePlayers,
+      ...selectablePlayers,
       ...assignedPlayers,
     ];
+    final searchActive = playerSearchFocus.hasFocus;
     final presets = widget.league.presets
         .where((preset) =>
             !preset.archived &&
@@ -347,24 +362,61 @@ class _NewMatchPageState extends State<NewMatchPage> {
               height: 52,
               child: FilledButton(
                   key: const ValueKey('selection-confirm'),
+                  style: ButtonStyle(
+                      minimumSize: const WidgetStatePropertyAll(Size(120, 52)),
+                      padding: const WidgetStatePropertyAll(EdgeInsets.all(12)),
+                      shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                      textStyle: const WidgetStatePropertyAll(TextStyle(
+                          fontFamily: 'BricolageGrotesque',
+                          fontSize: 16,
+                          height: 1.5,
+                          fontWeight: FontWeight.w700))),
                   onPressed:
                       teams[t].length == format ? () => acceptTeam(t) : null,
                   child: const Text('Conferma')),
             ),
           ]),
           const SizedBox(height: 12),
-          SizedBox(
-              width: double.infinity,
-              child: AccountButton('+ Giocatore',
-                  outline: true, onPressed: addPlayer)),
+          Row(children: [
+            Expanded(
+                child: _PlayerSearchField(
+                    controller: playerSearch,
+                    focusNode: playerSearchFocus,
+                    onChanged: (_) => setState(() {}))),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              child: searchActive
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: SizedBox(
+                        width: 124,
+                        height: 52,
+                        child: AccountButton('+ Giocatore',
+                            outline: true, onPressed: addPlayer),
+                      ),
+                    ),
+            ),
+          ]),
         ]),
       ),
       Expanded(
           child: ListView.builder(
               key: ValueKey('team-roster-$t'),
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              itemCount: players.length,
+              itemCount: players.length + (searchActive ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == players.length) {
+                  return Padding(
+                    padding: EdgeInsets.only(top: players.isEmpty ? 0 : 12),
+                    child: SizedBox(
+                        width: double.infinity,
+                        child: AccountButton('+ Giocatore',
+                            outline: true, onPressed: addPlayer)),
+                  );
+                }
                 final p = players[index];
                 final other = teams[1 - t].contains(p.id),
                     selected = teams[t].contains(p.id);
@@ -582,6 +634,48 @@ class _NewMatchPageState extends State<NewMatchPage> {
   }
 }
 
+class _PlayerSearchField extends StatelessWidget {
+  const _PlayerSearchField(
+      {required this.controller,
+      required this.focusNode,
+      required this.onChanged});
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeInOut,
+        height: 52,
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: focusNode.hasFocus
+                    ? HaykoColors.chalk
+                    : HaykoColors.fieldLine)),
+        child: TextField(
+          key: const ValueKey('player-search'),
+          controller: controller,
+          focusNode: focusNode,
+          onChanged: onChanged,
+          textInputAction: TextInputAction.search,
+          style: const TextStyle(fontSize: 16, height: 1.5),
+          decoration: const InputDecoration(
+              isDense: true,
+              hintText: 'Cerca giocatore',
+              prefixIcon: Icon(Icons.search, size: 22),
+              prefixIconConstraints:
+                  BoxConstraints(minWidth: 44, minHeight: 52),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(vertical: 14)),
+        ),
+      );
+}
+
 class _KeeperModeChip extends StatelessWidget {
   const _KeeperModeChip(
       {required this.label, required this.selected, required this.onTap});
@@ -605,9 +699,7 @@ class _KeeperModeChip extends StatelessWidget {
             child: Text(label,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontSize: 12,
-                    height: 16 / 12,
-                    fontWeight: FontWeight.w600)),
+                    fontSize: 16, height: 1.5, fontWeight: FontWeight.w700)),
           ),
         ),
       );
