@@ -115,7 +115,7 @@ void main() {
     expect(find.text('Calendario'), findsOneWidget);
     await tester.tap(find.text('Squadre'));
     await tester.pumpAndSettle();
-    expect(find.text('Squadra'), findsOneWidget);
+    expect(find.text('+ Squadra'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('creazione lega chiede amatoriale o competizione',

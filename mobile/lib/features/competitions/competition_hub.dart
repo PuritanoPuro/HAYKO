@@ -6,6 +6,9 @@ import 'package:calcetto_mvp/features/matches/team_editor.dart';
 import 'package:calcetto_mvp/features/matches/formation.dart';
 import 'package:calcetto_mvp/main.dart' show MatchPage;
 import 'package:calcetto_mvp/features/competitions/competitions_page.dart';
+import 'package:calcetto_mvp/features/account/components.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/shared/customization.dart';
 
 Competition? competitionOf(League l) =>
     l.competitions.isEmpty ? null : l.competitions.first;
@@ -31,10 +34,13 @@ class CompetitionTeams extends StatelessWidget {
     }
     final locked = calendarLocked(league, c);
     final winners = competitionWinners(league, c);
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('Squadre partecipanti', style: TextStyle(fontSize: 24)),
+    return ListView(padding: const EdgeInsets.all(24), children: [
+      const Text('Squadre partecipanti',
+          style: TextStyle(
+              fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 12),
       if (league.manage)
-        FilledButton.icon(
+        AccountButton('+ Squadra',
             onPressed: locked
                 ? null
                 : () async {
@@ -47,41 +53,108 @@ class CompetitionTeams extends StatelessWidget {
                                 initialFormat: c.format,
                                 competition: c)));
                     if (context.mounted) changed();
-                  },
-            icon: const Icon(Icons.add),
-            label: const Text('Squadra')),
-      Text(locked
-          ? 'Le partecipanti sono confermate: è già stata creata una partita.'
-          : c.kind == 'knockout'
-              ? 'Aggiungi 2, 4, 8 o 16 squadre per completare il torneo.'
-              : 'Aggiungi almeno due squadre per completare il campionato.'),
-      ...c.teamIds.map((id) {
-        final p = league.presets.firstWhere((p) => p.id == id);
-        return Card(
-            child: ListTile(
-                leading: CircleAvatar(
-                    backgroundColor: Color(p.color),
-                    child: const Icon(Icons.groups)),
-                title: Text(p.name),
-                subtitle: Text('${p.players.length} giocatori'),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (winners.contains(p.id)) const WinnerBadge(),
-                  const Icon(Icons.chevron_right)
-                ]),
-                onTap: () async {
-                  await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => TeamDetails(
-                              league: league,
-                              team: p,
-                              competition: c,
-                              save: save)));
-                  if (context.mounted) changed();
-                }));
-      }),
+                  }),
+      const SizedBox(height: 12),
+      Text(
+          locked
+              ? 'Le partecipanti sono confermate: è già stata creata una partita.'
+              : c.kind == 'knockout'
+                  ? 'Aggiungi 2, 4, 8 o 16 squadre per completare il torneo.'
+                  : 'Aggiungi almeno due squadre per completare il campionato.',
+          style: const TextStyle(
+              color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
+      if (c.teamIds.isNotEmpty) const SizedBox(height: 12),
+      for (var index = 0; index < c.teamIds.length; index++) ...[
+        Builder(builder: (context) {
+          final p = league.presets
+              .firstWhere((preset) => preset.id == c.teamIds[index]);
+          return _CompetitionTeamRow(
+              team: p,
+              winner: winners.contains(p.id),
+              onTap: () async {
+                await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => TeamDetails(
+                            league: league,
+                            team: p,
+                            competition: c,
+                            save: save)));
+                if (context.mounted) changed();
+              });
+        }),
+        if (index != c.teamIds.length - 1) const SizedBox(height: 12),
+      ],
     ]);
   }
+}
+
+class _CompetitionTeamRow extends StatelessWidget {
+  const _CompetitionTeamRow(
+      {required this.team, required this.winner, required this.onTap});
+
+  final TeamPreset team;
+  final bool winner;
+  final VoidCallback onTap;
+
+  String get initials {
+    final words = team.name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty || words.first.isEmpty) return '?';
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            height: 80,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Color(team.color),
+                    child: Text(initials,
+                        style: TextStyle(
+                            color: contrastColor(team.color),
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w600))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(team.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 16, height: 1.5)),
+                      Text('${team.players.length} giocatori',
+                          style: const TextStyle(
+                              color: HaykoColors.mutedText,
+                              fontSize: 12,
+                              height: 16 / 12,
+                              fontWeight: FontWeight.w600)),
+                    ])),
+                if (winner) ...[
+                  const WinnerBadge(),
+                  const SizedBox(width: 8),
+                ],
+                const SizedBox(
+                    width: 64,
+                    child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Icon(Icons.chevron_right, size: 24))),
+              ]),
+            ),
+          ),
+        ),
+      );
 }
 
 class TeamDetails extends StatefulWidget {
