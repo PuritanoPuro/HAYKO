@@ -5,6 +5,8 @@ import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/features/matches/team_editor.dart';
 import 'package:calcetto_mvp/features/competitions/competition_match_form.dart';
+import 'package:calcetto_mvp/features/account/components.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 
 class NewMatchPage extends StatefulWidget {
   final League league;
@@ -330,6 +332,154 @@ class _NewMatchPageState extends State<NewMatchPage> {
     ]);
   }
 
+  Future<void> pickScheduled() async {
+    final date = await showDatePicker(
+        context: context,
+        initialDate: scheduled,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100));
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+        context: context, initialTime: TimeOfDay.fromDateTime(scheduled));
+    if (time == null || !mounted) return;
+    setState(() => scheduled =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute));
+  }
+
+  String get scheduledLabel {
+    const months = [
+      'gennaio',
+      'febbraio',
+      'marzo',
+      'aprile',
+      'maggio',
+      'giugno',
+      'luglio',
+      'agosto',
+      'settembre',
+      'ottobre',
+      'novembre',
+      'dicembre'
+    ];
+    final hour = scheduled.hour.toString().padLeft(2, '0');
+    final minute = scheduled.minute.toString().padLeft(2, '0');
+    return '${scheduled.day} ${months[scheduled.month - 1]} ${scheduled.year} · $hour:$minute';
+  }
+
+  void continueToFormation() {
+    if (competition != null && presetIds.any((id) => id == null)) {
+      showError(context, 'Seleziona entrambe le squadre della competizione.');
+      return;
+    }
+    if (names.any((name) => name.text.trim().isEmpty)) {
+      showError(context, 'Inserisci i nomi delle squadre.');
+      return;
+    }
+    if (widget.league.players.length < format * 2) {
+      showError(context, 'Servono almeno ${format * 2} giocatori nella lega.');
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() => step = 1);
+  }
+
+  Widget setupBody() => ListView(
+        key: const ValueKey('match-setup'),
+        padding: const EdgeInsets.all(24),
+        children: [
+          _SetupField(
+            label: 'Tipologia partita',
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: format,
+                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                  items: [
+                    for (var value = 2; value <= 11; value++)
+                      DropdownMenuItem(
+                          value: value, child: Text('$value contro $value'))
+                  ],
+                  onChanged: competitionId != null
+                      ? null
+                      : (value) => setState(() {
+                            format = value!;
+                            for (final team in teams) {
+                              team.clear();
+                            }
+                            presetIds[0] = presetIds[1] = null;
+                          })),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (competition == null)
+            for (var team = 0; team < 2; team++) ...[
+              _TeamSetupField(
+                label: 'Squadra ${team == 0 ? 'A' : 'B'}',
+                controller: names[team],
+                color: colors[team],
+                onColor: () async {
+                  final value = await chooseColor(context, colors[team]);
+                  if (value != null && mounted) {
+                    setState(() => colors[team] = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+            ]
+          else
+            for (var team = 0; team < 2; team++) ...[
+              _SetupField(
+                label: 'Squadra ${team == 0 ? 'A' : 'B'}',
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    key: ValueKey('competition-team-$team'),
+                    isExpanded: true,
+                    value: presetIds[team],
+                    hint: const Text('Seleziona squadra'),
+                    items: widget.league.presets
+                        .where((preset) =>
+                            !preset.archived &&
+                            competition!.teamIds.contains(preset.id) &&
+                            preset.id != presetIds[1 - team])
+                        .map((preset) => DropdownMenuItem(
+                            value: preset.id, child: Text(preset.name)))
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => loadPreset(team, value!)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          _SetupField(
+            label: 'Data e ora',
+            onTap: pickScheduled,
+            child: Text(scheduledLabel,
+                style: const TextStyle(fontSize: 16, height: 1.5)),
+          ),
+          const SizedBox(height: 12),
+          _SetupField(
+            label: 'Luogo · facoltativo',
+            child: TextField(
+              key: const ValueKey('event-venue'),
+              controller: venue,
+              maxLength: 120,
+              style: const TextStyle(fontSize: 16, height: 1.5),
+              decoration: const InputDecoration(
+                  isDense: true,
+                  counterText: '',
+                  hintText: 'Inserisci il luogo',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero),
+            ),
+          ),
+          const SizedBox(height: 12),
+          AccountButton('Seleziona formazione', onPressed: continueToFormation),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     if (widget.league.type == 'competition') {
@@ -355,208 +505,159 @@ class _NewMatchPageState extends State<NewMatchPage> {
                         onPressed: () => setState(() => step--))),
             body: step == 1 || step == 2
                 ? selectionBody(t)
-                : ListView(
-                    key: ValueKey(step),
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                        if (step == 0) ...[
-                          DropdownButton<int>(
-                              isExpanded: true,
-                              value: format,
-                              items: [
-                                for (var n = 2; n <= 11; n++)
-                                  DropdownMenuItem(
-                                      value: n, child: Text('$n contro $n'))
-                              ],
-                              onChanged: competitionId != null
-                                  ? null
-                                  : (n) => setState(() {
-                                        format = n!;
-                                        for (final team in teams) {
-                                          team.clear();
-                                        }
-                                        presetIds[0] = presetIds[1] = null;
-                                      })),
-                          if (competition == null)
-                            for (var n = 0; n < 2; n++)
-                              TextField(
-                                  controller: names[n],
-                                  maxLength: 60,
-                                  decoration: InputDecoration(
-                                      labelText:
-                                          'Nome squadra ${n == 0 ? 'A' : 'B'}')),
-                          if (competition != null)
-                            for (var n = 0; n < 2; n++)
-                              DropdownButton<String>(
-                                  key: ValueKey('competition-team-$n'),
-                                  isExpanded: true,
-                                  value: presetIds[n],
-                                  hint: Text(
-                                      'Seleziona squadra ${n == 0 ? 'A' : 'B'}'),
-                                  items: widget.league.presets
-                                      .where((p) =>
-                                          !p.archived &&
-                                          competition!.teamIds.contains(p.id) &&
-                                          p.id != presetIds[1 - n])
-                                      .map((p) => DropdownMenuItem(
-                                          value: p.id, child: Text(p.name)))
-                                      .toList(),
-                                  onChanged: (v) => setState(() {
-                                        loadPreset(n, v!);
-                                        fixtureKey = null;
-                                        if (competition?.kind == 'knockout') {
-                                          final available = fixtures.where(
-                                              (t) => t.teams
-                                                  .every(presetIds.contains));
-                                          if (available.isNotEmpty) {
-                                            fixtureKey =
-                                                fixtureId(available.first);
-                                          }
-                                        }
-                                      })),
-                          for (var n = 0; n < 2; n++)
-                            ColorChoice(
-                                label: 'Colore ${names[n].text}',
-                                color: colors[n],
-                                changed: (v) => setState(() => colors[n] = v)),
-                          EventDetailsFields(
-                              date: scheduled,
-                              venue: venue,
-                              changed: (v) => setState(() => scheduled = v)),
-                          if (widget.league.type != 'competition' &&
-                              widget.initialCompetition != null)
-                            DropdownButton<String>(
-                                value: competitionId ?? '',
-                                isExpanded: true,
-                                items: [
-                                  const DropdownMenuItem(
-                                      value: '',
-                                      child: Text(
-                                          'Amichevole / nessuna competizione')),
-                                  ...widget.league.competitions.map((c) =>
-                                      DropdownMenuItem(
-                                          value: c.id, child: Text(c.name)))
-                                ],
-                                onChanged: (v) => setState(() {
-                                      competitionId = v == '' ? null : v;
-                                      fixtureKey = null;
-                                      if (competition != null) {
-                                        format = competition!.format;
-                                      }
-                                      for (final team in teams) {
-                                        team.clear();
-                                      }
-                                      presetIds[0] = presetIds[1] = null;
-                                    })),
-                          if (competition?.kind == 'knockout') ...[
-                            DropdownButton<String>(
-                                value: fixtureKey,
-                                isExpanded: true,
-                                hint: const Text(
-                                    'Scegli incontro del turno disponibile'),
-                                items: fixtures
-                                    .map((tie) => DropdownMenuItem(
-                                        value: fixtureId(tie),
-                                        child: Text(tie.teams
-                                            .map((id) => widget.league.presets
-                                                .firstWhere((p) => p.id == id)
-                                                .name)
-                                            .join(' – '))))
-                                    .toList(),
-                                onChanged: (v) => setState(() {
-                                      fixtureKey = v;
-                                      final tie = fixtures
-                                          .firstWhere((t) => fixtureId(t) == v);
-                                      loadPreset(0, tie.teams[0]);
-                                      loadPreset(1, tie.teams[1]);
-                                    })),
-                            if (fixtures.isEmpty)
-                              const Text(
-                                  'Concludi le partite del turno attuale per sbloccare il successivo; se la finale è terminata, il torneo è concluso.'),
-                          ],
-                          TextButton.icon(
-                              onPressed: addPlayer,
-                              icon: const Icon(Icons.person_add),
-                              label: const Text('+ Giocatore')),
-                          FilledButton(
-                              onPressed: () {
-                                if (competition != null &&
-                                    presetIds.any((id) => id == null)) {
-                                  showError(context,
-                                      'Seleziona entrambe le squadre della competizione.');
-                                  return;
-                                }
-                                if (competition?.kind == 'knockout' &&
-                                    fixtureKey == null) {
-                                  showError(context,
-                                      'Seleziona un incontro disponibile.');
-                                  return;
-                                }
-                                if (names.any((n) => n.text.trim().isEmpty)) {
-                                  showError(context,
-                                      'Inserisci i nomi delle squadre.');
-                                  return;
-                                }
-                                if (widget.league.players.length < format * 2) {
-                                  showError(context,
-                                      'Servono almeno ${format * 2} giocatori nella lega.');
-                                  return;
-                                }
-                                FocusScope.of(context).unfocus();
-                                setState(() => step = 1);
-                              },
-                              child: const Text('Seleziona formazione')),
-                        ],
-                        if (step == 3) ...[
-                          keeperSettings(0),
-                          const Divider(height: 40),
-                          keeperSettings(1),
-                          const SizedBox(height: 20),
-                          FilledButton(
-                              onPressed: () {
-                                try {
-                                  final plans = [
-                                    for (var n = 0; n < 2; n++)
-                                      KeeperPlan(
-                                          mode: modes[n],
-                                          fixed: fixed[n],
-                                          order: List<String>.from(order[n]),
-                                          minutes: minutes[n],
-                                          sound: sound[n],
-                                          vibration: vibration[n])
-                                  ];
-                                  final m = Match(
-                                      id: newId(),
-                                      format: format,
-                                      names: names
-                                          .map((n) => n.text.trim())
-                                          .toList(),
-                                      teams: teams
-                                          .map((t) => List<String>.from(t))
-                                          .toList(),
-                                      keepers: plans,
-                                      creatorId: widget.league.currentUser,
-                                      scheduledAt:
-                                          scheduled.toUtc().toIso8601String(),
-                                      venue: venue.text.trim(),
-                                      teamColors: [...colors],
-                                      presetIds: [...presetIds],
-                                      competitionId: competitionId,
-                                      knockoutRound: competition?.kind ==
-                                              'knockout'
-                                          ? fixtures
-                                              .firstWhere((t) =>
-                                                  fixtureId(t) == fixtureKey)
-                                              .round
-                                          : null);
-                                  validateCompetitionMatch(widget.league, m);
-                                  Navigator.pop(context, m);
-                                } catch (e) {
-                                  showError(context, e);
-                                }
-                              },
-                              child: const Text('Crea partita')),
-                        ],
-                      ])));
+                : step == 0
+                    ? setupBody()
+                    : ListView(
+                        key: ValueKey(step),
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                            if (step == 3) ...[
+                              keeperSettings(0),
+                              const Divider(height: 40),
+                              keeperSettings(1),
+                              const SizedBox(height: 20),
+                              FilledButton(
+                                  onPressed: () {
+                                    try {
+                                      final plans = [
+                                        for (var n = 0; n < 2; n++)
+                                          KeeperPlan(
+                                              mode: modes[n],
+                                              fixed: fixed[n],
+                                              order:
+                                                  List<String>.from(order[n]),
+                                              minutes: minutes[n],
+                                              sound: sound[n],
+                                              vibration: vibration[n])
+                                      ];
+                                      final m = Match(
+                                          id: newId(),
+                                          format: format,
+                                          names: names
+                                              .map((n) => n.text.trim())
+                                              .toList(),
+                                          teams: teams
+                                              .map((t) => List<String>.from(t))
+                                              .toList(),
+                                          keepers: plans,
+                                          creatorId: widget.league.currentUser,
+                                          scheduledAt: scheduled
+                                              .toUtc()
+                                              .toIso8601String(),
+                                          venue: venue.text.trim(),
+                                          teamColors: [...colors],
+                                          presetIds: [...presetIds],
+                                          competitionId: competitionId,
+                                          knockoutRound:
+                                              competition?.kind == 'knockout'
+                                                  ? fixtures
+                                                      .firstWhere((t) =>
+                                                          fixtureId(t) ==
+                                                          fixtureKey)
+                                                      .round
+                                                  : null);
+                                      validateCompetitionMatch(
+                                          widget.league, m);
+                                      Navigator.pop(context, m);
+                                    } catch (e) {
+                                      showError(context, e);
+                                    }
+                                  },
+                                  child: const Text('Crea partita')),
+                            ],
+                          ])));
   }
+}
+
+class _SetupField extends StatelessWidget {
+  const _SetupField({required this.label, required this.child, this.onTap});
+  final String label;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Container(
+            height: 76,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: HaykoColors.fieldLine)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label,
+                  style: const TextStyle(
+                      color: HaykoColors.mutedText,
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Expanded(
+                  child: Align(alignment: Alignment.centerLeft, child: child)),
+            ]),
+          ),
+        ),
+      );
+}
+
+class _TeamSetupField extends StatelessWidget {
+  const _TeamSetupField(
+      {required this.label,
+      required this.controller,
+      required this.color,
+      required this.onColor});
+  final String label;
+  final TextEditingController controller;
+  final int color;
+  final VoidCallback onColor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label,
+                  style: const TextStyle(
+                      color: HaykoColors.mutedText,
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600)),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  maxLength: 60,
+                  style: const TextStyle(fontSize: 16, height: 1.5),
+                  decoration: const InputDecoration(
+                      isDense: true,
+                      counterText: '',
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero),
+                ),
+              ),
+            ]),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onColor,
+            child: Container(
+                width: 36,
+                height: 36,
+                decoration:
+                    BoxDecoration(color: Color(color), shape: BoxShape.circle)),
+          ),
+        ]),
+      );
 }
