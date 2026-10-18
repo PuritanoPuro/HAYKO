@@ -166,6 +166,9 @@ void main() {
     await tester.pumpWidget(
         MaterialApp(home: MatchPage(league: l, match: m, save: () async {})));
     expect(find.text('Modifica data, ora e luogo'), findsOneWidget);
+    expect(find.byKey(const ValueKey('match-score-panel')), findsOneWidget);
+    expect(find.text('Tempo partita · 00:00'), findsOneWidget);
+    expect(find.text('Nessun gol registrato.'), findsOneWidget);
     m.start();
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Modifica data, ora e luogo'), findsNothing);
