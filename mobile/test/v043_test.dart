@@ -112,7 +112,9 @@ void main() {
     ]);
     await tester.pumpWidget(
         MaterialApp(home: TeamPresetsPage(league: l, save: () async {})));
-    await tester.tap(find.byTooltip('Elimina preset'));
+    await tester.tap(find.text('Salvata'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Elimina squadra'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Conferma'));
     await tester.pumpAndSettle();

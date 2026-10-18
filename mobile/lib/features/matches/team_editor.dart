@@ -157,6 +157,34 @@ class _TeamEditorState extends State<TeamEditor> {
     }
   }
 
+  Future<void> removeTeam() async {
+    final team = widget.team;
+    if (team == null) return;
+    if (widget.league.competitions
+        .any((competition) => competition.teamIds.contains(team.id))) {
+      showError(context,
+          'La squadra partecipa a una competizione e non può essere eliminata.');
+      return;
+    }
+    if (!await confirm(context, 'Eliminare ${team.name}?',
+        'La squadra non sarà più selezionabile. Le partite e le statistiche già registrate resteranno conservate.')) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => busy = true);
+    team.archived = true;
+    try {
+      await widget.save();
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      team.archived = false;
+      if (mounted) {
+        showError(context, error);
+        setState(() => busy = false);
+      }
+    }
+  }
+
   Future<void> number(String id) async {
     var value = '${numbers[id] ?? 1}';
     final result = await showDialog<int>(
@@ -220,7 +248,14 @@ class _TeamEditorState extends State<TeamEditor> {
     return Scaffold(
         appBar: AppBar(
             title: Text(
-                widget.team == null ? 'Nuova squadra' : 'Modifica squadra')),
+                widget.team == null ? 'Nuova squadra' : 'Modifica squadra'),
+            actions: [
+              if (widget.team != null)
+                IconButton(
+                    tooltip: 'Elimina squadra',
+                    onPressed: busy ? null : removeTeam,
+                    icon: const Icon(Icons.delete_outline))
+            ]),
         body: Column(children: [
           Padding(
               padding: const EdgeInsets.all(16),
