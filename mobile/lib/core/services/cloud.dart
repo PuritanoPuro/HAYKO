@@ -138,24 +138,8 @@ class Cloud {
   }
 
   static Future<void> identify(BuildContext context, League l) async {
-    String? chosen;
-    final available = [...l.players]
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    chosen = await showDialog<String>(
-        context: context,
-        builder: (c) =>
-            SimpleDialog(title: const Text('Quale giocatore sei?'), children: [
-              for (final p in available)
-                SimpleDialogOption(
-                    onPressed: l.roles.containsKey(p.id) && l.myPlayer != p.id
-                        ? null
-                        : () => Navigator.pop(c, p.id),
-                    child: Text(
-                        '${p.name}${l.roles.containsKey(p.id) && l.myPlayer != p.id ? ' · già associato' : ''}')),
-              SimpleDialogOption(
-                  onPressed: () => Navigator.pop(c, '__new__'),
-                  child: const Text('Il mio nome non è presente · aggiungimi')),
-            ]));
+    final chosen = await Navigator.push<String>(context,
+        MaterialPageRoute(builder: (_) => _IdentifyPlayerPage(league: l)));
     if (chosen == null || !context.mounted) return;
     String? name;
     if (chosen == '__new__') {
@@ -187,6 +171,39 @@ class Cloud {
       'p_name': name
     });
     await refresh(l);
+  }
+}
+
+class _IdentifyPlayerPage extends StatelessWidget {
+  const _IdentifyPlayerPage({required this.league});
+  final League league;
+
+  @override
+  Widget build(BuildContext context) {
+    final players = [...league.players]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return AccountScaffold(
+      title: 'Quale giocatore sei?',
+      toolbarHeight: 64,
+      children: [
+        for (final player in players)
+          _MemberRow(
+            name: player.name,
+            role: league.roles.containsKey(player.id) &&
+                    league.myPlayer != player.id
+                ? 'Già associato'
+                : 'Disponibile',
+            color: Color(player.color),
+            current: false,
+            onTap: league.roles.containsKey(player.id) &&
+                    league.myPlayer != player.id
+                ? null
+                : () => Navigator.pop(context, player.id),
+          ),
+        AccountButton('Il mio nome non è presente',
+            outline: true, onPressed: () => Navigator.pop(context, '__new__')),
+      ],
+    );
   }
 }
 
