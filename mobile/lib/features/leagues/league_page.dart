@@ -7,6 +7,7 @@ import 'package:calcetto_mvp/features/statistics/statistics_page.dart';
 import 'package:calcetto_mvp/core/services/cloud.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/features/leagues/league_settings.dart';
+import 'package:calcetto_mvp/features/leagues/player_edit_page.dart';
 import 'package:calcetto_mvp/features/competitions/competition_hub.dart';
 import 'package:calcetto_mvp/features/teams/team_presets_page.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
@@ -206,9 +207,37 @@ class _LeaguePageState extends State<LeaguePage> {
   }
 
   Future<void> rename(Player p) async {
-    final change =
-        await editIdentity(context, 'Modifica giocatore', p.name, p.color);
+    final usedInMatches = l.matches.any((match) =>
+        match.teams.any((team) => team.contains(p.id)) ||
+        match.goals.any((goal) =>
+            goal.scorer == p.id || goal.assist == p.id || goal.keeper == p.id));
+    final usedInTeams = l.presets.any((team) => team.players.contains(p.id));
+    final linkedAccount = l.myPlayer == p.id || l.roles.containsKey(p.id);
+    final blockedReason = linkedAccount
+        ? 'Questo giocatore è associato a un account. Rimuovi prima il giocatore da Giocatori e inviti.'
+        : usedInMatches || usedInTeams
+            ? 'Questo giocatore è presente in partite o squadre salvate e non può essere eliminato.'
+            : null;
+    final change = await Navigator.push<PlayerEditResult>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => PlayerEditPage(
+                name: p.name,
+                color: p.color,
+                deletionBlockedReason: blockedReason)));
     if (change == null) return;
+    if (change.deleted) {
+      final index = l.players.indexOf(p);
+      l.players.remove(p);
+      try {
+        await widget.save();
+      } catch (e) {
+        l.players.insert(index, p);
+        if (mounted) showError(context, e);
+      }
+      if (mounted) setState(() {});
+      return;
+    }
     final name = p.name, color = p.color;
     p.name = change.name;
     p.color = change.color;
