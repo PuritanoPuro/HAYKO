@@ -477,32 +477,10 @@ class _LeagueSocialState extends State<LeagueSocial> {
   }
 
   Future<void> invite() async {
-    final kind = await showModalBottomSheet<String>(
-        context: context,
-        useSafeArea: true,
-        builder: (c) => Column(mainAxisSize: MainAxisSize.min, children: [
-              ListTile(
-                  title: const Text('Copia codice invito'),
-                  onTap: () => Navigator.pop(c, 'code')),
-              ListTile(
-                  title: const Text('Copia link invito'),
-                  onTap: () => Navigator.pop(c, 'link')),
-            ]));
-    if (kind == null || !mounted) return;
-    await run(() async {
-      final token = await Cloud.client.rpc(
-          kind == 'code' ? 'hayko_invite_short' : 'bc_invite',
-          params: {'p_id': l.id});
-      await Clipboard.setData(ClipboardData(
-          text: kind == 'code' ? '$token' : 'hayko://join?invite=$token'));
-      if (!mounted) return;
-      if (kind == 'code') {
-        await showInviteCodeDialog(context, '$token');
-      } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Link invito copiato')));
-      }
-    });
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => _ShareInvitePage(league: widget.league)));
   }
 
   Future<void> remove(Map<String, dynamic> member) async {
@@ -638,6 +616,59 @@ class _LeagueSocialState extends State<LeagueSocial> {
       ],
     );
   }
+}
+
+class _ShareInvitePage extends StatefulWidget {
+  const _ShareInvitePage({required this.league});
+  final League league;
+
+  @override
+  State<_ShareInvitePage> createState() => _ShareInvitePageState();
+}
+
+class _ShareInvitePageState extends State<_ShareInvitePage> {
+  bool busy = false;
+
+  Future<void> copyInvite(String kind) async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      await Cloud.store.flush();
+      if (Cloud.store.pending > 0) {
+        throw StateError('Completa prima la sincronizzazione.');
+      }
+      final token = await Cloud.client.rpc(
+          kind == 'code' ? 'hayko_invite_short' : 'bc_invite',
+          params: {'p_id': widget.league.id});
+      await Clipboard.setData(ClipboardData(
+          text: kind == 'code' ? '$token' : 'hayko://join?invite=$token'));
+      if (!mounted) return;
+      if (kind == 'code') {
+        await showInviteCodeDialog(context, '$token');
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Link invito copiato')));
+      }
+    } catch (error) {
+      if (mounted) showError(context, error);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AccountScaffold(
+        title: 'Condividi invito',
+        children: [
+          Text(widget.league.name,
+              style: const TextStyle(
+                  fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
+          AccountButton('Copia link invito',
+              onPressed: busy ? null : () => copyInvite('link')),
+          AccountButton('Copia codice invito',
+              outline: true, onPressed: busy ? null : () => copyInvite('code')),
+        ],
+      );
 }
 
 String _socialRoleName(String? role) => role == 'president'
