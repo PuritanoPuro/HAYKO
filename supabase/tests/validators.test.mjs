@@ -7,6 +7,7 @@ const read = name => readFile(new URL(`../migrations/${name}`, import.meta.url),
 const bootstrap = await read('20261016_account_v1.sql');
 const invites = await read('20261017_short_invites.sql');
 const patch = await read('20261018_json_containment_precedence.sql');
+const invitePreview = await read('20261019_invite_preview.sql');
 const db = new PGlite();
 const user = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
@@ -50,9 +51,15 @@ try {
     $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;`);
   await db.exec(bootstrap);
   await db.exec(invites);
+  await db.exec(invitePreview);
   await db.query('insert into auth.users(id) values ($1),($2)',[user,other]);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);
   await db.query('select public.bc_create($1::jsonb)',[JSON.stringify(base)]);
+  const inviteToken = (await db.query('select public.bc_invite($1) as token',[base.id])).rows[0].token;
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[other]);
+  assert.equal((await db.query('select public.hayko_invite_preview($1) as name',[inviteToken])).rows[0].name,base.name,'deep link preview returns the league name');
+  assert.equal((await db.query('select public.hayko_invite_preview($1) as name',['HK7P-9M4R'])).rows[0].name,'HAYKO_INVITE_INVALID','preview rejects short codes');
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);
   for (const [label,state] of [['rotation',rotation],['preset',teams],['competition',competition]]) {
     await assert.rejects(validate(state), e => e.code === '42883', `${label}: reproduce precedence error`);
   }

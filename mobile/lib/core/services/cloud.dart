@@ -4,6 +4,8 @@ import 'package:calcetto_mvp/core/config/hayko_config.dart';
 import 'package:calcetto_mvp/features/account/league_store.dart';
 import 'package:calcetto_mvp/features/account/profile_service.dart';
 import 'package:calcetto_mvp/features/account/invite_codes.dart';
+import 'package:calcetto_mvp/features/account/components.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -197,6 +199,7 @@ class CloudHome extends StatefulWidget {
 
 class _CloudHomeState extends State<CloudHome> {
   final code = TextEditingController();
+  final leagueName = TextEditingController();
   bool busy = false;
   List<League> leagues = [];
   List<Map<String, dynamic>> requests = [];
@@ -204,12 +207,18 @@ class _CloudHomeState extends State<CloudHome> {
   void initState() {
     super.initState();
     code.text = widget.initialCode ?? '';
-    run(reload);
+    run(() async {
+      await reload();
+      if (fromInviteLink) await previewInvite();
+    });
   }
+
+  bool get fromInviteLink => widget.initialCode != null;
 
   @override
   void dispose() {
     code.dispose();
+    leagueName.dispose();
     super.dispose();
   }
 
@@ -229,6 +238,18 @@ class _CloudHomeState extends State<CloudHome> {
     requests = (await Cloud.client.rpc('hayko_requests') as List)
         .map((r) => Map<String, dynamic>.from(r))
         .toList();
+  }
+
+  Future<void> previewInvite() async {
+    final value = normalizeInviteCode(code.text);
+    if (value == null || value.length != 64) {
+      throw StateError('Il link invito non è valido.');
+    }
+    final result = await Cloud.client
+        .rpc('hayko_invite_preview', params: {'p_token': value});
+    final message = inviteResultError(result);
+    if (message != null) throw StateError(message);
+    leagueName.text = '$result';
   }
 
   Future<void> open(League l) async {
@@ -278,43 +299,103 @@ class _CloudHomeState extends State<CloudHome> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Leghe condivise'), actions: [
-          IconButton(
-              tooltip: 'Aggiorna',
-              onPressed: busy ? null : () => run(reload),
-              icon: const Icon(Icons.refresh))
-        ]),
-        body: ListView(padding: const EdgeInsets.all(24), children: [
-          if (busy) const LinearProgressIndicator(),
-          TextField(
-              controller: code,
-              autocorrect: false,
-              enableSuggestions: false,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                  labelText: 'Inserisci il codice invito',
-                  hintText: 'HK7P-9M4R')),
-          const SizedBox(height: 12),
-          FilledButton(
-              onPressed: busy ? null : () => run(join),
-              child: const Text('Richiedi accesso')),
+  Widget build(BuildContext context) => AccountScaffold(
+        title: 'Leghe condivise',
+        toolbarHeight: 64,
+        children: [
+          if (fromInviteLink)
+            AccountField('Nome lega', controller: leagueName, readOnly: true)
+          else
+            AccountField('Codice invito', controller: code),
+          AccountButton('Accedi alla lega',
+              onPressed: busy || (fromInviteLink && leagueName.text.isEmpty)
+                  ? null
+                  : () => run(join)),
           for (final r in requests.where((r) => r['status'] != 'approved'))
-            ListTile(
-                title: Text(r['league_name'] as String),
-                subtitle: Text(r['status'] == 'pending'
-                    ? 'Richiesta in attesa di approvazione'
-                    : 'Richiesta non approvata')),
-          const SizedBox(height: 12),
-          const Text('Le tue leghe condivise',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          ...leagues.map((l) => Card(
-              child: ListTile(
-                  title: Text(l.name),
-                  subtitle: Text(roleName(l.myRole)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: busy ? null : () => run(() => open(l))))),
-        ]),
+            _SharedLeagueRow(
+                name: r['league_name'] as String,
+                detail: r['status'] == 'pending'
+                    ? 'In attesa di approvazione'
+                    : 'Richiesta non approvata'),
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text('Le tue leghe condivise',
+                style: TextStyle(
+                    fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
+          ),
+          ...leagues.map((l) => _SharedLeagueRow(
+              name: l.name,
+              detail: roleName(l.myRole),
+              color: Color(l.primaryColor),
+              onTap: busy ? null : () => run(() => open(l)))),
+        ],
+      );
+}
+
+class _SharedLeagueRow extends StatelessWidget {
+  const _SharedLeagueRow(
+      {required this.name, required this.detail, this.color, this.onTap});
+  final String name, detail;
+  final Color? color;
+  final VoidCallback? onTap;
+
+  String get initials {
+    final words = name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty || words.first.isEmpty) return 'H';
+    return words.take(2).map((word) => word[0].toUpperCase()).join();
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            height: 72,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      color: color ?? HaykoColors.fieldLine,
+                      shape: BoxShape.circle),
+                  child: Text(initials,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 16,
+                              height: 1.5,
+                              fontWeight: FontWeight.w700)),
+                      Text(detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              height: 16 / 12,
+                              color: HaykoColors.mutedText)),
+                    ],
+                  ),
+                ),
+                if (onTap != null) const Icon(Icons.chevron_right, size: 24),
+              ]),
+            ),
+          ),
+        ),
       );
 }
 
