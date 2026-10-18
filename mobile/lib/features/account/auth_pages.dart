@@ -257,124 +257,132 @@ class _AuthPageState extends State<AuthPage> {
             : verification
                 ? 'Controlla la tua email'
                 : 'Recupera la password';
-    return AccountScaffold(title: 'HAYKO', back: false, children: [
-      Text(heading,
-          style: const TextStyle(
-              fontSize: 30, height: 1.2, fontWeight: FontWeight.w800)),
-      if (verification)
-        Text(
-            'Inserisci il codice inviato a $address. Se l’account esiste ed è abilitato riceverai l’email.'),
-      IgnorePointer(
-          ignoring: busy,
-          child: Form(
-              key: form,
-              child: AutofillGroup(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                    if (signup) ...[
-                      AccountField('Nome',
-                          controller: first,
-                          validator: requiredName,
-                          autofillHints: const [AutofillHints.givenName]),
-                      const SizedBox(height: 12),
-                      AccountField('Cognome',
-                          controller: last,
-                          validator: requiredName,
-                          autofillHints: const [AutofillHints.familyName]),
-                      const SizedBox(height: 12),
-                      AccountField('Nickname',
-                          controller: nickname,
-                          validator: requiredName,
-                          autofillHints: const [AutofillHints.nickname]),
-                      const SizedBox(height: 12),
-                    ],
-                    if (!verification)
-                      AccountField('Email',
-                          controller: email,
-                          validator: validEmail,
-                          keyboard: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email]),
-                    if (login || signup) ...[
-                      const SizedBox(height: 12),
-                      AccountField('Password',
-                          controller: password,
-                          password: true,
-                          validator: signup
-                              ? validPassword
-                              : (v) => v == null || v.isEmpty
-                                  ? 'Inserisci la password'
-                                  : null,
-                          autofillHints: [
-                            signup
-                                ? AutofillHints.newPassword
-                                : AutofillHints.password
-                          ]),
-                    ],
-                    if (signup) ...[
-                      const SizedBox(height: 12),
-                      AccountField('Ripeti password',
-                          controller: confirm,
-                          password: true,
-                          validator: (v) => v != password.text
-                              ? 'Le password non coincidono'
-                              : validPassword(v)),
-                    ],
-                    if (verification)
-                      AccountField('Codice email',
-                          controller: code,
-                          keyboard: TextInputType.number,
-                          autofillHints: const [AutofillHints.oneTimeCode],
-                          validator: (v) => v == null ||
-                                  !RegExp(r'^[0-9]{6,10}$').hasMatch(v.trim())
-                              ? 'Inserisci il codice ricevuto'
-                              : null),
-                  ])))),
-      if (error != null)
-        Semantics(
-            liveRegion: true,
-            child: Text(error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error))),
-      if (busy) const LinearProgressIndicator(),
-      AccountButton(
-          signup
-              ? 'Crea account'
-              : login
-                  ? 'Accedi'
-                  : verification
-                      ? 'Conferma codice'
-                      : 'Invia codice di recupero',
-          onPressed: busy ? null : submit),
-      if (login) ...[
-        AccountButton('Crea un account',
-            outline: true,
-            onPressed: busy ? null : () => change(_AuthStep.signup)),
-        TextButton(
-            onPressed: busy ? null : () => change(_AuthStep.recovery),
-            child: const Text('Password dimenticata?')),
-      ] else
-        AccountButton('Torna all’accesso',
-            outline: true,
-            onPressed: busy ? null : () => change(_AuthStep.login)),
-      if (verification)
-        TextButton(
-            onPressed: busy
-                ? null
-                : () => run(() async {
-                      if (step == _AuthStep.verifyRecovery) {
-                        await Cloud.client.auth.resetPasswordForEmail(address);
-                      } else {
-                        await Cloud.client.auth
-                            .resend(type: OtpType.signup, email: address);
-                      }
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text(
-                                'Richiesta di invio completata. Controlla la tua email.')));
-                      }
-                    }),
-            child: const Text('Invia un nuovo codice')),
-    ]);
+    return AccountScaffold(
+        title: 'HAYKO',
+        back: false,
+        toolbarHeight: 64,
+        children: [
+          Text(heading,
+              style: const TextStyle(
+                  fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
+          if (verification)
+            Text(
+                'Inserisci il codice inviato a $address. Se l’account esiste ed è abilitato riceverai l’email.'),
+          IgnorePointer(
+              ignoring: busy,
+              child: Form(
+                  key: form,
+                  child: AutofillGroup(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                        if (signup) ...[
+                          AccountField('Nome',
+                              controller: first,
+                              validator: requiredName,
+                              autofillHints: const [AutofillHints.givenName]),
+                          const SizedBox(height: 12),
+                          AccountField('Cognome',
+                              controller: last,
+                              validator: requiredName,
+                              autofillHints: const [AutofillHints.familyName]),
+                          const SizedBox(height: 12),
+                          AccountField('Nickname',
+                              controller: nickname,
+                              validator: requiredName,
+                              autofillHints: const [AutofillHints.nickname]),
+                          const SizedBox(height: 12),
+                        ],
+                        if (!verification)
+                          AccountField('Email',
+                              controller: email,
+                              validator: validEmail,
+                              keyboard: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.email]),
+                        if (login || signup) ...[
+                          const SizedBox(height: 12),
+                          AccountField('Password',
+                              controller: password,
+                              password: true,
+                              validator: signup
+                                  ? validPassword
+                                  : (v) => v == null || v.isEmpty
+                                      ? 'Inserisci la password'
+                                      : null,
+                              autofillHints: [
+                                signup
+                                    ? AutofillHints.newPassword
+                                    : AutofillHints.password
+                              ]),
+                        ],
+                        if (signup) ...[
+                          const SizedBox(height: 12),
+                          AccountField('Ripeti password',
+                              controller: confirm,
+                              password: true,
+                              validator: (v) => v != password.text
+                                  ? 'Le password non coincidono'
+                                  : validPassword(v)),
+                        ],
+                        if (verification)
+                          AccountField('Codice email',
+                              controller: code,
+                              keyboard: TextInputType.number,
+                              autofillHints: const [AutofillHints.oneTimeCode],
+                              validator: (v) => v == null ||
+                                      !RegExp(r'^[0-9]{6,10}$')
+                                          .hasMatch(v.trim())
+                                  ? 'Inserisci il codice ricevuto'
+                                  : null),
+                      ])))),
+          if (error != null)
+            Semantics(
+                liveRegion: true,
+                child: Text(error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error))),
+          if (busy) const LinearProgressIndicator(),
+          AccountButton(
+              signup
+                  ? 'Crea account'
+                  : login
+                      ? 'Accedi'
+                      : verification
+                          ? 'Conferma codice'
+                          : 'Invia codice di recupero',
+              onPressed: busy ? null : submit),
+          if (login) ...[
+            AccountButton('Crea un account',
+                outline: true,
+                onPressed: busy ? null : () => change(_AuthStep.signup)),
+            TextButton(
+                onPressed: busy ? null : () => change(_AuthStep.recovery),
+                child: const Text('Password dimenticata?')),
+          ] else
+            AccountButton('Torna all’accesso',
+                outline: true,
+                onPressed: busy ? null : () => change(_AuthStep.login)),
+          if (verification)
+            TextButton(
+                onPressed: busy
+                    ? null
+                    : () => run(() async {
+                          if (step == _AuthStep.verifyRecovery) {
+                            await Cloud.client.auth
+                                .resetPasswordForEmail(address);
+                          } else {
+                            await Cloud.client.auth
+                                .resend(type: OtpType.signup, email: address);
+                          }
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Richiesta di invio completata. Controlla la tua email.')));
+                          }
+                        }),
+                child: const Text('Invia un nuovo codice')),
+        ]);
   }
 }
 

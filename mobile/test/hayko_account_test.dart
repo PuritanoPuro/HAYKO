@@ -62,8 +62,8 @@ void main() {
             .controller!
             .text,
         'filippo@example.com');
-    await tester.scrollUntilVisible(find.text('Torna all’accesso'), 200,
-        scrollable: find.byType(Scrollable).first);
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Torna all’accesso'));
     await tester.pumpAndSettle();
     expect(

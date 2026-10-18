@@ -7,14 +7,16 @@ class AccountScaffold extends StatelessWidget {
       {super.key,
       required this.title,
       required this.children,
-      this.back = true});
+      this.back = true,
+      this.toolbarHeight = 72});
   final String title;
   final List<Widget> children;
   final bool back;
+  final double toolbarHeight;
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          toolbarHeight: 72,
+          toolbarHeight: toolbarHeight,
           centerTitle: false,
           automaticallyImplyLeading: false,
           leadingWidth: back ? 72 : null,
@@ -31,7 +33,7 @@ class AccountScaffold extends StatelessWidget {
               : null,
           titleSpacing: back ? 0 : 24,
           title: SizedBox(
-              height: 72,
+              height: toolbarHeight,
               child: Padding(
                   padding: const EdgeInsets.only(top: 16),
                   child: Text(title,
