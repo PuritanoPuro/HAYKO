@@ -160,12 +160,14 @@ void main() {
     await tester.pumpWidget(
         MaterialApp(home: LeaguePage(league: l, save: () async {})));
     expect(find.byKey(const ValueKey('live-match-dot')), findsOneWidget);
-    expect(find.text('liveA 0 – 0 liveB'), findsOneWidget);
-    expect(find.text('endA 0 – 0 endB'), findsNothing);
+    expect(find.text('liveA'), findsOneWidget);
+    expect(find.text('liveB'), findsOneWidget);
+    expect(find.text('endA'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('match-tab-finished')));
     await tester.pumpAndSettle();
     expect(find.text('Partite terminate'), findsOneWidget);
-    expect(find.text('endA 0 – 0 endB'), findsOneWidget);
-    expect(find.text('liveA 0 – 0 liveB'), findsNothing);
+    expect(find.text('endA'), findsOneWidget);
+    expect(find.text('endB'), findsOneWidget);
+    expect(find.text('liveA'), findsNothing);
   });
 }
