@@ -104,45 +104,18 @@ class _NewMatchPageState extends State<NewMatchPage> {
           context, 'Un giocatore non può partecipare a entrambe le squadre.');
       return;
     }
-    final selected = alphabetical
-        .where((p) => teams[t].contains(p.id))
-        .map((p) => p.name)
-        .join('\n');
-    var savePreset = false;
-    var presetName = teamName(t);
-    final accepted = await showDialog<bool>(
+    final selected =
+        alphabetical.where((p) => teams[t].contains(p.id)).toList();
+    final result = await showDialog<_FormationConfirmationResult>(
         context: context,
-        builder: (c) => StatefulBuilder(
-            builder: (c, set) => AlertDialog(
-                    title: Text('Formazione ${teamName(t)}'),
-                    content: SingleChildScrollView(
-                        child:
-                            Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text(selected),
-                      if (competitionId == null)
-                        CheckboxListTile(
-                            title: const Text('Salva squadra come preset'),
-                            value: savePreset,
-                            onChanged: (v) => set(() => savePreset = v!)),
-                      if (savePreset)
-                        TextFormField(
-                            initialValue: presetName,
-                            onChanged: (value) => presetName = value,
-                            maxLength: 60,
-                            decoration: const InputDecoration(
-                                labelText: 'Nome del preset')),
-                    ])),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(c, false),
-                          child: const Text('Modifica')),
-                      FilledButton(
-                          onPressed: () => Navigator.pop(c, true),
-                          child: const Text('Conferma'))
-                    ])));
-    final label = presetName.trim();
-    if (!mounted || accepted != true) return;
-    if (savePreset) {
+        builder: (context) => _FormationConfirmationDialog(
+              teamName: teamName(t),
+              players: selected,
+              allowSavePreset: competitionId == null,
+            ));
+    if (!mounted || result == null) return;
+    final label = result.presetName.trim();
+    if (result.savePreset) {
       if (label.isEmpty ||
           widget.league.presets.any((p) =>
               !p.archived && p.name.toLowerCase() == label.toLowerCase())) {
@@ -588,6 +561,206 @@ class _NewMatchPageState extends State<NewMatchPage> {
                             ],
                           ])));
   }
+}
+
+class _FormationConfirmationResult {
+  const _FormationConfirmationResult(this.savePreset, this.presetName);
+  final bool savePreset;
+  final String presetName;
+}
+
+class _FormationConfirmationDialog extends StatefulWidget {
+  const _FormationConfirmationDialog(
+      {required this.teamName,
+      required this.players,
+      required this.allowSavePreset});
+
+  final String teamName;
+  final List<Player> players;
+  final bool allowSavePreset;
+
+  @override
+  State<_FormationConfirmationDialog> createState() =>
+      _FormationConfirmationDialogState();
+}
+
+class _FormationConfirmationDialogState
+    extends State<_FormationConfirmationDialog> {
+  late final TextEditingController presetName;
+  bool savePreset = false;
+
+  @override
+  void initState() {
+    super.initState();
+    presetName = TextEditingController(text: widget.teamName);
+  }
+
+  @override
+  void dispose() {
+    presetName.dispose();
+    super.dispose();
+  }
+
+  String initials(Player player) {
+    final words = player.name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty || words.first.isEmpty) return '?';
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+        insetPadding: const EdgeInsets.all(24),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(maxWidth: 342, maxHeight: 720),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              color: HaykoColors.fieldSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: HaykoColors.fieldLine)),
+          child: SingleChildScrollView(
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Formazione ${widget.teamName}',
+                      style: const TextStyle(
+                          fontSize: 20,
+                          height: 1.3,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  const Text('Controlla i giocatori prima di confermare.',
+                      style: TextStyle(
+                          color: HaykoColors.mutedText,
+                          fontSize: 12,
+                          height: 16 / 12,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: widget.players.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final player = widget.players[index];
+                        return Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                              color: HaykoColors.fieldBackground,
+                              borderRadius: BorderRadius.circular(12)),
+                          child: Row(children: [
+                            CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Color(player.color),
+                                child: Text(initials(player),
+                                    style: TextStyle(
+                                        color: contrastColor(player.color),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600))),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: Text(player.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontSize: 16, height: 1.5))),
+                            const Text('✓',
+                                style: TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600)),
+                          ]),
+                        );
+                      },
+                    ),
+                  ),
+                  if (widget.allowSavePreset) ...[
+                    const SizedBox(height: 12),
+                    Material(
+                      color: HaykoColors.fieldBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => setState(() => savePreset = !savePreset),
+                        child: SizedBox(
+                          height: 56,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(children: [
+                              const Expanded(
+                                  child: Text('Salva come squadra',
+                                      style: TextStyle(
+                                          fontSize: 16, height: 1.5))),
+                              Checkbox(
+                                  value: savePreset,
+                                  onChanged: (value) => setState(
+                                      () => savePreset = value ?? false)),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (savePreset) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 76,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                            color: HaykoColors.fieldBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: HaykoColors.fieldLine)),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Nome squadra',
+                                  style: TextStyle(
+                                      color: HaykoColors.mutedText,
+                                      fontSize: 12,
+                                      height: 16 / 12,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextField(
+                                    controller: presetName,
+                                    maxLength: 60,
+                                    style: const TextStyle(
+                                        fontSize: 16, height: 1.5),
+                                    decoration: const InputDecoration(
+                                        isCollapsed: true,
+                                        counterText: '',
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        contentPadding: EdgeInsets.zero),
+                                  ),
+                                ),
+                              ),
+                            ]),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: AccountButton('Conferma',
+                        onPressed: () => Navigator.pop(
+                            context,
+                            _FormationConfirmationResult(
+                                savePreset, presetName.text))),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: AccountButton('Modifica',
+                        outline: true, onPressed: () => Navigator.pop(context)),
+                  ),
+                ]),
+          ),
+        ),
+      );
 }
 
 class _SetupField extends StatelessWidget {

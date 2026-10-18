@@ -228,11 +228,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('selection-confirm')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Salva squadra come preset'));
+    await tester.tap(find.text('Salva come squadra'));
     await tester.pumpAndSettle();
     await tester.enterText(
         find.descendant(
-            of: find.byType(AlertDialog), matching: find.byType(TextField)),
+            of: find.byType(Dialog), matching: find.byType(TextField)),
         'Squadra blu');
     await tester.tap(find.widgetWithText(FilledButton, 'Conferma').last);
     await tester.pump(const Duration(milliseconds: 400));
