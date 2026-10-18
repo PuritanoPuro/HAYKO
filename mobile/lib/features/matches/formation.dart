@@ -232,6 +232,24 @@ class _NewMatchPageState extends State<NewMatchPage> {
             primary: false,
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
+            proxyDecorator: (child, index, animation) => AnimatedBuilder(
+              animation: animation,
+              child: child,
+              builder: (context, child) {
+                final progress = Curves.easeOutCubic.transform(animation.value);
+                return Material(
+                  color: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  child: Transform.scale(
+                    scale: 1 + (0.018 * progress),
+                    child: Opacity(
+                      opacity: 1 - (0.04 * progress),
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+            ),
             itemCount: order[t].length,
             onReorderItem: (oldIndex, newIndex) => setState(() {
               final player = order[t].removeAt(oldIndex);

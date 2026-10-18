@@ -47,4 +47,35 @@ void main() {
         isNull);
     expect(l.toJson(), before);
   });
+
+  testWidgets('menu e selettori usano la superficie HAYKO', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: buildHaykoTheme(),
+      home: Scaffold(
+        body: DropdownButton<String>(
+          value: 'a',
+          items: const [
+            DropdownMenuItem(value: 'a', child: Text('Portiere A')),
+            DropdownMenuItem(value: 'b', child: Text('Portiere B')),
+          ],
+          onChanged: (_) {},
+        ),
+      ),
+    ));
+
+    final context = tester.element(find.byType(DropdownButton<String>));
+    expect(Theme.of(context).canvasColor, HaykoColors.fieldSurface);
+    expect(Theme.of(context).popupMenuTheme.color, HaykoColors.fieldSurface);
+    expect(
+        Theme.of(context)
+            .menuTheme
+            .style
+            ?.backgroundColor
+            ?.resolve(<WidgetState>{}),
+        HaykoColors.fieldSurface);
+
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+    expect(find.text('Portiere B'), findsOneWidget);
+  });
 }

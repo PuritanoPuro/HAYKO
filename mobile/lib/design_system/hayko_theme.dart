@@ -33,6 +33,9 @@ ThemeData buildHaykoTheme() {
   return base.copyWith(
     colorScheme: scheme,
     scaffoldBackgroundColor: HaykoColors.fieldBackground,
+    // DropdownButton usa canvasColor per il pannello delle opzioni. Tenerlo
+    // nella palette HAYKO evita le superfici nere predefinite in tutta l'app.
+    canvasColor: HaykoColors.fieldSurface,
     primaryTextTheme:
         base.primaryTextTheme.apply(fontFamily: 'BricolageGrotesque'),
     textTheme: base.textTheme.apply(
@@ -47,7 +50,44 @@ ThemeData buildHaykoTheme() {
         color: HaykoColors.fieldSurface, surfaceTintColor: Colors.transparent),
     dialogTheme: base.dialogTheme.copyWith(
         backgroundColor: HaykoColors.fieldSurface,
-        surfaceTintColor: Colors.transparent),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+            side: const BorderSide(color: HaykoColors.fieldLine),
+            borderRadius: BorderRadius.circular(16))),
+    popupMenuTheme: PopupMenuThemeData(
+        color: HaykoColors.fieldSurface,
+        surfaceTintColor: Colors.transparent,
+        textStyle: base.textTheme.bodyMedium?.copyWith(
+            color: HaykoColors.chalk, fontFamily: 'BricolageGrotesque'),
+        shape: RoundedRectangleBorder(
+            side: const BorderSide(color: HaykoColors.fieldLine),
+            borderRadius: BorderRadius.circular(12))),
+    menuTheme: MenuThemeData(
+        style: MenuStyle(
+            backgroundColor:
+                const WidgetStatePropertyAll(HaykoColors.fieldSurface),
+            surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+            side: const WidgetStatePropertyAll(
+                BorderSide(color: HaykoColors.fieldLine)),
+            shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12))))),
+    dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: base.textTheme.bodyMedium?.copyWith(
+            color: HaykoColors.chalk, fontFamily: 'BricolageGrotesque'),
+        menuStyle: MenuStyle(
+            backgroundColor:
+                const WidgetStatePropertyAll(HaykoColors.fieldSurface),
+            surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+            side: const WidgetStatePropertyAll(
+                BorderSide(color: HaykoColors.fieldLine)),
+            shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12))))),
+    bottomSheetTheme: base.bottomSheetTheme.copyWith(
+        backgroundColor: HaykoColors.fieldSurface,
+        modalBackgroundColor: HaykoColors.fieldSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)))),
     navigationBarTheme: base.navigationBarTheme.copyWith(
         backgroundColor: HaykoColors.fieldSurface,
         indicatorColor: HaykoColors.fieldLine),
