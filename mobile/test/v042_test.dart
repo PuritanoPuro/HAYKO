@@ -47,7 +47,7 @@ void main() {
   testWidgets('piu partita nella competizione apre calendario', (tester) async {
     await tester.pumpWidget(
         MaterialApp(home: LeaguePage(league: sample(), save: () async {})));
-    await tester.tap(find.text('Partita'));
+    await tester.tap(find.text('+ Partita'));
     await tester.pumpAndSettle();
     expect(
         tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,

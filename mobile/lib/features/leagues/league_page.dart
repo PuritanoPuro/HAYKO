@@ -9,7 +9,6 @@ import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/features/leagues/league_settings.dart';
 import 'package:calcetto_mvp/features/competitions/competition_hub.dart';
 import 'package:calcetto_mvp/features/teams/team_presets_page.dart';
-import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'dart:async';
 
@@ -188,9 +187,6 @@ class _LeaguePageState extends State<LeaguePage> {
                   }),
               const SizedBox(height: 12),
             ],
-            if (l.manage)
-              AccountButton(l.type == 'amateur' ? '+ Partita' : 'Partita',
-                  onPressed: newMatch),
           ])),
     ]);
   }
@@ -409,12 +405,14 @@ class _LeaguePageState extends State<LeaguePage> {
                                                       onPressed: () => rename(p))
                                                   : null)),
                                 ]),
-          floatingActionButton: tab == 1 && l.manage && l.type == 'amateur'
-              ? FloatingActionButton.extended(
-                  onPressed: addPlayer,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Giocatore'))
-              : null,
+          floatingActionButton: !l.manage
+              ? null
+              : tab == 0
+                  ? _CompactLeagueFab(label: '+ Partita', onPressed: newMatch)
+                  : tab == 1 && l.type == 'amateur'
+                      ? _CompactLeagueFab(
+                          label: '+ Giocatore', onPressed: addPlayer)
+                      : null,
           bottomNavigationBar: NavigationBarTheme(
             data: NavigationBarTheme.of(context).copyWith(
                 height: 84,
@@ -516,6 +514,31 @@ class _MatchScoreCard extends StatelessWidget {
                           height: 20 / 14))),
             ]),
           ),
+        ),
+      );
+}
+
+class _CompactLeagueFab extends StatelessWidget {
+  const _CompactLeagueFab({required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 48,
+        child: FloatingActionButton.extended(
+          onPressed: onPressed,
+          elevation: 2,
+          extendedPadding: const EdgeInsets.symmetric(horizontal: 18),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          label: Text(label,
+              style: const TextStyle(
+                  fontFamily: 'BricolageGrotesque',
+                  fontSize: 14,
+                  height: 20 / 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0)),
         ),
       );
 }
