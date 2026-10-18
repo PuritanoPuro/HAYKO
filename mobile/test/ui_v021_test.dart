@@ -136,6 +136,16 @@ void main() {
     expect(find.text('Beta'), findsOneWidget);
     expect(find.text('Alfa'), findsNothing);
     expect(find.text('+ Giocatore'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('selection-counter')));
+    await tester.pumpAndSettle();
+    final search =
+        tester.widget<TextField>(find.byKey(const ValueKey('player-search')));
+    expect(search.focusNode!.hasFocus, isFalse);
+    expect(search.controller!.text, 'bEt');
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Alfa'), findsNothing);
+    expect(find.text('+ Giocatore'), findsOneWidget);
   });
   testWidgets('portieri riordinabili trascinando un contenitore',
       (tester) async {

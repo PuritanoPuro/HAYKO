@@ -678,6 +678,7 @@ class _PlayerSearchField extends StatelessWidget {
           controller: controller,
           focusNode: focusNode,
           onChanged: onChanged,
+          onTapOutside: (_) => focusNode.unfocus(),
           textInputAction: TextInputAction.search,
           style: const TextStyle(fontSize: 16, height: 1.5),
           decoration: const InputDecoration(
