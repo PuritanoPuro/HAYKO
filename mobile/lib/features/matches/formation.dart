@@ -153,35 +153,66 @@ class _NewMatchPageState extends State<NewMatchPage> {
 
   Widget keeperSettings(int t) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(teamName(t), style: const TextStyle(fontSize: 24)),
-        SegmentedButton<String>(segments: const [
-          ButtonSegment(value: 'fixed', label: Text('Fisso')),
-          ButtonSegment(value: 'rotation', label: Text('Rotazione'))
-        ], selected: {
-          modes[t]
-        }, onSelectionChanged: (v) => setState(() => modes[t] = v.first)),
+        Text(teamName(t),
+            style: TextStyle(
+                color: Color(colors[t]),
+                fontSize: 24,
+                height: 1.25,
+                fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+              child: _KeeperModeChip(
+                  label: 'Fisso',
+                  selected: modes[t] == 'fixed',
+                  onTap: () => setState(() => modes[t] = 'fixed'))),
+          const SizedBox(width: 8),
+          Expanded(
+              child: _KeeperModeChip(
+                  label: 'A rotazione',
+                  selected: modes[t] == 'rotation',
+                  onTap: () => setState(() => modes[t] = 'rotation'))),
+        ]),
+        const SizedBox(height: 12),
         if (modes[t] == 'fixed')
-          DropdownButton<String>(
-              isExpanded: true,
-              value: fixed[t],
-              hint: const Text('Seleziona portiere'),
-              items: teams[t]
-                  .map((id) => DropdownMenuItem(
-                      value: id, child: Text(widget.league.playerName(id))))
-                  .toList(),
-              onChanged: (v) => setState(() => fixed[t] = v)),
+          _SetupField(
+            label: 'Portiere fisso',
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: fixed[t],
+                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                  hint: const Text('Seleziona portiere'),
+                  items: teams[t]
+                      .map((id) => DropdownMenuItem(
+                          value: id, child: Text(widget.league.playerName(id))))
+                      .toList(),
+                  onChanged: (value) => setState(() => fixed[t] = value)),
+            ),
+          ),
         if (modes[t] == 'rotation') ...[
-          DropdownButton<int>(
-              isExpanded: true,
-              value: minutes[t],
-              items: [
-                for (var n = 1; n <= 60; n++)
-                  DropdownMenuItem(
-                      value: n, child: Text('Cambio ogni $n minuti'))
-              ],
-              onChanged: (v) => setState(() => minutes[t] = v!)),
-          const Text(
-              'Il primo giocatore inizia in porta. Tieni premuto un nome e trascinalo nella posizione desiderata.'),
+          _SetupField(
+            label: 'Intervallo cambio',
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: minutes[t],
+                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                  items: [
+                    for (var n = 1; n <= 60; n++)
+                      DropdownMenuItem(value: n, child: Text('$n minuti'))
+                  ],
+                  onChanged: (value) => setState(() => minutes[t] = value!)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+              width: double.infinity,
+              child: AccountButton('Mescola ordine portieri',
+                  outline: true,
+                  onPressed: () =>
+                      setState(() => order[t].shuffle(Random.secure())))),
+          const SizedBox(height: 12),
           ReorderableListView.builder(
             key: ValueKey('keeper-list-$t'),
             shrinkWrap: true,
@@ -193,34 +224,70 @@ class _NewMatchPageState extends State<NewMatchPage> {
               final player = order[t].removeAt(oldIndex);
               order[t].insert(newIndex, player);
             }),
-            itemBuilder: (context, i) => ReorderableDelayedDragStartListener(
-              key: ValueKey('keeper-$t-${order[t][i]}'),
-              index: i,
-              child: Listener(
-                  behavior: HitTestBehavior.opaque,
-                  child: Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      child: ListTile(
-                          leading: Text('${i + 1}'),
-                          title: Text(widget.league.playerName(order[t][i])),
-                          trailing: const Icon(Icons.drag_handle)))),
-            ),
+            itemBuilder: (context, i) {
+              final id = order[t][i];
+              final player =
+                  widget.league.players.firstWhere((p) => p.id == id);
+              return Padding(
+                key: ValueKey('keeper-$t-$id'),
+                padding:
+                    EdgeInsets.only(bottom: i == order[t].length - 1 ? 0 : 12),
+                child: ReorderableDelayedDragStartListener(
+                    index: i,
+                    child: _KeeperPlayerRow(
+                        player: player,
+                        current: widget.league.myPlayer == id,
+                        turn: i + 1)),
+              );
+            },
           ),
-          TextButton.icon(
-              onPressed: () =>
-                  setState(() => order[t].shuffle(Random.secure())),
-              icon: const Icon(Icons.shuffle),
-              label: const Text('Genera nuovo ordine casuale')),
-          SwitchListTile(
-              title: const Text('Avviso sonoro sul telefono'),
+          const SizedBox(height: 12),
+          _KeeperToggle(
+              label: 'Suono sul telefono',
               value: sound[t],
-              onChanged: (v) => setState(() => sound[t] = v)),
-          SwitchListTile(
-              title: const Text('Vibrazione sul telefono'),
+              onChanged: (value) => setState(() => sound[t] = value)),
+          const SizedBox(height: 12),
+          _KeeperToggle(
+              label: 'Vibrazione sul telefono',
               value: vibration[t],
-              onChanged: (v) => setState(() => vibration[t] = v)),
+              onChanged: (value) => setState(() => vibration[t] = value)),
         ],
       ]);
+
+  void createMatch() {
+    try {
+      final plans = [
+        for (var n = 0; n < 2; n++)
+          KeeperPlan(
+              mode: modes[n],
+              fixed: fixed[n],
+              order: List<String>.from(order[n]),
+              minutes: minutes[n],
+              sound: sound[n],
+              vibration: vibration[n])
+      ];
+      final match = Match(
+          id: newId(),
+          format: format,
+          names: names.map((name) => name.text.trim()).toList(),
+          teams: teams.map((team) => List<String>.from(team)).toList(),
+          keepers: plans,
+          creatorId: widget.league.currentUser,
+          scheduledAt: scheduled.toUtc().toIso8601String(),
+          venue: venue.text.trim(),
+          teamColors: [...colors],
+          presetIds: [...presetIds],
+          competitionId: competitionId,
+          knockoutRound: competition?.kind == 'knockout'
+              ? fixtures.firstWhere((tie) => fixtureId(tie) == fixtureKey).round
+              : null);
+      validateCompetitionMatch(widget.league, match);
+      Navigator.pop(context, match);
+    } catch (error) {
+      showError(context, error);
+    }
+  }
+
   Widget selectionBody(int t) {
     final selectedPlayers =
         alphabetical.where((player) => teams[t].contains(player.id)).toList();
@@ -503,64 +570,126 @@ class _NewMatchPageState extends State<NewMatchPage> {
                     ? setupBody()
                     : ListView(
                         key: ValueKey(step),
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(24),
                         children: [
-                            if (step == 3) ...[
-                              keeperSettings(0),
-                              const Divider(height: 40),
-                              keeperSettings(1),
-                              const SizedBox(height: 20),
-                              FilledButton(
-                                  onPressed: () {
-                                    try {
-                                      final plans = [
-                                        for (var n = 0; n < 2; n++)
-                                          KeeperPlan(
-                                              mode: modes[n],
-                                              fixed: fixed[n],
-                                              order:
-                                                  List<String>.from(order[n]),
-                                              minutes: minutes[n],
-                                              sound: sound[n],
-                                              vibration: vibration[n])
-                                      ];
-                                      final m = Match(
-                                          id: newId(),
-                                          format: format,
-                                          names: names
-                                              .map((n) => n.text.trim())
-                                              .toList(),
-                                          teams: teams
-                                              .map((t) => List<String>.from(t))
-                                              .toList(),
-                                          keepers: plans,
-                                          creatorId: widget.league.currentUser,
-                                          scheduledAt: scheduled
-                                              .toUtc()
-                                              .toIso8601String(),
-                                          venue: venue.text.trim(),
-                                          teamColors: [...colors],
-                                          presetIds: [...presetIds],
-                                          competitionId: competitionId,
-                                          knockoutRound:
-                                              competition?.kind == 'knockout'
-                                                  ? fixtures
-                                                      .firstWhere((t) =>
-                                                          fixtureId(t) ==
-                                                          fixtureKey)
-                                                      .round
-                                                  : null);
-                                      validateCompetitionMatch(
-                                          widget.league, m);
-                                      Navigator.pop(context, m);
-                                    } catch (e) {
-                                      showError(context, e);
-                                    }
-                                  },
-                                  child: const Text('Crea partita')),
-                            ],
+                            keeperSettings(0),
+                            const SizedBox(height: 24),
+                            keeperSettings(1),
+                            const SizedBox(height: 12),
+                            AccountButton('Crea partita',
+                                onPressed: createMatch),
                           ])));
   }
+}
+
+class _KeeperModeChip extends StatelessWidget {
+  const _KeeperModeChip(
+      {required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected ? HaykoColors.fieldLine : HaykoColors.fieldBackground,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Container(
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: HaykoColors.fieldLine)),
+            child: Text(label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 12,
+                    height: 16 / 12,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
+      );
+}
+
+class _KeeperPlayerRow extends StatelessWidget {
+  const _KeeperPlayerRow(
+      {required this.player, required this.current, required this.turn});
+  final Player player;
+  final bool current;
+  final int turn;
+
+  String get initials {
+    final words = player.name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty || words.first.isEmpty) return '?';
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 72,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          CircleAvatar(
+              radius: 18,
+              backgroundColor: Color(player.color),
+              child: Text(initials,
+                  style: TextStyle(
+                      color: contrastColor(player.color),
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600))),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${player.name}${current ? ' · Tu' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16, height: 1.5)),
+                  Text('Turno $turn',
+                      style: const TextStyle(
+                          color: HaykoColors.mutedText,
+                          fontSize: 12,
+                          height: 16 / 12,
+                          fontWeight: FontWeight.w600)),
+                ]),
+          ),
+          const SizedBox(
+              width: 64,
+              child:
+                  Icon(Icons.drag_handle, size: 24, color: HaykoColors.chalk)),
+        ]),
+      );
+}
+
+class _KeeperToggle extends StatelessWidget {
+  const _KeeperToggle(
+      {required this.label, required this.value, required this.onChanged});
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 56,
+        padding: const EdgeInsets.only(left: 12, right: 6),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(fontSize: 16, height: 1.5))),
+          Switch(value: value, onChanged: onChanged),
+        ]),
+      );
 }
 
 class _FormationConfirmationResult {
