@@ -414,6 +414,8 @@ class LeagueSocial extends StatefulWidget {
 
 class _LeagueSocialState extends State<LeagueSocial> {
   bool busy = false;
+  bool manageAccess = true;
+  String? selectedUserId;
   List<Map<String, dynamic>> requests = [], members = [];
   League get l => widget.league;
   @override
@@ -441,6 +443,15 @@ class _LeagueSocialState extends State<LeagueSocial> {
                 .rpc('hayko_members', params: {'p_id': l.id}) as List)
             .map((r) => Map<String, dynamic>.from(r))
             .toList();
+        const rank = {'president': 0, 'admin': 1, 'member': 2};
+        members.sort(
+            (a, b) => (rank[a['role']] ?? 3).compareTo(rank[b['role']] ?? 3));
+        selectedUserId ??= _manageableMembers.isEmpty
+            ? null
+            : (_manageableMembers.where((m) => m['role'] == 'member').isEmpty
+                ? _manageableMembers.first
+                : _manageableMembers.firstWhere(
+                    (m) => m['role'] == 'member'))['user_id'] as String;
       }
     } catch (e) {
       if (mounted) showError(context, e);
@@ -485,88 +496,292 @@ class _LeagueSocialState extends State<LeagueSocial> {
     await run(() async {
       await Cloud.client.rpc('hayko_remove_member',
           params: {'p_id': l.id, 'p_user': member['user_id']});
+      selectedUserId = null;
+    });
+  }
+
+  List<Map<String, dynamic>> get _manageableMembers => members
+      .where((m) =>
+          m['role'] != 'president' &&
+          m['user_id'] != l.currentUser &&
+          (l.president || m['role'] == 'member'))
+      .toList();
+
+  Map<String, dynamic>? get _selectedMember {
+    final found = _manageableMembers
+        .where((m) => m['user_id'] == selectedUserId)
+        .toList();
+    return found.isEmpty ? null : found.first;
+  }
+
+  Color memberColor(Map<String, dynamic> member) {
+    final playerId = member['player_id'];
+    final found = l.players.where((p) => p.id == playerId).toList();
+    return found.isEmpty ? Color(l.primaryColor) : Color(found.first.color);
+  }
+
+  Future<void> changeRole(Map<String, dynamic> member, String role) async {
+    await run(() async {
+      await Cloud.client.rpc('bc_role', params: {
+        'p_id': l.id,
+        'p_player': member['player_id'],
+        'p_role': role,
+      });
     });
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Membri e inviti')),
-      body: ListView(padding: const EdgeInsets.all(24), children: [
-        if (busy) const LinearProgressIndicator(),
+  Widget build(BuildContext context) {
+    final selected = _selectedMember;
+    return AccountScaffold(
+      title: 'Membri e inviti',
+      toolbarHeight: 64,
+      children: [
         if (l.myPlayer == null)
-          FilledButton(
+          AccountButton('Associa il tuo giocatore',
               onPressed:
-                  busy ? null : () => run(() => Cloud.identify(context, l)),
-              child: const Text('Associa il tuo giocatore')),
+                  busy ? null : () => run(() => Cloud.identify(context, l))),
         if (l.manage) ...[
-          FilledButton.icon(
-              icon: const Icon(Icons.link),
-              label: const Text('Crea o copia invito'),
-              onPressed: busy ? null : invite),
-          for (final r in requests)
-            Card(
-                child: Column(children: [
-              ListTile(
-                  title: Text(r['name'] as String),
-                  subtitle: const Text('Richiesta di accesso')),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => run(() async {
-                              await Cloud.client.rpc('hayko_review_request',
-                                  params: {
-                                    'p_id': l.id,
-                                    'p_user': r['user_id'],
-                                    'p_accept': false
-                                  });
-                            }),
-                    child: const Text('Rifiuta')),
-                FilledButton(
-                    onPressed: busy
-                        ? null
-                        : () => run(() async {
-                              await Cloud.client.rpc('hayko_review_request',
-                                  params: {
-                                    'p_id': l.id,
-                                    'p_user': r['user_id'],
-                                    'p_accept': true
-                                  });
-                            }),
-                    child: const Text('Approva')),
-              ]),
-            ])),
-          for (final m in members)
-            Card(
-                child: ListTile(
-                    title: Text(m['name'] as String),
-                    subtitle: Text(roleName(m['role'] as String)),
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (l.president &&
-                          m['player_id'] != null &&
-                          m['role'] != 'president')
-                        Switch(
-                            value: m['role'] == 'admin',
-                            onChanged: busy
-                                ? null
-                                : (value) => run(() async {
-                                      await Cloud.client.rpc('bc_role',
-                                          params: {
-                                            'p_id': l.id,
-                                            'p_player': m['player_id'],
-                                            'p_role': value ? 'admin' : 'member'
-                                          });
-                                    })),
-                      if (m['role'] != 'president' &&
-                          m['user_id'] != l.currentUser &&
-                          (l.president || m['role'] == 'member'))
-                        IconButton(
-                            tooltip: 'Rimuovi accesso',
-                            onPressed: busy ? null : () => remove(m),
-                            icon: const Icon(Icons.person_remove_outlined)),
-                    ]))),
+          AccountButton('Crea o copia invito', onPressed: busy ? null : invite),
+          for (final request in requests)
+            _JoinRequestCard(
+              request: request,
+              busy: busy,
+              review: (accept) => run(() async {
+                await Cloud.client.rpc('hayko_review_request', params: {
+                  'p_id': l.id,
+                  'p_user': request['user_id'],
+                  'p_accept': accept,
+                });
+              }),
+            ),
+          for (final member in members)
+            _MemberRow(
+              name:
+                  '${member['name']}${member['user_id'] == l.currentUser ? ' · Tu' : ''}',
+              role: _socialRoleName(member['role'] as String?),
+              color: memberColor(member),
+              current: member['user_id'] == l.currentUser,
+              menu: l.president &&
+                      member['player_id'] != null &&
+                      member['role'] != 'president'
+                  ? PopupMenuButton<String>(
+                      tooltip: 'Gestisci ruolo',
+                      enabled: !busy,
+                      icon: const Icon(Icons.arrow_drop_down, size: 18),
+                      onSelected: (role) => changeRole(member, role),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: member['role'] == 'admin' ? 'member' : 'admin',
+                          child: Text(member['role'] == 'admin'
+                              ? 'Rendi membro'
+                              : 'Rendi admin'),
+                        ),
+                      ],
+                    )
+                  : _manageableMembers.contains(member)
+                      ? IconButton(
+                          tooltip: 'Gestisci accesso',
+                          onPressed: busy
+                              ? null
+                              : () => setState(() {
+                                    selectedUserId =
+                                        member['user_id'] as String;
+                                    manageAccess = true;
+                                  }),
+                          icon: const Icon(Icons.arrow_drop_down, size: 18))
+                      : null,
+              onTap: _manageableMembers.contains(member)
+                  ? () => setState(() {
+                        selectedUserId = member['user_id'] as String;
+                        manageAccess = true;
+                      })
+                  : null,
+            ),
+          AccountButton('Gestisci accesso alla lega',
+              outline: true,
+              onPressed: busy || _manageableMembers.isEmpty
+                  ? null
+                  : () => setState(() {
+                        selectedUserId ??=
+                            _manageableMembers.first['user_id'] as String;
+                        manageAccess = !manageAccess;
+                      })),
+          if (manageAccess && selected != null)
+            _MemberAccessCard(
+                member: selected, busy: busy, onRemove: () => remove(selected)),
         ] else
-          ...l.players.map((p) => ListTile(
-              title: Text(p.name), subtitle: Text(roleName(l.roles[p.id])))),
-      ]));
+          for (final player
+              in l.players.where((p) => l.roles.containsKey(p.id)))
+            _MemberRow(
+                name: '${player.name}${player.id == l.myPlayer ? ' · Tu' : ''}',
+                role: _socialRoleName(l.roles[player.id]),
+                color: Color(player.color),
+                current: player.id == l.myPlayer),
+      ],
+    );
+  }
+}
+
+String _socialRoleName(String? role) => role == 'president'
+    ? 'Presidente'
+    : role == 'admin'
+        ? 'Admin'
+        : 'Membro';
+
+String _initials(String name) {
+  final words = name.split('·').first.trim().split(RegExp(r'\s+'));
+  if (words.isEmpty || words.first.isEmpty) return 'H';
+  return words.take(2).map((word) => word[0].toUpperCase()).join();
+}
+
+class _MemberRow extends StatelessWidget {
+  const _MemberRow(
+      {required this.name,
+      required this.role,
+      required this.color,
+      required this.current,
+      this.menu,
+      this.onTap});
+  final String name, role;
+  final Color color;
+  final bool current;
+  final Widget? menu;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: HaykoColors.fieldSurface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: current
+                ? const BorderSide(color: HaykoColors.chalk)
+                : BorderSide.none),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            height: 72,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle),
+                  child: Text(_initials(name),
+                      style: const TextStyle(
+                          color: HaykoColors.fieldBackground,
+                          fontSize: 12,
+                          height: 16 / 12,
+                          fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 16, height: 1.5)),
+                      Text(role,
+                          style: const TextStyle(
+                              color: HaykoColors.mutedText,
+                              fontSize: 12,
+                              height: 16 / 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                    width: 64,
+                    child:
+                        Align(alignment: Alignment.centerRight, child: menu)),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
+class _JoinRequestCard extends StatelessWidget {
+  const _JoinRequestCard(
+      {required this.request, required this.busy, required this.review});
+  final Map<String, dynamic> request;
+  final bool busy;
+  final ValueChanged<bool> review;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(request['name'] as String,
+              style: const TextStyle(
+                  fontSize: 20, height: 1.3, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          const Text('Richiesta di accesso',
+              style: TextStyle(color: HaykoColors.mutedText, fontSize: 14)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+                child: AccountButton('Rifiuta',
+                    outline: true,
+                    onPressed: busy ? null : () => review(false))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: AccountButton('Approva',
+                    onPressed: busy ? null : () => review(true))),
+          ]),
+        ]),
+      );
+}
+
+class _MemberAccessCard extends StatelessWidget {
+  const _MemberAccessCard(
+      {required this.member, required this.busy, required this.onRemove});
+  final Map<String, dynamic> member;
+  final bool busy;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(member['name'] as String,
+              style: const TextStyle(
+                  fontSize: 20, height: 1.3, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          const Text('Azioni sul membro',
+              style: TextStyle(
+                  color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                foregroundColor: const Color(0xffffb4ab),
+                side: const BorderSide(color: Color(0xffffb4ab)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                textStyle: const TextStyle(
+                    fontSize: 16, height: 1.5, fontWeight: FontWeight.w700)),
+            onPressed: busy ? null : onRemove,
+            child: const Text('Rimuovi accesso alla lega'),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+              'Il giocatore e le statistiche storiche rimangono nella lega.',
+              style: TextStyle(
+                  color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
+        ]),
+      );
 }
