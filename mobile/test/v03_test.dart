@@ -168,10 +168,13 @@ void main() {
     expect(find.text('Modifica data, ora e luogo'), findsOneWidget);
     expect(find.byKey(const ValueKey('match-score-panel')), findsOneWidget);
     expect(find.text('Tempo partita · 00:00'), findsOneWidget);
-    expect(find.text('Nessun gol registrato.'), findsOneWidget);
+    expect(find.text('Registro gol'), findsNothing);
     m.start();
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Modifica data, ora e luogo'), findsNothing);
+    expect(find.byKey(const ValueKey('live-match')), findsOneWidget);
+    expect(find.text('Registro gol'), findsOneWidget);
+    expect(find.text('Nessun gol registrato.'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('cancellazione lega richiede conferma', (tester) async {

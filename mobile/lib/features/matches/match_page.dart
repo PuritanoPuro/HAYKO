@@ -306,15 +306,99 @@ class _MatchPageState extends State<MatchPage> {
             const SizedBox(height: 12),
           ],
           const SyncNotice(),
-          const Text('Registro gol',
-              style: TextStyle(
-                  fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
+        ],
+      );
+
+  String get liveDetails {
+    if (m.scheduledAt == null) return statusName(m.status);
+    const months = [
+      'gennaio',
+      'febbraio',
+      'marzo',
+      'aprile',
+      'maggio',
+      'giugno',
+      'luglio',
+      'agosto',
+      'settembre',
+      'ottobre',
+      'novembre',
+      'dicembre'
+    ];
+    final date = DateTime.parse(m.scheduledAt!).toLocal();
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '${date.day} ${months[date.month - 1]} ${date.year} · $hour:$minute · ${statusName(m.status)}';
+  }
+
+  Widget liveBody() {
+    final now = DateTime.now().toUtc();
+    final start = m.startedAt == null ? now : DateTime.parse(m.startedAt!);
+    return ListView(
+      key: const ValueKey('live-match'),
+      padding: const EdgeInsets.all(24),
+      children: [
+        _MatchScorePanel(match: m, details: liveDetails),
+        const SizedBox(height: 12),
+        Text(clockText(matchElapsed(m, now)),
+            key: const ValueKey('match-clock'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 48, height: 56 / 48, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        if (widget.league.canRecord(m)) ...[
+          AccountButton('GOL', onPressed: (saving || refreshing) ? null : goal),
+          const SizedBox(height: 12),
+          AccountButton('Termina partita',
+              outline: true,
+              onPressed: (saving || refreshing) ? null : finishMatch),
+          const SizedBox(height: 12),
+        ],
+        if (connectionWarning != null) ...[
+          Text(connectionWarning!,
+              style: const TextStyle(color: HaykoColors.mutedText)),
+          const SizedBox(height: 12),
+        ],
+        const SyncNotice(),
+        if (widget.league.type != 'competition' && !m.competitionRules) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var team = 0; team < 2; team++) ...[
+                Expanded(
+                    child: _LiveKeeperCard(
+                        league: widget.league,
+                        match: m,
+                        team: team,
+                        start: start,
+                        now: now)),
+                if (team == 0) const SizedBox(width: 12),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        const Text('Registro gol',
+            style: TextStyle(
+                fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
+        if (m.goals.isEmpty) ...[
           const SizedBox(height: 12),
           const Text('Nessun gol registrato.',
               style: TextStyle(
                   color: HaykoColors.mutedText, fontSize: 16, height: 1.5)),
         ],
-      );
+        for (final g in m.goals.reversed) ...[
+          const SizedBox(height: 12),
+          _LiveGoalRow(
+              league: widget.league,
+              match: m,
+              goal: g,
+              enabled: !g.voided && widget.league.canRecord(m),
+              onUndo: () => voidGoal(g)),
+        ],
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Theme(
@@ -330,97 +414,108 @@ class _MatchPageState extends State<MatchPage> {
           ]),
           body: m.status == 'scheduled'
               ? scheduledBody()
-              : ListView(padding: const EdgeInsets.all(20), children: [
-                  Text(dateLabel(m.scheduledAt), textAlign: TextAlign.center),
-                  if (m.venue.isNotEmpty)
-                    Text(m.venue, textAlign: TextAlign.center),
-                  if (m.status == 'scheduled' && widget.league.canRecord(m))
-                    TextButton.icon(
-                        onPressed: (saving || refreshing) ? null : editEvent,
-                        icon: const Icon(Icons.edit_calendar),
-                        label: const Text('Modifica data, ora e luogo')),
-                  Text(statusName(m.status), textAlign: TextAlign.center),
-                  if (connectionWarning != null) Text(connectionWarning!),
-                  const SyncNotice(),
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    for (var t = 0; t < 2; t++)
-                      Expanded(
-                          child: Column(children: [
-                        CircleAvatar(
-                            radius: 9, backgroundColor: Color(m.teamColors[t])),
-                        Text(m.names[t],
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 22))
-                      ]))
-                  ]),
-                  Text('${m.score(0)} – ${m.score(1)}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 72, fontWeight: FontWeight.bold)),
-                  const Text('Tempo partita', textAlign: TextAlign.center),
-                  Text(clockText(matchElapsed(m, DateTime.now().toUtc())),
-                      key: const ValueKey('match-clock'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 32, fontWeight: FontWeight.bold)),
-                  if (m.status == 'scheduled' && widget.league.canRecord(m))
-                    FilledButton(
-                        onPressed: (saving || refreshing) ? null : startMatch,
-                        child: const Text('Inizia partita')),
-                  if (m.status == 'live' && widget.league.canRecord(m)) ...[
-                    FilledButton.icon(
-                        onPressed: (saving || refreshing) ? null : goal,
-                        icon: const Icon(Icons.sports_soccer),
-                        label: const Text('GOL')),
-                    TextButton(
-                        onPressed: (saving || refreshing) ? null : finishMatch,
-                        child: const Text('Termina partita')),
-                  ],
-                  if (m.qualifiedTeamId != null)
-                    Text(
-                        'Passa il turno: ${m.names[m.presetIds.indexOf(m.qualifiedTeamId)]}',
-                        textAlign: TextAlign.center),
-                  ...keeperCards(),
-                  if (widget.league.type != 'competition' &&
-                      m.status == 'live' &&
-                      m.keepers.any((k) => k.mode == 'rotation'))
-                    TextButton.icon(
-                        onPressed: () async {
-                          try {
-                            await RotationAlerts.instance.testNotification();
-                          } catch (e) {
-                            if (context.mounted) showError(context, e);
-                          }
-                          if (mounted) setState(() {});
-                        },
-                        icon: const Icon(Icons.notifications_active),
-                        label: const Text('Prova avviso')),
-                  if (RotationAlerts.instance.warning != null)
-                    Text(RotationAlerts.instance.warning!),
-                  if (widget.league.type != 'competition' &&
-                      m.status == 'live' &&
-                      m.keepers.any((k) => k.mode == 'rotation') &&
-                      RotationAlerts.instance.scheduleInfo != null)
-                    Text(RotationAlerts.instance.scheduleInfo!),
-                  const SizedBox(height: 20),
-                  const Text('Registro gol', style: TextStyle(fontSize: 24)),
-                  ...m.goals.reversed.map((g) => Card(
-                      child: ListTile(
-                          title: Text(
-                              '${g.voided ? 'Annullato · ' : ''}${g.ownGoal ? 'Autogol' : 'Gol'} ${m.names[g.team]} · ${widget.league.playerName(g.scorer)}'),
-                          subtitle: Text(
-                              'Assist: ${widget.league.playerName(g.assist)}${widget.league.type == 'competition' || m.competitionRules ? '' : '\nIn porta: ${widget.league.playerName(g.keeper)}'}'),
-                          trailing: m.status == 'live' &&
-                                  !g.voided &&
-                                  widget.league.canRecord(m)
-                              ? IconButton(
-                                  tooltip: 'Annulla gol',
-                                  onPressed: (saving || refreshing)
-                                      ? null
-                                      : () => voidGoal(g),
-                                  icon: const Icon(Icons.undo))
-                              : null))),
-                ])));
+              : m.status == 'live'
+                  ? liveBody()
+                  : ListView(padding: const EdgeInsets.all(20), children: [
+                      Text(dateLabel(m.scheduledAt),
+                          textAlign: TextAlign.center),
+                      if (m.venue.isNotEmpty)
+                        Text(m.venue, textAlign: TextAlign.center),
+                      if (m.status == 'scheduled' && widget.league.canRecord(m))
+                        TextButton.icon(
+                            onPressed:
+                                (saving || refreshing) ? null : editEvent,
+                            icon: const Icon(Icons.edit_calendar),
+                            label: const Text('Modifica data, ora e luogo')),
+                      Text(statusName(m.status), textAlign: TextAlign.center),
+                      if (connectionWarning != null) Text(connectionWarning!),
+                      const SyncNotice(),
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (var t = 0; t < 2; t++)
+                              Expanded(
+                                  child: Column(children: [
+                                CircleAvatar(
+                                    radius: 9,
+                                    backgroundColor: Color(m.teamColors[t])),
+                                Text(m.names[t],
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(fontSize: 22))
+                              ]))
+                          ]),
+                      Text('${m.score(0)} – ${m.score(1)}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 72, fontWeight: FontWeight.bold)),
+                      const Text('Tempo partita', textAlign: TextAlign.center),
+                      Text(clockText(matchElapsed(m, DateTime.now().toUtc())),
+                          key: const ValueKey('match-clock'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 32, fontWeight: FontWeight.bold)),
+                      if (m.status == 'scheduled' && widget.league.canRecord(m))
+                        FilledButton(
+                            onPressed:
+                                (saving || refreshing) ? null : startMatch,
+                            child: const Text('Inizia partita')),
+                      if (m.status == 'live' && widget.league.canRecord(m)) ...[
+                        FilledButton.icon(
+                            onPressed: (saving || refreshing) ? null : goal,
+                            icon: const Icon(Icons.sports_soccer),
+                            label: const Text('GOL')),
+                        TextButton(
+                            onPressed:
+                                (saving || refreshing) ? null : finishMatch,
+                            child: const Text('Termina partita')),
+                      ],
+                      if (m.qualifiedTeamId != null)
+                        Text(
+                            'Passa il turno: ${m.names[m.presetIds.indexOf(m.qualifiedTeamId)]}',
+                            textAlign: TextAlign.center),
+                      ...keeperCards(),
+                      if (widget.league.type != 'competition' &&
+                          m.status == 'live' &&
+                          m.keepers.any((k) => k.mode == 'rotation'))
+                        TextButton.icon(
+                            onPressed: () async {
+                              try {
+                                await RotationAlerts.instance
+                                    .testNotification();
+                              } catch (e) {
+                                if (context.mounted) showError(context, e);
+                              }
+                              if (mounted) setState(() {});
+                            },
+                            icon: const Icon(Icons.notifications_active),
+                            label: const Text('Prova avviso')),
+                      if (RotationAlerts.instance.warning != null)
+                        Text(RotationAlerts.instance.warning!),
+                      if (widget.league.type != 'competition' &&
+                          m.status == 'live' &&
+                          m.keepers.any((k) => k.mode == 'rotation') &&
+                          RotationAlerts.instance.scheduleInfo != null)
+                        Text(RotationAlerts.instance.scheduleInfo!),
+                      const SizedBox(height: 20),
+                      const Text('Registro gol',
+                          style: TextStyle(fontSize: 24)),
+                      ...m.goals.reversed.map((g) => Card(
+                          child: ListTile(
+                              title: Text(
+                                  '${g.voided ? 'Annullato · ' : ''}${g.ownGoal ? 'Autogol' : 'Gol'} ${m.names[g.team]} · ${widget.league.playerName(g.scorer)}'),
+                              subtitle: Text(
+                                  'Assist: ${widget.league.playerName(g.assist)}${widget.league.type == 'competition' || m.competitionRules ? '' : '\nIn porta: ${widget.league.playerName(g.keeper)}'}'),
+                              trailing: m.status == 'live' &&
+                                      !g.voided &&
+                                      widget.league.canRecord(m)
+                                  ? IconButton(
+                                      tooltip: 'Annulla gol',
+                                      onPressed: (saving || refreshing)
+                                          ? null
+                                          : () => voidGoal(g),
+                                      icon: const Icon(Icons.undo))
+                                  : null))),
+                    ])));
 }
 
 class _MatchScorePanel extends StatelessWidget {
@@ -500,4 +595,154 @@ class _ScoreTeam extends StatelessWidget {
         const SizedBox(height: 8),
         Container(width: 56, height: 6, color: Color(color)),
       ]);
+}
+
+class _LiveKeeperCard extends StatelessWidget {
+  const _LiveKeeperCard(
+      {required this.league,
+      required this.match,
+      required this.team,
+      required this.start,
+      required this.now});
+
+  final League league;
+  final Match match;
+  final int team;
+  final DateTime start;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = match.keepers[team];
+    final current = plan.mode == 'fixed' ? plan.fixed : plan.at(start, now);
+    final next = plan.mode == 'rotation'
+        ? plan.at(start, plan.nextChange(start, now))
+        : null;
+    final countdown = plan.mode == 'rotation'
+        ? clockText(plan.nextChange(start, now).difference(now))
+        : null;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 144),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(12)),
+      child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(match.names[team],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    color: Color(match.teamColors[team]),
+                    fontSize: 12,
+                    height: 16 / 12,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            const Text('In porta',
+                style: TextStyle(
+                    color: HaykoColors.mutedText,
+                    fontSize: 12,
+                    height: 16 / 12,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(current == null ? 'Da scegliere' : league.playerName(current),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 20, height: 1.3, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+                next == null
+                    ? plan.mode == 'fixed'
+                        ? 'Portiere fisso'
+                        : 'Portiere a scelta'
+                    : 'Successivo: ${league.playerName(next)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: HaykoColors.mutedText,
+                    fontSize: 14,
+                    height: 20 / 14)),
+            if (countdown != null) ...[
+              const SizedBox(height: 4),
+              Text(countdown,
+                  key: ValueKey('keeper-countdown-$team'),
+                  style: const TextStyle(
+                      fontSize: 20, height: 1.3, fontWeight: FontWeight.w700)),
+            ],
+          ]),
+    );
+  }
+}
+
+class _LiveGoalRow extends StatelessWidget {
+  const _LiveGoalRow(
+      {required this.league,
+      required this.match,
+      required this.goal,
+      required this.enabled,
+      required this.onUndo});
+
+  final League league;
+  final Match match;
+  final Goal goal;
+  final bool enabled;
+  final VoidCallback onUndo;
+
+  String get title {
+    final prefix = goal.voided ? 'Annullato · ' : '';
+    if (goal.ownGoal) return '${prefix}Autogol per ${match.names[goal.team]}';
+    return '${prefix}Gol ${match.names[goal.team]} · ${league.playerName(goal.scorer)}';
+  }
+
+  String get details {
+    final keeper = league.type == 'competition' || match.competitionRules
+        ? ''
+        : ' · In porta: ${league.playerName(goal.keeper)}';
+    if (goal.ownGoal) {
+      return 'Autore: ${league.playerName(goal.scorer)}$keeper';
+    }
+    return 'Assist: ${league.playerName(goal.assist)}$keeper';
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 72),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Expanded(
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, height: 1.5)),
+                const SizedBox(height: 4),
+                Text(details,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: HaykoColors.mutedText,
+                        fontSize: 12,
+                        height: 16 / 12,
+                        fontWeight: FontWeight.w600)),
+              ])),
+          if (enabled)
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                  tooltip: 'Annulla gol',
+                  onPressed: onUndo,
+                  icon: const Icon(Icons.undo, color: Color(0xffffb4ab))),
+            ),
+        ]),
+      );
 }
