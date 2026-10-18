@@ -186,12 +186,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Elimina lega'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Indietro'));
+    expect(find.text('Eliminare questa lega?'), findsOneWidget);
+    expect(find.text(l.name), findsOneWidget);
+    await tester.tap(find.text('Annulla'));
     await tester.pumpAndSettle();
     expect(removed, 0);
     await tester.tap(find.text('Elimina lega'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Conferma'));
+    await tester.tap(find.text('Elimina lega').last);
     await tester.pumpAndSettle();
     expect(removed, 1);
   });

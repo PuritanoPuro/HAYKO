@@ -76,10 +76,11 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
   }
 
   Future<void> remove() async {
-    if (!await confirm(context, 'Eliminare ${l.name}?',
-        'Verranno eliminate la lega, le partite, le competizioni e le statistiche contenute.')) {
-      return;
-    }
+    final confirmed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => _LeagueDeletePage(leagueName: l.name)));
+    if (confirmed != true) return;
     if (!mounted) return;
     setState(() => busy = true);
     try {
@@ -263,4 +264,79 @@ class _DangerButton extends StatelessWidget {
               fontSize: 16, height: 1.5, fontWeight: FontWeight.w700)),
       onPressed: onPressed,
       child: Text(label));
+}
+
+class _LeagueDeletePage extends StatelessWidget {
+  const _LeagueDeletePage({required this.leagueName});
+
+  final String leagueName;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 64,
+        centerTitle: false,
+        leadingWidth: 52,
+        leading: IconButton(
+            tooltip: 'Indietro',
+            icon: const Icon(Icons.arrow_back, size: 24),
+            onPressed: () => Navigator.maybePop(context)),
+        titleSpacing: 0,
+        title: const Text('Impostazioni lega',
+            style: TextStyle(
+                fontFamily: 'BricolageGrotesque',
+                fontSize: 20,
+                height: 26 / 20,
+                fontWeight: FontWeight.w700)),
+      ),
+      body: SafeArea(
+          top: false,
+          child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                      color: HaykoColors.fieldSurface,
+                      borderRadius: BorderRadius.circular(16)),
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Eliminare questa lega?',
+                            style: TextStyle(
+                                fontSize: 20,
+                                height: 26 / 20,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        Text(leagueName,
+                            style: const TextStyle(
+                                fontSize: 14,
+                                height: 20 / 14,
+                                color: HaykoColors.mutedText)),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'Verranno eliminati la lega e tutti i suoi dati. Questa azione non può essere annullata.',
+                            style: TextStyle(fontSize: 16, height: 1.5)),
+                        const SizedBox(height: 8),
+                        OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor: HaykoColors.chalk,
+                                side: const BorderSide(
+                                    color: HaykoColors.fieldLine),
+                                minimumSize: const Size.fromHeight(52),
+                                padding: const EdgeInsets.all(12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                textStyle: const TextStyle(
+                                    fontSize: 16,
+                                    height: 1.5,
+                                    fontWeight: FontWeight.w700)),
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Annulla')),
+                        const SizedBox(height: 8),
+                        _DangerButton(
+                            label: 'Elimina lega',
+                            onPressed: () => Navigator.pop(context, true)),
+                      ])))));
 }
