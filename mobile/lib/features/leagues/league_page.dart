@@ -32,6 +32,9 @@ class _LeaguePageState extends State<LeaguePage> {
   int tab = 0;
   String matchStatus = 'scheduled';
   Timer? listClock;
+  Timer? requestsClock;
+  bool hasPendingRequests = false;
+  bool checkingRequests = false;
   League get l => widget.league;
   @override
   void initState() {
@@ -39,6 +42,11 @@ class _LeaguePageState extends State<LeaguePage> {
     listClock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && l.matches.any((m) => m.status == 'live')) setState(() {});
     });
+    if (l.shared && l.manage) {
+      unawaited(refreshPendingRequests());
+      requestsClock = Timer.periodic(const Duration(seconds: 15),
+          (_) => unawaited(refreshPendingRequests()));
+    }
     if (l.matches.any((m) => m.status == 'live')) {
       matchStatus = 'live';
     } else if (!l.matches.any((m) => m.status == 'scheduled') &&
@@ -50,7 +58,25 @@ class _LeaguePageState extends State<LeaguePage> {
   @override
   void dispose() {
     listClock?.cancel();
+    requestsClock?.cancel();
     super.dispose();
+  }
+
+  Future<void> refreshPendingRequests() async {
+    if (!l.shared || !l.manage || checkingRequests) return;
+    checkingRequests = true;
+    try {
+      final pending =
+          await Cloud.client.rpc('hayko_requests', params: {'p_id': l.id});
+      final visible = (pending as List).isNotEmpty;
+      if (mounted && visible != hasPendingRequests) {
+        setState(() => hasPendingRequests = visible);
+      }
+    } catch (_) {
+      // The league remains usable offline; the dot is refreshed on retry.
+    } finally {
+      checkingRequests = false;
+    }
   }
 
   Color statusColor(String status) => status == 'live'
@@ -269,6 +295,7 @@ class _LeaguePageState extends State<LeaguePage> {
                   onPressed: () async {
                     try {
                       await widget.reload?.call();
+                      await refreshPendingRequests();
                       if (mounted) setState(() {});
                     } catch (e) {
                       if (context.mounted) showError(context, e);
@@ -277,12 +304,27 @@ class _LeaguePageState extends State<LeaguePage> {
             if (l.shared)
               IconButton(
                   tooltip: 'Membri e inviti',
-                  icon: const Icon(Icons.group_add),
+                  icon: Stack(clipBehavior: Clip.none, children: [
+                    const Icon(Icons.group_add),
+                    if (hasPendingRequests)
+                      Positioned(
+                        key: const ValueKey('member-request-dot'),
+                        right: -3,
+                        top: -3,
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: const BoxDecoration(
+                              color: Color(0xffff7a3d), shape: BoxShape.circle),
+                        ),
+                      ),
+                  ]),
                   onPressed: () async {
                     await Navigator.push(
                         context,
                         MaterialPageRoute(
                             builder: (_) => LeagueSocial(league: l)));
+                    await refreshPendingRequests();
                     if (mounted) setState(() {});
                   }),
           ]),
