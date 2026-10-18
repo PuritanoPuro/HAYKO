@@ -175,6 +175,13 @@ void main() {
     expect(find.byKey(const ValueKey('live-match')), findsOneWidget);
     expect(find.text('Registro gol'), findsOneWidget);
     expect(find.text('Nessun gol registrato.'), findsOneWidget);
+    m.finish();
+    await tester.pumpWidget(
+        MaterialApp(home: MatchPage(league: l, match: m, save: () async {})));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('finished-match')), findsOneWidget);
+    expect(find.text('GOL'), findsNothing);
+    expect(find.text('Termina partita'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('cancellazione lega richiede conferma', (tester) async {
