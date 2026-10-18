@@ -286,6 +286,54 @@ class _LeaguePageState extends State<LeaguePage> {
     if (mounted) setState(() {});
   }
 
+  Future<void> openSavedTeams() async {
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => TeamPresetsPage(league: l, save: widget.save)));
+    if (mounted) setState(() {});
+  }
+
+  Widget playersBody() {
+    final players = List<Player>.from(l.players)
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+      children: [
+        _LeagueOutlineButton(
+            label: 'Squadre salvate', onPressed: openSavedTeams),
+        if (l.shared) ...[
+          const SizedBox(height: 12),
+          _LeagueOutlineButton(
+              label: 'Giocatori e inviti',
+              showNotification: hasPendingRequests,
+              onPressed: openLeagueSocial),
+        ],
+        const SizedBox(height: 12),
+        const Text('Giocatori della lega',
+            style: TextStyle(
+                fontSize: 24,
+                height: 1.25,
+                fontWeight: FontWeight.w800,
+                color: HaykoColors.chalk)),
+        const SizedBox(height: 12),
+        for (var index = 0; index < players.length; index++) ...[
+          _LeaguePlayerRow(
+            player: players[index],
+            subtitle: l.shared && l.roles[players[index].id] != null
+                ? roleName(l.roles[players[index].id])
+                : 'Giocatore',
+            isCurrent: l.shared && l.myPlayer == players[index].id,
+            canEdit: l.manage ||
+                (l.type == 'amateur' && l.myPlayer == players[index].id),
+            onEdit: () => rename(players[index]),
+          ),
+          if (index != players.length - 1) const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
   Future<void> selectLeagueAction(String action) async {
     if (action == 'settings') await openLeagueSettings();
     if (action == 'refresh') await reloadLeague();
@@ -364,47 +412,7 @@ class _LeaguePageState extends State<LeaguePage> {
                               league: l,
                               save: widget.save,
                               changed: () => setState(() {}))
-                          : ListView(
-                              padding: const EdgeInsets.all(16),
-                              children: [
-                                  OutlinedButton.icon(
-                                      onPressed: () async {
-                                        await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) => TeamPresetsPage(
-                                                    league: l,
-                                                    save: widget.save)));
-                                        if (mounted) setState(() {});
-                                      },
-                                      icon: const Icon(Icons.groups),
-                                      label: const Text('Squadre salvate')),
-                                  const Text('Giocatori della lega',
-                                      style: TextStyle(fontSize: 24)),
-                                  ...(List<Player>.from(l.players)
-                                        ..sort((a, b) => a.name
-                                            .toLowerCase()
-                                            .compareTo(b.name.toLowerCase())))
-                                      .map((p) => ListTile(
-                                          leading: CircleAvatar(
-                                              radius: 14,
-                                              backgroundColor: Color(p.color),
-                                              child: Icon(Icons.person,
-                                                  color: contrastColor(p.color),
-                                                  size: 18)),
-                                          title: Text(p.name),
-                                          subtitle: l.shared &&
-                                                  l.roles[p.id] != null
-                                              ? Text(roleName(l.roles[p.id]))
-                                              : null,
-                                          trailing:
-                                              l.manage || (l.type == 'amateur' && l.myPlayer == p.id)
-                                                  ? IconButton(
-                                                      tooltip: 'Modifica nome',
-                                                      icon: const Icon(Icons.edit),
-                                                      onPressed: () => rename(p))
-                                                  : null)),
-                                ]),
+                          : playersBody(),
           floatingActionButton: !l.manage
               ? null
               : tab == 0
@@ -540,6 +548,126 @@ class _CompactLeagueFab extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0)),
         ),
+      );
+}
+
+class _LeagueOutlineButton extends StatelessWidget {
+  const _LeagueOutlineButton(
+      {required this.label,
+      required this.onPressed,
+      this.showNotification = false});
+  final String label;
+  final VoidCallback onPressed;
+  final bool showNotification;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 52,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+              backgroundColor: HaykoColors.fieldSurface,
+              foregroundColor: HaykoColors.chalk,
+              side: const BorderSide(color: HaykoColors.fieldLine),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              textStyle: const TextStyle(
+                  fontFamily: 'BricolageGrotesque',
+                  fontSize: 16,
+                  height: 1.5,
+                  fontWeight: FontWeight.w700)),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(label),
+            if (showNotification) ...[
+              const SizedBox(width: 8),
+              Container(
+                  key: const ValueKey('players-invite-request-dot'),
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                      color: Color(0xffff7a3d), shape: BoxShape.circle)),
+            ],
+          ]),
+        ),
+      );
+}
+
+class _LeaguePlayerRow extends StatelessWidget {
+  const _LeaguePlayerRow(
+      {required this.player,
+      required this.subtitle,
+      required this.isCurrent,
+      required this.canEdit,
+      required this.onEdit});
+  final Player player;
+  final String subtitle;
+  final bool isCurrent;
+  final bool canEdit;
+  final VoidCallback onEdit;
+
+  String get initials {
+    final words = player.name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty || words.first.isEmpty) return '?';
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 80,
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: isCurrent ? Border.all(color: HaykoColors.chalk) : null),
+        child: Row(children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Color(player.color),
+                    child: Text(initials,
+                        style: TextStyle(
+                            color: contrastColor(player.color),
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w600))),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${player.name}${isCurrent ? ' · Tu' : ''}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 16,
+                                height: 1.5,
+                                fontWeight: FontWeight.w400)),
+                        Text(subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: HaykoColors.mutedText,
+                                fontSize: 12,
+                                height: 16 / 12,
+                                fontWeight: FontWeight.w600)),
+                      ]),
+                ),
+              ]),
+            ),
+          ),
+          if (canEdit)
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                  tooltip: 'Modifica giocatore',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit, size: 24)),
+            ),
+        ]),
       );
 }
 
