@@ -431,8 +431,6 @@ class LeagueSocial extends StatefulWidget {
 
 class _LeagueSocialState extends State<LeagueSocial> {
   bool busy = false;
-  bool manageAccess = true;
-  String? selectedUserId;
   List<Map<String, dynamic>> requests = [], members = [];
   League get l => widget.league;
   @override
@@ -463,12 +461,6 @@ class _LeagueSocialState extends State<LeagueSocial> {
         const rank = {'president': 0, 'admin': 1, 'member': 2};
         members.sort(
             (a, b) => (rank[a['role']] ?? 3).compareTo(rank[b['role']] ?? 3));
-        selectedUserId ??= _manageableMembers.isEmpty
-            ? null
-            : (_manageableMembers.where((m) => m['role'] == 'member').isEmpty
-                ? _manageableMembers.first
-                : _manageableMembers.firstWhere(
-                    (m) => m['role'] == 'member'))['user_id'] as String;
       }
     } catch (e) {
       if (mounted) showError(context, e);
@@ -491,7 +483,6 @@ class _LeagueSocialState extends State<LeagueSocial> {
     await run(() async {
       await Cloud.client.rpc('hayko_remove_member',
           params: {'p_id': l.id, 'p_user': member['user_id']});
-      selectedUserId = null;
     });
   }
 
@@ -502,13 +493,6 @@ class _LeagueSocialState extends State<LeagueSocial> {
           (l.president || m['role'] == 'member'))
       .toList();
 
-  Map<String, dynamic>? get _selectedMember {
-    final found = _manageableMembers
-        .where((m) => m['user_id'] == selectedUserId)
-        .toList();
-    return found.isEmpty ? null : found.first;
-  }
-
   Color memberColor(Map<String, dynamic> member) {
     final playerId = member['player_id'];
     final found = l.players.where((p) => p.id == playerId).toList();
@@ -516,6 +500,15 @@ class _LeagueSocialState extends State<LeagueSocial> {
   }
 
   Future<void> changeRole(Map<String, dynamic> member, String role) async {
+    final admin = role == 'admin';
+    if (!await confirm(
+        context,
+        admin ? 'Rendere questo membro admin?' : 'Rendere questo admin membro?',
+        admin
+            ? '${member['name']} potrà gestire inviti, richieste e membri della lega.'
+            : '${member['name']} non potrà più gestire inviti, richieste e membri.')) {
+      return;
+    }
     await run(() async {
       await Cloud.client.rpc('bc_role', params: {
         'p_id': l.id,
@@ -527,7 +520,6 @@ class _LeagueSocialState extends State<LeagueSocial> {
 
   @override
   Widget build(BuildContext context) {
-    final selected = _selectedMember;
     return AccountScaffold(
       title: 'Membri e inviti',
       toolbarHeight: 64,
@@ -557,54 +549,19 @@ class _LeagueSocialState extends State<LeagueSocial> {
               role: _socialRoleName(member['role'] as String?),
               color: memberColor(member),
               current: member['user_id'] == l.currentUser,
-              menu: l.president &&
-                      member['player_id'] != null &&
-                      member['role'] != 'president'
-                  ? PopupMenuButton<String>(
-                      tooltip: 'Gestisci ruolo',
-                      enabled: !busy,
-                      icon: const Icon(Icons.arrow_drop_down, size: 18),
-                      onSelected: (role) => changeRole(member, role),
-                      itemBuilder: (_) => [
-                        PopupMenuItem(
-                          value: member['role'] == 'admin' ? 'member' : 'admin',
-                          child: Text(member['role'] == 'admin'
-                              ? 'Rendi membro'
-                              : 'Rendi admin'),
-                        ),
-                      ],
-                    )
-                  : _manageableMembers.contains(member)
-                      ? IconButton(
-                          tooltip: 'Gestisci accesso',
-                          onPressed: busy
-                              ? null
-                              : () => setState(() {
-                                    selectedUserId =
-                                        member['user_id'] as String;
-                                    manageAccess = true;
-                                  }),
-                          icon: const Icon(Icons.arrow_drop_down, size: 18))
-                      : null,
-              onTap: _manageableMembers.contains(member)
-                  ? () => setState(() {
-                        selectedUserId = member['user_id'] as String;
-                        manageAccess = true;
-                      })
-                  : null,
-            ),
-          AccountButton('Gestisci accesso alla lega',
-              outline: true,
-              onPressed: busy || _manageableMembers.isEmpty
+              menu: member['role'] == 'president' ||
+                      member['user_id'] == l.currentUser ||
+                      (!l.president && !_manageableMembers.contains(member))
                   ? null
-                  : () => setState(() {
-                        selectedUserId ??=
-                            _manageableMembers.first['user_id'] as String;
-                        manageAccess = !manageAccess;
-                      })),
-          if (manageAccess && selected != null)
-            _MemberAccessCard(
-                member: selected, busy: busy, onRemove: () => remove(selected)),
+                  : _MemberActions(
+                      canEdit: l.president && member['player_id'] != null,
+                      canRemove: _manageableMembers.contains(member),
+                      busy: busy,
+                      edit: () => changeRole(member,
+                          member['role'] == 'admin' ? 'member' : 'admin'),
+                      remove: () => remove(member),
+                    ),
+            ),
         ] else
           for (final player
               in l.players.where((p) => l.roles.containsKey(p.id)))
@@ -746,13 +703,50 @@ class _MemberRow extends StatelessWidget {
                   ),
                 ),
                 SizedBox(
-                    width: 64,
+                    width: menu is _MemberActions ? 80 : 64,
                     child:
                         Align(alignment: Alignment.centerRight, child: menu)),
               ]),
             ),
           ),
         ),
+      );
+}
+
+class _MemberActions extends StatelessWidget {
+  const _MemberActions(
+      {required this.canEdit,
+      required this.canRemove,
+      required this.busy,
+      required this.edit,
+      required this.remove});
+  final bool canEdit, canRemove, busy;
+  final VoidCallback edit, remove;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (canEdit)
+            IconButton(
+              tooltip: 'Cambia ruolo',
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: const EdgeInsets.all(8),
+              onPressed: busy ? null : edit,
+              icon: const Icon(Icons.edit_outlined, size: 22),
+            ),
+          if (canRemove)
+            IconButton(
+              tooltip: 'Rimuovi accesso',
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: const EdgeInsets.all(8),
+              color: const Color(0xffffb4ab),
+              onPressed: busy ? null : remove,
+              icon: const Icon(Icons.delete_outline, size: 22),
+            ),
+        ],
       );
 }
 
@@ -787,49 +781,6 @@ class _JoinRequestCard extends StatelessWidget {
                 child: AccountButton('Approva',
                     onPressed: busy ? null : () => review(true))),
           ]),
-        ]),
-      );
-}
-
-class _MemberAccessCard extends StatelessWidget {
-  const _MemberAccessCard(
-      {required this.member, required this.busy, required this.onRemove});
-  final Map<String, dynamic> member;
-  final bool busy;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: HaykoColors.fieldSurface,
-            borderRadius: BorderRadius.circular(16)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(member['name'] as String,
-              style: const TextStyle(
-                  fontSize: 20, height: 1.3, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          const Text('Azioni sul membro',
-              style: TextStyle(
-                  color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
-                foregroundColor: const Color(0xffffb4ab),
-                side: const BorderSide(color: Color(0xffffb4ab)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                textStyle: const TextStyle(
-                    fontSize: 16, height: 1.5, fontWeight: FontWeight.w700)),
-            onPressed: busy ? null : onRemove,
-            child: const Text('Rimuovi accesso alla lega'),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-              'Il giocatore e le statistiche storiche rimangono nella lega.',
-              style: TextStyle(
-                  color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
         ]),
       );
 }
