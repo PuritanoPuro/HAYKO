@@ -249,85 +249,106 @@ class _NewMatchPageState extends State<NewMatchPage> {
         ],
       ]);
   Widget selectionBody(int t) {
-    final players = alphabetical;
+    final selectedPlayers =
+        alphabetical.where((player) => teams[t].contains(player.id)).toList();
+    final availablePlayers = alphabetical
+        .where((player) =>
+            !teams[t].contains(player.id) && !teams[1 - t].contains(player.id))
+        .toList();
+    final assignedPlayers = alphabetical
+        .where((player) => teams[1 - t].contains(player.id))
+        .toList();
+    final players = [
+      ...selectedPlayers,
+      ...availablePlayers,
+      ...assignedPlayers,
+    ];
+    final presets = widget.league.presets
+        .where((preset) =>
+            !preset.archived &&
+            (widget.league.type == 'competition'
+                ? preset.players.length >= format
+                : preset.players.length == format) &&
+            (competition == null || competition!.teamIds.contains(preset.id)))
+        .toList();
     return Column(children: [
-      Material(
-          elevation: 2,
-          child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: Column(children: [
-                if (widget.league.presets.any((p) =>
-                    !p.archived &&
-                    (widget.league.type == 'competition'
-                        ? p.players.length >= format
-                        : p.players.length == format) &&
-                    (competition == null ||
-                        competition!.teamIds.contains(p.id))))
-                  DropdownButton<String>(
-                      value: presetIds[t],
-                      isExpanded: true,
-                      hint: const Text('Carica una squadra salvata'),
-                      items: widget.league.presets
-                          .where((p) =>
-                              !p.archived &&
-                              (widget.league.type == 'competition'
-                                  ? p.players.length >= format
-                                  : p.players.length == format) &&
-                              (competition == null ||
-                                  competition!.teamIds.contains(p.id)))
-                          .map((p) => DropdownMenuItem(
-                              value: p.id, child: Text(p.name)))
-                          .toList(),
-                      onChanged: (v) => setState(() => loadPreset(t, v!))),
-                Row(children: [
-                  Expanded(
-                      child: Text('${teams[t].length} / $format selezionati',
-                          key: const ValueKey('selection-counter'),
-                          style: const TextStyle(fontSize: 20))),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                      key: const ValueKey('selection-confirm'),
-                      onPressed: teams[t].length == format
-                          ? () => acceptTeam(t)
-                          : null,
-                      child: const Text('Conferma')),
-                ]),
-                TextButton.icon(
-                    onPressed: addPlayer,
-                    icon: const Icon(Icons.person_add),
-                    label: const Text('+ Giocatore')),
-                const SizedBox(height: 10),
-                LinearProgressIndicator(value: teams[t].length / format),
-              ]))),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+        child: Column(children: [
+          _SetupField(
+            label: 'Preset',
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                  value: presetIds[t],
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                  hint: const Text('Carica una squadra salvata'),
+                  items: presets
+                      .map((preset) => DropdownMenuItem(
+                          value: preset.id, child: Text(preset.name)))
+                      .toList(),
+                  onChanged: presets.isEmpty
+                      ? null
+                      : (value) => setState(() => loadPreset(t, value!))),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+                child: Text('${teams[t].length} / $format selezionati',
+                    key: const ValueKey('selection-counter'),
+                    style: const TextStyle(
+                        fontSize: 20,
+                        height: 1.3,
+                        fontWeight: FontWeight.w700))),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 120,
+              height: 52,
+              child: FilledButton(
+                  key: const ValueKey('selection-confirm'),
+                  onPressed:
+                      teams[t].length == format ? () => acceptTeam(t) : null,
+                  child: const Text('Conferma')),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          SizedBox(
+              width: double.infinity,
+              child: AccountButton('+ Giocatore',
+                  outline: true, onPressed: addPlayer)),
+        ]),
+      ),
       Expanded(
           child: ListView.builder(
               key: ValueKey('team-roster-$t'),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               itemCount: players.length,
               itemBuilder: (context, index) {
                 final p = players[index];
                 final other = teams[1 - t].contains(p.id),
                     selected = teams[t].contains(p.id);
-                return Card(
-                    color: selected
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : null,
-                    child: CheckboxListTile(
-                        value: selected,
-                        title: Text(p.name),
-                        secondary: CircleAvatar(
-                            radius: 9, backgroundColor: Color(p.color)),
-                        subtitle:
-                            other ? Text('Già in ${teamName(1 - t)}') : null,
-                        onChanged: other && !selected
-                            ? null
-                            : (v) => setState(() {
-                                  if (v == true && teams[t].length < format) {
-                                    teams[t].add(p.id);
-                                  } else if (v == false) {
-                                    teams[t].remove(p.id);
-                                  }
-                                })));
+                return Padding(
+                  padding: EdgeInsets.only(
+                      bottom: index == players.length - 1 ? 0 : 12),
+                  child: _FormationPlayerRow(
+                    key: ValueKey('team-player-$t-${p.id}'),
+                    player: p,
+                    current: widget.league.myPlayer == p.id,
+                    selected: selected,
+                    disabled: other && !selected,
+                    assignedTeam: other && !selected ? teamName(1 - t) : null,
+                    onTap: other && !selected
+                        ? null
+                        : () => setState(() {
+                              if (!selected && teams[t].length < format) {
+                                teams[t].add(p.id);
+                              } else if (selected) {
+                                teams[t].remove(p.id);
+                              }
+                            }),
+                  ),
+                );
               })),
     ]);
   }
@@ -663,5 +684,95 @@ class _TeamSetupField extends StatelessWidget {
                     BoxDecoration(color: Color(color), shape: BoxShape.circle)),
           ),
         ]),
+      );
+}
+
+class _FormationPlayerRow extends StatelessWidget {
+  const _FormationPlayerRow(
+      {super.key,
+      required this.player,
+      required this.current,
+      required this.selected,
+      required this.disabled,
+      required this.assignedTeam,
+      required this.onTap});
+
+  final Player player;
+  final bool current;
+  final bool selected;
+  final bool disabled;
+  final String? assignedTeam;
+  final VoidCallback? onTap;
+
+  String get initials {
+    final words = player.name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty || words.first.isEmpty) return '?';
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) => Opacity(
+        opacity: disabled ? 0.4 : 1,
+        child: Material(
+          color: selected ? HaykoColors.fieldLine : HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Container(
+              height: 72,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: selected
+                      ? Border.all(color: HaykoColors.chalk, width: 2)
+                      : null),
+              child: Row(children: [
+                CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Color(player.color),
+                    child: Text(initials,
+                        style: TextStyle(
+                            color: contrastColor(player.color),
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w600))),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${player.name}${current ? ' · Tu' : ''}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 16, height: 1.5)),
+                        Text(
+                            selected
+                                ? 'Selezionato'
+                                : assignedTeam == null
+                                    ? 'Disponibile'
+                                    : 'Già in $assignedTeam',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: HaykoColors.mutedText,
+                                fontSize: 12,
+                                height: 16 / 12,
+                                fontWeight: FontWeight.w600)),
+                      ]),
+                ),
+                SizedBox(
+                    width: 64,
+                    child: Text(selected ? '✓' : '',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            height: 20 / 14,
+                            fontWeight: FontWeight.w600))),
+              ]),
+            ),
+          ),
+        ),
       );
 }

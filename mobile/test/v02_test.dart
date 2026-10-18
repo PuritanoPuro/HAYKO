@@ -155,8 +155,10 @@ void main() {
     await tester.tap(find.text('Alfa'));
     await tester.pumpAndSettle();
     expect(find.text('1 / 5 selezionati'), findsOneWidget);
-    final selected = tester.widget<CheckboxListTile>(
-        find.widgetWithText(CheckboxListTile, 'Alfa'));
-    expect(selected.value, true);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('team-player-0-Alfa')),
+            matching: find.text('Selezionato')),
+        findsOneWidget);
   });
 }
