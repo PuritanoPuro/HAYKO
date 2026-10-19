@@ -693,86 +693,152 @@ class CompetitionScorers extends StatelessWidget {
 
 class _CalendarOrderState extends State<CalendarOrder> {
   late final List<String> ids;
+
   @override
   void initState() {
     super.initState();
     ids = [...widget.competition.teamIds];
   }
 
+  String initials(TeamPreset team) {
+    final words = team.name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty || words.first.isEmpty) return '?';
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  Widget teamRow(int index) {
+    final team =
+        widget.league.presets.firstWhere((team) => team.id == ids[index]);
+    final first = index.isEven;
+    final last = !first || index == ids.length - 1;
+    return Container(
+      key: ValueKey(ids[index]),
+      margin: EdgeInsets.fromLTRB(24, first ? 6 : 0, 24, last ? 6 : 0),
+      padding: EdgeInsets.fromLTRB(16, first ? 16 : 0, 16, last ? 16 : 0),
+      decoration: BoxDecoration(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.vertical(
+          top: first ? const Radius.circular(16) : Radius.zero,
+          bottom: last ? const Radius.circular(16) : Radius.zero,
+        ),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (first) ...[
+          Text('Incontro ${index ~/ 2 + 1}',
+              style: const TextStyle(
+                  fontSize: 20, height: 26 / 20, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+        ],
+        SizedBox(
+          height: 80,
+          child: Row(children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: Color(team.color),
+              child: Text(initials(team),
+                  style: TextStyle(
+                      color: contrastColor(team.color),
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(team.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 16, height: 24 / 16)),
+                    const Text('Squadra partecipante',
+                        style: TextStyle(
+                            color: HaykoColors.mutedText,
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w600)),
+                  ]),
+            ),
+            ReorderableDragStartListener(
+              index: index,
+              child: const SizedBox(
+                width: 48,
+                height: 48,
+                child: Icon(Icons.drag_handle, size: 20),
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Configura calendario'), actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context, ids),
-            child: const Text('Conferma'))
-      ]),
-      body: Column(children: [
-        Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(widget.competition.kind == 'knockout'
-                ? 'Trascina le squadre: prima contro seconda, terza contro quarta e così via.'
-                : 'Trascina le squadre per configurare gli accoppiamenti del girone. Le giornate vengono calcolate senza doppie presenze.')),
-        if (widget.competition.kind == 'league')
-          SizedBox(
-              height: 140,
-              child: ListView(
-                  children: leagueFixtures(
-                          widget.league,
-                          Competition(
-                              widget.competition.id,
-                              widget.competition.name,
-                              'league',
-                              widget.competition.format,
-                              [...ids],
-                              doubleLeg: widget.competition.doubleLeg))
-                      .where((t) => t.round == 1)
-                      .map((tie) => Card(
-                          child: ListTile(
-                              title: Text(tie.teams
-                                  .map((id) => teamName(widget.league, id))
-                                  .join(' – ')),
-                              subtitle: const Text('Prima giornata'))))
-                      .toList())),
-        Expanded(
-            child: ReorderableListView.builder(
-                itemCount: ids.length,
-                onReorderItem: (from, to) => setState(() {
-                      ids.insert(to, ids.removeAt(from));
-                    }),
-                itemBuilder: (context, i) => Container(
-                    key: ValueKey(ids[i]),
-                    margin: EdgeInsets.fromLTRB(
-                        16, i.isEven ? 12 : 0, 16, i.isOdd ? 12 : 0),
-                    decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        borderRadius: BorderRadius.vertical(
-                            top: i.isEven
-                                ? const Radius.circular(12)
-                                : Radius.zero,
-                            bottom: i.isOdd || i == ids.length - 1
-                                ? const Radius.circular(12)
-                                : Radius.zero)),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (i.isEven)
-                            Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                                child: Text(
-                                    widget.competition.kind == 'knockout'
-                                        ? 'Incontro ${i ~/ 2 + 1}'
-                                        : 'Posizioni ${i + 1}–${i + 2}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold))),
-                          if (i.isOdd)
-                            const Divider(height: 1, indent: 16, endIndent: 16),
-                          ListTile(
-                              leading: Text('${i + 1}'),
-                              title: Text(teamName(widget.league, ids[i])),
-                              trailing: const Icon(Icons.drag_handle)),
-                        ])))),
-      ]));
+        appBar: AppBar(
+            toolbarHeight: 64, title: const Text('Configura calendario')),
+        body: ListView(children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 6),
+            child: _CalendarConfigurationField(),
+          ),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: ids.length,
+            onReorderItem: (from, to) => setState(() {
+              ids.insert(to, ids.removeAt(from));
+            }),
+            proxyDecorator: (child, index, animation) => Material(
+              color: Colors.transparent,
+              child: FadeTransition(
+                opacity: Tween<double>(begin: .88, end: 1).animate(animation),
+                child: child,
+              ),
+            ),
+            itemBuilder: (context, index) => teamRow(index),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 6, 24, 24),
+            child: Column(children: [
+              AccountButton('Conferma calendario',
+                  onPressed: () => Navigator.pop(context, ids)),
+              const SizedBox(height: 12),
+              AccountButton('Annulla',
+                  outline: true, onPressed: () => Navigator.pop(context)),
+            ]),
+          ),
+        ]),
+      );
+}
+
+class _CalendarConfigurationField extends StatelessWidget {
+  const _CalendarConfigurationField();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          border: Border.all(color: HaykoColors.fieldLine),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Giornata',
+                style: TextStyle(
+                    color: HaykoColors.mutedText,
+                    fontSize: 12,
+                    height: 16 / 12,
+                    fontWeight: FontWeight.w600)),
+            SizedBox(height: 4),
+            Text('Giornata 1  ▾',
+                style: TextStyle(fontSize: 16, height: 24 / 16)),
+          ],
+        ),
+      );
 }

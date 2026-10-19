@@ -261,7 +261,9 @@ class _TeamEditorState extends State<TeamEditor> {
                   fontSize: 12,
                   height: 16 / 12,
                   fontWeight: FontWeight.w600)),
-          Expanded(
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 24,
             child: TextFormField(
                 initialValue: name,
                 maxLength: 60,

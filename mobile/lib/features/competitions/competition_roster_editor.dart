@@ -143,7 +143,9 @@ class _CompetitionRosterEditorState extends State<CompetitionRosterEditor> {
                         fontSize: 12,
                         height: 16 / 12,
                         fontWeight: FontWeight.w600)),
-                Expanded(
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 24,
                   child: TextFormField(
                     key: const ValueKey('competition-team-name'),
                     initialValue: name,
@@ -432,16 +434,14 @@ class _CompetitionPlayerEditorState extends State<_CompetitionPlayerEditor> {
                     fontSize: 12,
                     height: 16 / 12,
                     fontWeight: FontWeight.w600)),
-            Expanded(
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 24,
               child: controller == null
-                  ? Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(value ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              const TextStyle(fontSize: 16, height: 24 / 16)),
-                    )
+                  ? Text(value ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16, height: 24 / 16))
                   : TextField(
                       key: fieldKey,
                       controller: controller,
