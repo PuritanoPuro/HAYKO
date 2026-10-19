@@ -149,7 +149,11 @@ class _CompetitionTeamRow extends StatelessWidget {
                     width: 64,
                     child: Align(
                         alignment: Alignment.centerRight,
-                        child: Icon(Icons.chevron_right, size: 24))),
+                        child: Text('›',
+                            style: TextStyle(
+                                fontSize: 14,
+                                height: 20 / 14,
+                                fontWeight: FontWeight.w600)))),
               ]),
             ),
           ),

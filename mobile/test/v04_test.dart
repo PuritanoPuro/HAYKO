@@ -115,7 +115,13 @@ void main() {
     expect(find.text('Calendario'), findsOneWidget);
     await tester.tap(find.text('Squadre'));
     await tester.pumpAndSettle();
+    expect(find.text('Squadre partecipanti'), findsOneWidget);
     expect(find.text('+ Squadra'), findsOneWidget);
+    expect(
+        find.text('Aggiungi almeno due squadre per completare il campionato.'),
+        findsOneWidget);
+    expect(find.text('2 giocatori'), findsAtLeastNWidgets(3));
+    expect(find.text('›'), findsAtLeastNWidgets(3));
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('creazione lega chiede amatoriale o competizione',
