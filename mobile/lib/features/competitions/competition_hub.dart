@@ -72,14 +72,15 @@ class CompetitionTeams extends StatelessWidget {
               team: p,
               winner: winners.contains(p.id),
               onTap: () async {
-                await Navigator.push(
+                await Navigator.push<TeamPreset>(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => TeamDetails(
+                        builder: (_) => TeamEditor(
                             league: league,
+                            save: save,
                             team: p,
                             competition: c,
-                            save: save)));
+                            initialFormat: c.format)));
                 if (context.mounted) changed();
               });
         }),
@@ -159,59 +160,6 @@ class _CompetitionTeamRow extends StatelessWidget {
           ),
         ),
       );
-}
-
-class TeamDetails extends StatefulWidget {
-  final League league;
-  final TeamPreset team;
-  final Competition competition;
-  final Save save;
-  const TeamDetails(
-      {super.key,
-      required this.league,
-      required this.team,
-      required this.competition,
-      required this.save});
-  @override
-  State<TeamDetails> createState() => _TeamDetailsState();
-}
-
-class _TeamDetailsState extends State<TeamDetails> {
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.league.presets.firstWhere((p) => p.id == widget.team.id);
-    final players = p.players
-        .map((id) => widget.league.players.firstWhere((v) => v.id == id))
-        .toList()
-      ..sort(
-          (a, b) => (p.numbers[a.id] ?? 100).compareTo(p.numbers[b.id] ?? 100));
-    return Scaffold(
-        appBar: AppBar(title: Text(p.name)),
-        body: ListView(padding: const EdgeInsets.all(16), children: [
-          if (widget.league.manage)
-            FilledButton.icon(
-                onPressed: () async {
-                  await Navigator.push<TeamPreset>(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => TeamEditor(
-                              league: widget.league,
-                              save: widget.save,
-                              team: p,
-                              competition: widget.competition,
-                              initialFormat: widget.competition.format)));
-                  if (mounted) setState(() {});
-                },
-                icon: const Icon(Icons.edit),
-                label: const Text('Modifica squadra e numeri')),
-          ...players.map((player) => ListTile(
-              leading: CircleAvatar(
-                  backgroundColor: Color(p.color),
-                  child: Text('${p.numbers[player.id] ?? '—'}')),
-              title: Text(player.name),
-              subtitle: const Text('Numero di maglia'))),
-        ]));
-  }
 }
 
 class CompetitionStatistics extends StatefulWidget {
@@ -348,6 +296,7 @@ class CompetitionCalendar extends StatefulWidget {
 
 class _CompetitionCalendarState extends State<CompetitionCalendar> {
   bool busy = false;
+  int? selectedRound;
   League get l => widget.league;
   Future<void> order(Competition c, bool random) async {
     if (busy || calendarLocked(l, c)) return;
@@ -427,49 +376,65 @@ class _CompetitionCalendarState extends State<CompetitionCalendar> {
     }
     final fixtures =
         c.kind == 'knockout' ? tournamentTies(l, c) : leagueFixtures(l, c);
-    final rounds = fixtures.map((t) => t.round).toSet().toList()..sort();
+    final rounds = fixtures.map((tie) => tie.round).toSet().toList()..sort();
     final locked = calendarLocked(l, c);
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('Calendario', style: TextStyle(fontSize: 24)),
+    if (rounds.isNotEmpty && !rounds.contains(selectedRound)) {
+      selectedRound = rounds.first;
+    }
+    final visible = selectedRound == null
+        ? <TournamentTie>[]
+        : fixtures.where((tie) => tie.round == selectedRound).toList();
+    return ListView(padding: const EdgeInsets.all(24), children: [
+      const Text('Calendario',
+          style: TextStyle(
+              fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 12),
       Text(
-          '${c.name} · ${c.format}v${c.format} · ${c.kind == 'knockout' ? 'Eliminazione' : c.doubleLeg ? 'Andata e ritorno' : 'Solo andata'}'),
-      if (!c.ready)
-        const Text('Completa le squadre partecipanti nella sezione Squadre.'),
+          '${c.format}v${c.format} · ${c.kind == 'knockout' ? 'Eliminazione' : c.doubleLeg ? 'Andata e ritorno' : 'Solo andata'}',
+          style: const TextStyle(
+              color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
+      const SizedBox(height: 12),
       if (l.manage && c.ready) ...[
-        FilledButton.icon(
-            onPressed: busy || locked ? null : () => order(c, true),
-            icon: const Icon(Icons.shuffle),
-            label: const Text('Genera calendario casuale')),
-        OutlinedButton.icon(
-            onPressed: busy || locked ? null : () => order(c, false),
-            icon: const Icon(Icons.tune),
-            label: const Text('Configura calendario')),
-        Text(locked
-            ? 'Accoppiamenti confermati. Puoi modificare data, ora e luogo delle partite ancora programmate.'
-            : 'Puoi sorteggiare o impostare l’ordine delle squadre. Premi un incontro per impostare data, ora e luogo.'),
+        AccountButton('Genera calendario casuale',
+            onPressed: busy || locked ? null : () => order(c, true)),
+        const SizedBox(height: 12),
+        AccountButton('Configura calendario',
+            outline: true,
+            onPressed: busy || locked ? null : () => order(c, false)),
+        const SizedBox(height: 12),
       ],
-      for (final round in rounds) ...[
-        Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Text(
-                c.kind == 'knockout'
-                    ? tournamentRoundName(c, round)
-                    : 'Giornata $round',
-                style: const TextStyle(fontSize: 22))),
-        ...fixtures.where((t) => t.round == round).map((tie) => Card(
-                child: ListTile(
-              title: Text(tie.teams.map((id) => teamName(l, id)).join(' – ')),
-              subtitle: Text(tie.match == null
-                  ? 'Da programmare'
-                  : statusName(tie.match!.status)),
-              trailing: tie.match == null
-                  ? const Icon(Icons.add)
-                  : Text('${tie.match!.score(0)} – ${tie.match!.score(1)}'),
-              onTap: busy ? null : () => event(c, tie),
-            ))),
-        if (c.kind == 'league' && c.teamIds.length.isOdd)
-          Text(
-              'Riposa: ${c.teamIds.where((id) => !fixtures.where((t) => t.round == round).any((t) => t.teams.contains(id))).map((id) => teamName(l, id)).join(', ')}'),
+      if (!c.ready) ...[
+        const Text('Completa le squadre partecipanti nella sezione Squadre.',
+            style: TextStyle(
+                color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
+        const SizedBox(height: 12),
+      ],
+      if (rounds.isNotEmpty) ...[
+        _CalendarRoundField(
+          rounds: rounds,
+          selected: selectedRound!,
+          label: (round) => c.kind == 'knockout'
+              ? tournamentRoundName(c, round)
+              : 'Giornata $round',
+          changed: (round) => setState(() => selectedRound = round),
+        ),
+        const SizedBox(height: 12),
+      ],
+      for (var index = 0; index < visible.length; index++) ...[
+        _CompetitionCalendarMatch(
+            league: l,
+            tie: visible[index],
+            onTap: busy ? null : () => event(c, visible[index])),
+        if (index != visible.length - 1) const SizedBox(height: 12),
+      ],
+      if (c.kind == 'league' &&
+          selectedRound != null &&
+          c.teamIds.length.isOdd) ...[
+        const SizedBox(height: 12),
+        Text(
+            'Riposa: ${c.teamIds.where((id) => !visible.any((tie) => tie.teams.contains(id))).map((id) => teamName(l, id)).join(', ')}',
+            style: const TextStyle(
+                color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
       ],
       if (l.competitions.length > 1)
         TextButton(
@@ -483,6 +448,174 @@ class _CompetitionCalendarState extends State<CompetitionCalendar> {
             child: const Text('Apri le altre competizioni precedenti')),
     ]);
   }
+}
+
+class _CalendarRoundField extends StatelessWidget {
+  const _CalendarRoundField(
+      {required this.rounds,
+      required this.selected,
+      required this.label,
+      required this.changed});
+
+  final List<int> rounds;
+  final int selected;
+  final String Function(int) label;
+  final ValueChanged<int> changed;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          border: Border.all(color: HaykoColors.fieldLine),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Giornata',
+              style: TextStyle(
+                  color: HaykoColors.mutedText,
+                  fontSize: 12,
+                  height: 16 / 12,
+                  fontWeight: FontWeight.w600)),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                key: const ValueKey('competition-round-filter'),
+                isExpanded: true,
+                value: selected,
+                icon: const Icon(Icons.arrow_drop_down, size: 20),
+                style: const TextStyle(
+                    color: HaykoColors.chalk, fontSize: 16, height: 24 / 16),
+                dropdownColor: HaykoColors.fieldSurface,
+                items: [
+                  for (final round in rounds)
+                    DropdownMenuItem(value: round, child: Text(label(round)))
+                ],
+                onChanged: (round) {
+                  if (round != null) changed(round);
+                },
+              ),
+            ),
+          ),
+        ]),
+      );
+}
+
+class _CompetitionCalendarMatch extends StatelessWidget {
+  const _CompetitionCalendarMatch(
+      {required this.league, required this.tie, required this.onTap});
+
+  final League league;
+  final TournamentTie tie;
+  final VoidCallback? onTap;
+
+  TeamPreset team(int index) =>
+      league.presets.firstWhere((team) => team.id == tie.teams[index]);
+
+  String details() {
+    final match = tie.match;
+    if (match == null) return 'Da programmare';
+    if (match.scheduledAt == null) return statusName(match.status);
+    const months = [
+      'gennaio',
+      'febbraio',
+      'marzo',
+      'aprile',
+      'maggio',
+      'giugno',
+      'luglio',
+      'agosto',
+      'settembre',
+      'ottobre',
+      'novembre',
+      'dicembre'
+    ];
+    final date = DateTime.parse(match.scheduledAt!).toLocal();
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '${date.day} ${months[date.month - 1]} · $hour:$minute · ${statusName(match.status)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final first = team(0), second = team(1), match = tie.match;
+    return Material(
+      color: HaykoColors.fieldSurface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(children: [
+            Row(children: [
+              _CalendarTeam(team: first),
+              SizedBox(
+                  width: 42,
+                  child: Text('${match?.score(0) ?? 0}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 24,
+                          height: 30 / 24,
+                          fontWeight: FontWeight.w800))),
+              const SizedBox(
+                  width: 12,
+                  child: Text('–',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: HaykoColors.mutedText,
+                          fontSize: 20,
+                          height: 26 / 20,
+                          fontWeight: FontWeight.w700))),
+              SizedBox(
+                  width: 42,
+                  child: Text('${match?.score(1) ?? 0}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 24,
+                          height: 30 / 24,
+                          fontWeight: FontWeight.w800))),
+              _CalendarTeam(team: second),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              if (match == null) ...[
+                const Icon(Icons.schedule,
+                    color: HaykoColors.mutedText, size: 24),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                  child: Text(details(),
+                      style: const TextStyle(
+                          color: HaykoColors.mutedText,
+                          fontSize: 14,
+                          height: 20 / 14))),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _CalendarTeam extends StatelessWidget {
+  const _CalendarTeam({required this.team});
+  final TeamPreset team;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(children: [
+          Text(team.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Container(width: 56, height: 6, color: Color(team.color)),
+        ]),
+      );
 }
 
 class CalendarOrder extends StatefulWidget {

@@ -134,18 +134,15 @@ void main() {
     expect(find.text('Andata e ritorno'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
-  testWidgets('dettaglio squadra mostra nomi e numeri', (tester) async {
+  testWidgets('squadra partecipante apre direttamente la modifica',
+      (tester) async {
     final l = league();
     await tester.pumpWidget(MaterialApp(
-        home: TeamDetails(
-            league: l,
-            team: l.presets.first,
-            competition: l.competitions.single,
-            save: () async {})));
-    expect(find.text('Giocatore 0'), findsOneWidget);
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('Giocatore 1'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
+        home: CompetitionTeams(league: l, save: () async {}, changed: () {})));
+    await tester.tap(find.text(l.presets.first.name));
+    await tester.pumpAndSettle();
+    expect(find.text('Modifica squadra'), findsOneWidget);
+    expect(find.byKey(const ValueKey('competition-team-name')), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('creazione squadra iscrive partecipante con numeri automatici',
