@@ -28,35 +28,6 @@ class _GoalPageState extends State<GoalPage> {
         }
         stage = steps[steps.indexOf(stage) + 1];
       });
-  Widget option(String label, VoidCallback action,
-          {int? color, bool highlighted = false}) =>
-      Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: FilledButton.tonal(
-              style: highlighted
-                  ? FilledButton.styleFrom(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      foregroundColor:
-                          Theme.of(context).colorScheme.onPrimaryContainer,
-                      side: BorderSide(
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 2))
-                  : null,
-              onPressed: action,
-              child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(children: [
-                    if (highlighted) ...[
-                      const Icon(Icons.star),
-                      const SizedBox(width: 8)
-                    ],
-                    if (color != null) ...[
-                      CircleAvatar(radius: 8, backgroundColor: Color(color)),
-                      const SizedBox(width: 8)
-                    ],
-                    Expanded(child: Text(label))
-                  ]))));
   @override
   Widget build(BuildContext context) {
     final m = widget.match, l = widget.league;
@@ -88,28 +59,36 @@ class _GoalPageState extends State<GoalPage> {
             appBar: AppBar(
                 toolbarHeight: stage == 'team' ? 88 : null,
                 title: Text(titles[stage]!),
-                leading: stage == 'scorer' || stage == 'assist'
-                    ? IconButton(
-                        tooltip: 'Passaggio precedente',
-                        onPressed: () => setState(() =>
-                            stage = stage == 'assist' ? 'scorer' : 'team'),
-                        icon: const Icon(Icons.arrow_back))
-                    : null,
-                actions:
-                    stage == 'team' || stage == 'scorer' || stage == 'assist'
-                        ? null
-                        : [
-                            TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Annulla'))
-                          ]),
+                leading:
+                    stage == 'scorer' || stage == 'assist' || stage == 'keeper'
+                        ? IconButton(
+                            tooltip: 'Passaggio precedente',
+                            onPressed: () => setState(
+                                () => stage = steps[steps.indexOf(stage) - 1]),
+                            icon: const Icon(Icons.arrow_back))
+                        : null,
+                actions: stage == 'team' ||
+                        stage == 'scorer' ||
+                        stage == 'assist' ||
+                        stage == 'keeper'
+                    ? null
+                    : [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Annulla'))
+                      ]),
             body: ListView(
-                padding: EdgeInsets.all(
-                    stage == 'team' || stage == 'scorer' || stage == 'assist'
-                        ? 24
-                        : 20),
+                padding: EdgeInsets.all(stage == 'team' ||
+                        stage == 'scorer' ||
+                        stage == 'assist' ||
+                        stage == 'keeper'
+                    ? 24
+                    : 20),
                 children: [
-                  if (stage != 'team' && stage != 'scorer' && stage != 'assist')
+                  if (stage != 'team' &&
+                      stage != 'scorer' &&
+                      stage != 'assist' &&
+                      stage != 'keeper')
                     TextButton(
                         onPressed: () => setState(
                             () => stage = steps[steps.indexOf(stage) - 1]),
@@ -172,9 +151,6 @@ class _GoalPageState extends State<GoalPage> {
                           next();
                         }),
                   ],
-                  if (stage == 'keeper' && plan.mode == 'rotation')
-                    Text(
-                        'Turno previsto: ${l.playerName(suggested)}. Seleziona chi era realmente in porta.'),
                   if (stage == 'assist') ...[
                     for (final id in sorted.where((id) => id != scorer)) ...[
                       _GoalPlayerOption(
@@ -201,22 +177,33 @@ class _GoalPageState extends State<GoalPage> {
                         }),
                   ],
                   if (stage == 'keeper') ...[
-                    ...sorted.map((id) => option(
-                            '${competitive ? competitionPlayerLabel(l, m, team, id) : l.playerName(id)}${id == suggested ? ' · turno previsto' : ''}',
-                            () {
-                          keeper = id;
+                    for (final id in sorted) ...[
+                      _GoalPlayerOption(
+                          playerId: id,
+                          label: competitive
+                              ? competitionPlayerLabel(l, m, 1 - team, id)
+                              : l.playerName(id),
+                          subtitle: id == suggested
+                              ? 'Turno previsto'
+                              : m.names[1 - team],
+                          color: competitive
+                              ? m.teamColors[1 - team]
+                              : l.players
+                                  .firstWhere((player) => player.id == id)
+                                  .color,
+                          highlighted: id == suggested,
+                          onTap: () {
+                            keeper = id;
+                            next();
+                          }),
+                      const SizedBox(height: 12),
+                    ],
+                    _GoalCancelButton(
+                        label: 'Non indicato',
+                        onPressed: () {
+                          keeper = null;
                           next();
-                        },
-                            highlighted: id == suggested,
-                            color: competitive
-                                ? m.teamColors[team]
-                                : l.players
-                                    .firstWhere((p) => p.id == id)
-                                    .color)),
-                    option('Non indicato', () {
-                      keeper = null;
-                      next();
-                    }),
+                        }),
                   ],
                   if (stage == 'review') ...[
                     Text(
@@ -342,14 +329,18 @@ class _OwnGoalToggle extends StatelessWidget {
 
 class _GoalPlayerOption extends StatelessWidget {
   const _GoalPlayerOption(
-      {required this.label,
+      {this.playerId,
+      required this.label,
       required this.subtitle,
       required this.color,
+      this.highlighted = false,
       required this.onTap});
 
+  final String? playerId;
   final String label;
   final String subtitle;
   final int color;
+  final bool highlighted;
   final VoidCallback onTap;
 
   String get initials {
@@ -365,10 +356,16 @@ class _GoalPlayerOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: HaykoColors.fieldSurface,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
+        color: highlighted ? HaykoColors.fieldLine : HaykoColors.fieldSurface,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
+          side: highlighted
+              ? const BorderSide(color: HaykoColors.chalk, width: 2)
+              : BorderSide.none,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: playerId == null ? null : ValueKey('goal-player-$playerId'),
           onTap: onTap,
           child: SizedBox(
             height: 72,
@@ -407,6 +404,10 @@ class _GoalPlayerOption extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (highlighted) ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.star, size: 24, color: HaykoColors.chalk),
+                ],
               ]),
             ),
           ),

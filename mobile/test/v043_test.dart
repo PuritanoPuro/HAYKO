@@ -86,8 +86,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Nessun assist'));
     await tester.pumpAndSettle();
-    expect(tester.getTopLeft(find.text('Zeta · turno previsto')).dy,
-        lessThan(tester.getTopLeft(find.text('Alfa')).dy));
+    expect(
+        tester.getTopLeft(find.byKey(const ValueKey('goal-player-d'))).dy,
+        lessThan(
+            tester.getTopLeft(find.byKey(const ValueKey('goal-player-c'))).dy));
+    expect(find.text('Turno previsto'), findsOneWidget);
     expect(find.byIcon(Icons.star), findsOneWidget);
   });
   testWidgets('rimozione preset conserva partite e identita storiche',
