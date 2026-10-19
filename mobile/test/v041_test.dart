@@ -159,9 +159,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: GoalPage(league: l, match: m)));
     await tester.tap(find.text('Rossi'));
     await tester.pumpAndSettle();
-    expect(find.text('#3 · c'), findsOneWidget);
-    await tester.tap(find.text('#3 · c'));
+    expect(find.text('c'), findsOneWidget);
+    expect(find.text('#3 · c'), findsNothing);
+    expect(find.byKey(const ValueKey('competition-jersey-c')), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    await tester.tap(find.text('c'));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('competition-jersey-a')), findsOneWidget);
+    expect(find.byKey(const ValueKey('competition-jersey-b')), findsOneWidget);
     await tester.tap(find.text('Nessun assist'));
     await tester.pumpAndSettle();
     expect(find.text('Conferma gol'), findsNWidgets(2));

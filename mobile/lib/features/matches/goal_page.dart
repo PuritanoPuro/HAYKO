@@ -19,6 +19,15 @@ class _GoalPageState extends State<GoalPage> {
   DateTime? occurred;
   bool get competitive =>
       widget.league.type == 'competition' || widget.match.competitionRules;
+
+  int? competitionNumber(int side, String playerId) {
+    final presetId = widget.match.presetIds[side];
+    final teams = widget.league.presets.where((team) => team.id == presetId);
+    return teams.isEmpty ? null : teams.first.numbers[playerId];
+  }
+
+  String competitionName(String playerId) =>
+      '${widget.league.playerName(playerId)}${widget.league.myPlayer == playerId ? ' · Tu' : ''}';
   List<String> get steps => competitive
       ? ['team', 'scorer', if (!own) 'assist', 'review']
       : goalSteps(widget.match, team, own);
@@ -132,9 +141,9 @@ class _GoalPageState extends State<GoalPage> {
                     const SizedBox(height: 12),
                     for (final id in sorted) ...[
                       _GoalPlayerOption(
+                          playerId: id,
                           label: competitive
-                              ? competitionPlayerLabel(
-                                  l, m, own ? 1 - team : team, id)
+                              ? competitionName(id)
                               : l.playerName(id),
                           subtitle: m.names[own ? 1 - team : team],
                           color: competitive
@@ -142,6 +151,10 @@ class _GoalPageState extends State<GoalPage> {
                               : l.players
                                   .firstWhere((player) => player.id == id)
                                   .color,
+                          jerseyNumber: competitive
+                              ? competitionNumber(own ? 1 - team : team, id)
+                              : null,
+                          competitionStyle: competitive,
                           onTap: () {
                             scorer = id;
                             assist = null;
@@ -159,8 +172,9 @@ class _GoalPageState extends State<GoalPage> {
                   if (stage == 'assist') ...[
                     for (final id in sorted.where((id) => id != scorer)) ...[
                       _GoalPlayerOption(
+                          playerId: id,
                           label: competitive
-                              ? competitionPlayerLabel(l, m, team, id)
+                              ? competitionName(id)
                               : l.playerName(id),
                           subtitle: m.names[team],
                           color: competitive
@@ -168,6 +182,9 @@ class _GoalPageState extends State<GoalPage> {
                               : l.players
                                   .firstWhere((player) => player.id == id)
                                   .color,
+                          jerseyNumber:
+                              competitive ? competitionNumber(team, id) : null,
+                          competitionStyle: competitive,
                           onTap: () {
                             assist = id;
                             next();
@@ -389,6 +406,8 @@ class _GoalPlayerOption extends StatelessWidget {
       required this.label,
       required this.subtitle,
       required this.color,
+      this.jerseyNumber,
+      this.competitionStyle = false,
       this.highlighted = false,
       required this.onTap});
 
@@ -396,6 +415,8 @@ class _GoalPlayerOption extends StatelessWidget {
   final String label;
   final String subtitle;
   final int color;
+  final int? jerseyNumber;
+  final bool competitionStyle;
   final bool highlighted;
   final VoidCallback onTap;
 
@@ -424,41 +445,66 @@ class _GoalPlayerOption extends StatelessWidget {
           key: playerId == null ? null : ValueKey('goal-player-$playerId'),
           onTap: onTap,
           child: SizedBox(
-            height: 72,
+            height: competitionStyle ? 76 : 72,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Color(color),
-                  foregroundColor: contrastColor(color),
-                  child: Text(initials,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          height: 16 / 12,
-                          fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              const TextStyle(fontSize: 16, height: 24 / 16)),
-                      Text(subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: HaykoColors.mutedText,
-                              fontSize: 12,
-                              height: 16 / 12,
-                              fontWeight: FontWeight.w600)),
-                    ],
+                if (competitionStyle)
+                  Container(
+                    key: playerId == null
+                        ? null
+                        : ValueKey('competition-jersey-$playerId'),
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Color(color),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text('${jerseyNumber ?? '—'}',
+                        style: TextStyle(
+                            color: contrastColor(color),
+                            fontSize: 24,
+                            height: 28 / 24,
+                            fontWeight: FontWeight.w700)),
+                  )
+                else
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Color(color),
+                    foregroundColor: contrastColor(color),
+                    child: Text(initials,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w600)),
                   ),
+                SizedBox(width: competitionStyle ? 12 : 8),
+                Expanded(
+                  child: competitionStyle
+                      ? Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 16, height: 24 / 16))
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 16, height: 24 / 16)),
+                            Text(subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: HaykoColors.mutedText,
+                                    fontSize: 12,
+                                    height: 16 / 12,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
                 ),
                 if (highlighted) ...[
                   const SizedBox(width: 8),
