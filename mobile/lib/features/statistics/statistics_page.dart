@@ -37,7 +37,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
             style: TextStyle(
                 fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        _StatisticsTable(players: players, totals: totals),
+        _StatisticsTable(
+          players: players,
+          totals: totals,
+          currentPlayerId: league.myPlayer,
+        ),
         const SizedBox(height: 8),
         const Text(
           'PG partite · V vittorie · S sconfitte\nGF gol · A assist · GS gol subiti',
@@ -62,7 +66,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 child: _RankingCard(
                   ranking: entry.value,
                   metric: metric,
-                  highlighted: entry.key == 0,
+                  highlighted: entry.value.playerIds.contains(league.myPlayer),
                 ),
               )),
       ],
@@ -123,9 +127,14 @@ class _FormatField extends StatelessWidget {
 }
 
 class _StatisticsTable extends StatelessWidget {
-  const _StatisticsTable({required this.players, required this.totals});
+  const _StatisticsTable({
+    required this.players,
+    required this.totals,
+    required this.currentPlayerId,
+  });
   final List<Player> players;
   final Map<String, PlayerStats> totals;
+  final String? currentPlayerId;
   static const widths = <double>[114, 36, 34, 34, 40, 36, 40];
 
   @override
@@ -144,15 +153,19 @@ class _StatisticsTable extends StatelessWidget {
                     header: true,
                     values: ['Giocatore', 'PG', 'V', 'S', 'GF', 'A', 'GS']),
                 for (final player in players)
-                  _StatisticsRow(values: [
-                    player.name,
-                    '${totals[player.id]!.played}',
-                    '${totals[player.id]!.wins}',
-                    '${totals[player.id]!.losses}',
-                    '${totals[player.id]!.goals}',
-                    '${totals[player.id]!.assists}',
-                    '${totals[player.id]!.conceded}',
-                  ]),
+                  _StatisticsRow(
+                    playerId: player.id,
+                    highlighted: player.id == currentPlayerId,
+                    values: [
+                      player.name,
+                      '${totals[player.id]!.played}',
+                      '${totals[player.id]!.wins}',
+                      '${totals[player.id]!.losses}',
+                      '${totals[player.id]!.goals}',
+                      '${totals[player.id]!.assists}',
+                      '${totals[player.id]!.conceded}',
+                    ],
+                  ),
               ],
             ),
           ),
@@ -161,14 +174,24 @@ class _StatisticsTable extends StatelessWidget {
 }
 
 class _StatisticsRow extends StatelessWidget {
-  const _StatisticsRow({required this.values, this.header = false});
+  const _StatisticsRow({
+    required this.values,
+    this.header = false,
+    this.highlighted = false,
+    this.playerId,
+  });
   final List<String> values;
   final bool header;
+  final bool highlighted;
+  final String? playerId;
 
   @override
   Widget build(BuildContext context) => Container(
+        key: playerId == null ? null : ValueKey('statistics-row-$playerId'),
         height: 48,
-        color: header ? HaykoColors.fieldLine : HaykoColors.fieldSurface,
+        color: header || highlighted
+            ? HaykoColors.fieldLine
+            : HaykoColors.fieldSurface,
         child: Row(
           children: [
             for (var i = 0; i < values.length; i++)
@@ -270,6 +293,8 @@ class _RankingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
+        key: ValueKey(
+            'ranking-${(ranking.playerIds.toList()..sort()).join('-')}'),
         constraints: const BoxConstraints(minHeight: 80),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(

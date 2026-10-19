@@ -267,7 +267,11 @@ League competitionPlayers(League l, Competition c) {
     ...matches.expand((m) => m.teams.expand((t) => t)),
   };
   return League(l.id, l.name,
-      l.players.where((p) => ids.contains(p.id)).toList(), matches);
+      l.players.where((p) => ids.contains(p.id)).toList(), matches)
+    ..currentUser = l.currentUser
+    ..myPlayer = l.myPlayer
+    ..myRole = l.myRole
+    ..shared = l.shared;
 }
 
 String tournamentRoundName(Competition c, int round) {

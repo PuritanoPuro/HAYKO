@@ -413,7 +413,10 @@ class PlayerStats {
 class Ranking {
   final String label;
   final int total, played;
-  Ranking(this.label, this.total, this.played);
+  final Set<String> playerIds;
+  Ranking(this.label, this.total, this.played,
+      {Iterable<String> playerIds = const []})
+      : playerIds = Set.unmodifiable(playerIds);
   double get average => played == 0 ? 0 : total / played;
 }
 
@@ -435,8 +438,10 @@ List<Ranking> ranking(League l, int? format, String metric) {
       }
     }
     for (final e in appearances.entries) {
-      rows.add(Ranking(e.key.split('|').map(l.playerName).join(' + '),
-          totals[e.key] ?? 0, e.value));
+      final ids = e.key.split('|');
+      rows.add(Ranking(
+          ids.map(l.playerName).join(' + '), totals[e.key] ?? 0, e.value,
+          playerIds: ids));
     }
   } else {
     final s = stats(l, format);
@@ -450,7 +455,8 @@ List<Ranking> ranking(League l, int? format, String metric) {
                 : metric == 'assists'
                     ? x.assists
                     : x.goals + x.assists,
-            x.played));
+            x.played,
+            playerIds: [p.id]));
       }
     }
   }

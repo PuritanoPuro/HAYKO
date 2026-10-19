@@ -7,6 +7,8 @@ import 'package:calcetto_mvp/shared/presentation.dart';
 import 'package:calcetto_mvp/features/matches/goal_page.dart';
 import 'package:calcetto_mvp/features/teams/team_presets_page.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/features/statistics/statistics_page.dart';
 
 void main() {
   test('presenze poi vittorie poi gol prima del nome', () {
@@ -92,6 +94,56 @@ void main() {
             tester.getTopLeft(find.byKey(const ValueKey('goal-player-c'))).dy));
     expect(find.text('Turno previsto'), findsOneWidget);
     expect(find.byIcon(Icons.star), findsOneWidget);
+  });
+  testWidgets('statistiche evidenziano il giocatore collegato all account',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final match = Match(id: 'm', format: 2, names: [
+      'A',
+      'B'
+    ], teams: [
+      ['a', 'b'],
+      ['c', 'd']
+    ])
+      ..start()
+      ..add(Goal(
+          id: 'g',
+          team: 0,
+          scorer: 'a',
+          time: DateTime.now().toUtc().toIso8601String()))
+      ..finish();
+    final league = League('l', 'L', [
+      for (final id in ['a', 'b', 'c', 'd']) Player(id, id),
+    ], [
+      match
+    ])
+      ..myPlayer = 'b';
+
+    await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: StatisticsPage(league: league))));
+
+    final currentRow = tester
+        .widget<Container>(find.byKey(const ValueKey('statistics-row-b')));
+    final firstRow = tester
+        .widget<Container>(find.byKey(const ValueKey('statistics-row-a')));
+    expect(currentRow.color, HaykoColors.fieldLine);
+    expect(firstRow.color, HaykoColors.fieldSurface);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('ranking-b')));
+    await tester.pumpAndSettle();
+    final currentRanking =
+        tester.widget<Container>(find.byKey(const ValueKey('ranking-b')));
+    final firstRanking =
+        tester.widget<Container>(find.byKey(const ValueKey('ranking-a')));
+    expect(
+        ((currentRanking.decoration as BoxDecoration).border as Border)
+            .top
+            .color,
+        HaykoColors.chalk);
+    expect(
+        ((firstRanking.decoration as BoxDecoration).border as Border).top.color,
+        HaykoColors.fieldSurface);
   });
   testWidgets('rimozione preset conserva partite e identita storiche',
       (tester) async {

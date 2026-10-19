@@ -47,7 +47,7 @@ class _GoalPageState extends State<GoalPage> {
       sorted.insert(0, suggested);
     }
     const titles = {
-      'team': 'Squadra che guadagna il punto',
+      'team': 'Assegna gol',
       'scorer': 'Marcatore',
       'assist': 'Assist',
       'keeper': 'Chi era in porta?',
