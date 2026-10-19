@@ -191,54 +191,14 @@ class _CompetitionStatisticsState extends State<CompetitionStatistics> {
             .where((tie) => selectedPhase == 0 || tie.round == selectedPhase)
             .toList()
         : <TournamentTie>[];
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(24), children: [
       Text(c.kind == 'league' ? 'Classifica squadre' : 'Tabellone',
-          style: const TextStyle(fontSize: 24)),
-      if (c.kind == 'league')
-        SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-                columnSpacing: 16,
-                columns: [
-                  for (final name in [
-                    'Squadra',
-                    'PG',
-                    'V',
-                    'P',
-                    'S',
-                    'GF',
-                    'GS',
-                    'DR',
-                    'Punti'
-                  ])
-                    DataColumn(label: Text(name))
-                ],
-                rows: rows
-                    .map((r) => DataRow(cells: [
-                          DataCell(Row(children: [
-                            CircleAvatar(
-                                radius: 7,
-                                backgroundColor: Color(r.team.color)),
-                            const SizedBox(width: 8),
-                            Text(r.team.name),
-                            if (winners.contains(r.team.id))
-                              const Padding(
-                                  padding: EdgeInsets.only(left: 8),
-                                  child: WinnerBadge())
-                          ])),
-                          for (final n in [
-                            r.played,
-                            r.wins,
-                            r.draws,
-                            r.losses,
-                            r.goals,
-                            r.conceded,
-                            r.difference,
-                            r.points
-                          ])
-                            DataCell(Text('$n'))
-                        ]))
-                    .toList())),
+          style: const TextStyle(
+              fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
+      if (c.kind == 'league') ...[
+        const SizedBox(height: 12),
+        _CompetitionStandingsTable(rows: rows, winners: winners),
+      ],
       if (c.kind == 'knockout') ...[
         if (!c.ready)
           const Text(
@@ -648,7 +608,9 @@ class CompetitionScorers extends StatelessWidget {
       for (final assists in [false, true]) ...[
         const SizedBox(height: 24),
         Text(assists ? 'Assistmen' : 'Marcatori',
-            style: const TextStyle(fontSize: 24)),
+            style: const TextStyle(
+                fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
         Builder(builder: (context) {
           int total(Player p) =>
               assists ? data[p.id]!.assists : data[p.id]!.goals;
@@ -664,31 +626,238 @@ class CompetitionScorers extends StatelessWidget {
                 ? 'Nessun assist registrato in partite terminate.'
                 : 'Nessun gol registrato in partite terminate.');
           }
-          return Column(
-              children: players.asMap().entries.map((entry) {
-            final p = entry.value;
-            final teams = league.presets.where((t) =>
-                competition.teamIds.contains(t.id) && t.players.contains(p.id));
-            final team = teams.isEmpty ? null : teams.first;
-            return ListTile(
-                leading: Text('${entry.key + 1}'),
-                title: Row(children: [
-                  if (team != null) ...[
-                    CircleAvatar(radius: 7, backgroundColor: Color(team.color)),
-                    const SizedBox(width: 8)
-                  ],
-                  Expanded(child: Text(p.name))
-                ]),
-                subtitle: team == null
-                    ? null
-                    : Text(
-                        '${team.name}${team.numbers[p.id] == null ? '' : ' · #${team.numbers[p.id]}'}'),
-                trailing: Text('${total(p)}'));
-          }).toList());
+          return Column(children: [
+            for (final player in players.take(3)) ...[
+              _CompetitionPlayerStatRow(
+                  player: player,
+                  team: _competitionTeamFor(league, competition, player.id),
+                  value: total(player),
+                  current: league.myPlayer == player.id),
+              const SizedBox(height: 12),
+            ],
+            _CompetitionRankingButton(
+                label: assists
+                    ? 'Vedi tutti gli assistmen'
+                    : 'Vedi tutti i marcatori',
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => _CompetitionRankingPage(
+                            league: league,
+                            competition: competition,
+                            players: players,
+                            values: {for (final p in players) p.id: total(p)},
+                            assists: assists)))),
+          ]);
         }),
       ],
     ]);
   }
+}
+
+TeamPreset? _competitionTeamFor(
+    League league, Competition competition, String playerId) {
+  final teams = league.presets.where((team) =>
+      competition.teamIds.contains(team.id) && team.players.contains(playerId));
+  return teams.isEmpty ? null : teams.first;
+}
+
+class _CompetitionPlayerStatRow extends StatelessWidget {
+  const _CompetitionPlayerStatRow(
+      {required this.player,
+      required this.team,
+      required this.value,
+      required this.current});
+
+  final Player player;
+  final TeamPreset? team;
+  final int value;
+  final bool current;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: ValueKey('competition-stat-${player.id}'),
+        height: 80,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: current ? Border.all(color: HaykoColors.chalk) : null,
+        ),
+        child: Row(children: [
+          Expanded(
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('${player.name}${current ? ' · Tu' : ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, height: 24 / 16)),
+                if (team != null)
+                  Text(
+                      '${team!.name}${team!.numbers[player.id] == null ? '' : ' · #${team!.numbers[player.id]}'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: HaykoColors.mutedText,
+                          fontSize: 12,
+                          height: 16 / 12,
+                          fontWeight: FontWeight.w600)),
+              ])),
+          const SizedBox(width: 8),
+          SizedBox(
+              width: 64,
+              child: Text('$value',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      height: 20 / 14,
+                      fontWeight: FontWeight.w700))),
+        ]),
+      );
+}
+
+class _CompetitionRankingButton extends StatelessWidget {
+  const _CompetitionRankingButton(
+      {required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              backgroundColor: HaykoColors.fieldSurface,
+              foregroundColor: HaykoColors.chalk,
+              side: const BorderSide(color: HaykoColors.fieldLine),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              textStyle: const TextStyle(
+                  fontSize: 16, height: 24 / 16, fontWeight: FontWeight.w700),
+            ),
+            onPressed: onPressed,
+            child: Text(label)),
+      );
+}
+
+class _CompetitionRankingPage extends StatelessWidget {
+  const _CompetitionRankingPage(
+      {required this.league,
+      required this.competition,
+      required this.players,
+      required this.values,
+      required this.assists});
+
+  final League league;
+  final Competition competition;
+  final List<Player> players;
+  final Map<String, int> values;
+  final bool assists;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = assists ? 'Assistmen' : 'Marcatori';
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView(padding: const EdgeInsets.all(24), children: [
+        Text(title,
+            style: const TextStyle(
+                fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        for (final player in players) ...[
+          _CompetitionPlayerStatRow(
+              player: player,
+              team: _competitionTeamFor(league, competition, player.id),
+              value: values[player.id]!,
+              current: league.myPlayer == player.id),
+          const SizedBox(height: 12),
+        ],
+      ]),
+    );
+  }
+}
+
+class _CompetitionStandingsTable extends StatelessWidget {
+  const _CompetitionStandingsTable({required this.rows, required this.winners});
+
+  final List<TeamStats> rows;
+  final List<String> winners;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: HaykoColors.fieldLine),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor:
+                const WidgetStatePropertyAll(HaykoColors.fieldLine),
+            headingRowHeight: 48,
+            dataRowMinHeight: 48,
+            dataRowMaxHeight: 48,
+            horizontalMargin: 4,
+            columnSpacing: 12,
+            dividerThickness: 0,
+            headingTextStyle: const TextStyle(
+                color: HaykoColors.chalk,
+                fontSize: 12,
+                height: 16 / 12,
+                fontWeight: FontWeight.w600),
+            dataTextStyle: const TextStyle(
+                color: HaykoColors.chalk, fontSize: 14, height: 20 / 14),
+            columns: [
+              for (final name in const [
+                'Squadra',
+                'PG',
+                'V',
+                'P',
+                'S',
+                'GF',
+                'GS',
+                'DR',
+                'Punti'
+              ])
+                DataColumn(label: Text(name))
+            ],
+            rows: [
+              for (final row in rows)
+                DataRow(cells: [
+                  DataCell(SizedBox(
+                      width: 118,
+                      child: Row(children: [
+                        Container(
+                            width: 4, height: 20, color: Color(row.team.color)),
+                        const SizedBox(width: 4),
+                        Expanded(
+                            child: Text(row.team.name,
+                                maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        if (winners.contains(row.team.id))
+                          const Icon(Icons.emoji_events,
+                              size: 16, color: Color(0xffe3f24a)),
+                      ]))),
+                  for (final value in [
+                    row.played,
+                    row.wins,
+                    row.draws,
+                    row.losses,
+                    row.goals,
+                    row.conceded,
+                    row.difference,
+                    row.points
+                  ])
+                    DataCell(Center(child: Text('$value'))),
+                ]),
+            ],
+          ),
+        ),
+      );
 }
 
 class _CalendarOrderState extends State<CalendarOrder> {

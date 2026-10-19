@@ -134,4 +134,47 @@ void main() {
         findsOneWidget);
     expect(find.text('Squadra 0 – Squadra 1'), findsNothing);
   });
+  testWidgets('statistiche competizione limitano anteprima e aprono classifica',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final l = sample(kind: 'league')..myPlayer = 'p1';
+    final m = Match(
+        id: 'm',
+        format: 2,
+        names: const ['Squadra 0', 'Squadra 1'],
+        teams: const [
+          ['p0', 'p1'],
+          ['p2', 'p3']
+        ],
+        presetIds: const ['t0', 't1'],
+        competitionId: 'c',
+        competitionRules: true)
+      ..start();
+    for (final goal in const [
+      ['p0', 'p1', '0'],
+      ['p1', 'p0', '0'],
+      ['p2', 'p3', '1'],
+      ['p3', 'p2', '1'],
+    ]) {
+      m.add(Goal(
+          id: goal[0],
+          team: int.parse(goal[2]),
+          scorer: goal[0],
+          assist: goal[1],
+          time: DateTime.now().toUtc().toIso8601String()));
+    }
+    m.finish();
+    l.matches.add(m);
+
+    await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: CompetitionStatistics(league: l))));
+    expect(find.text('Classifica squadre'), findsOneWidget);
+    expect(find.text('Vedi tutti i marcatori'), findsOneWidget);
+    expect(find.text('Giocatore 1 · Tu'), findsNWidgets(2));
+    await tester.tap(find.text('Vedi tutti i marcatori'));
+    await tester.pumpAndSettle();
+    expect(find.text('Giocatore 3'), findsOneWidget);
+    expect(find.text('Giocatore 1 · Tu'), findsOneWidget);
+  });
 }
