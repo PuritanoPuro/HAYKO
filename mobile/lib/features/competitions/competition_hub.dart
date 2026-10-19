@@ -185,12 +185,17 @@ class _CompetitionStatisticsState extends State<CompetitionStatistics> {
       phaseCount++;
       size ~/= 2;
     }
-    final selectedPhase = phase <= phaseCount ? phase : 0;
-    final ties = c.kind == 'knockout'
-        ? tournamentTies(league, c)
-            .where((tie) => selectedPhase == 0 || tie.round == selectedPhase)
-            .toList()
-        : <TournamentTie>[];
+    final allTies =
+        c.kind == 'knockout' ? tournamentTies(league, c) : <TournamentTie>[];
+    if (c.kind == 'knockout' && phase == 0 && phaseCount > 0) {
+      final playedRounds = allTies
+          .where((tie) => tie.match != null)
+          .map((tie) => tie.round)
+          .toList();
+      phase = playedRounds.isEmpty ? 1 : playedRounds.reduce(max);
+    }
+    final selectedPhase = phase.clamp(1, max(1, phaseCount)).toInt();
+    final ties = allTies.where((tie) => tie.round == selectedPhase).toList();
     return ListView(padding: const EdgeInsets.all(24), children: [
       Text(c.kind == 'league' ? 'Classifica squadre' : 'Tabellone',
           style: const TextStyle(
@@ -203,42 +208,199 @@ class _CompetitionStatisticsState extends State<CompetitionStatistics> {
         if (!c.ready)
           const Text(
               'Completa le squadre partecipanti per visualizzare il tabellone.'),
-        if (c.ready)
-          DropdownButton<int>(
-              key: const ValueKey('tournament-phase-filter'),
-              value: selectedPhase,
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem(value: 0, child: Text('Tutte le fasi')),
-                for (var round = 1; round <= phaseCount; round++)
-                  DropdownMenuItem(
-                      value: round, child: Text(tournamentRoundName(c, round))),
-              ],
-              onChanged: (v) => setState(() => phase = v!)),
-        if (c.ready && selectedPhase != 0 && ties.isEmpty)
+        if (c.ready) ...[
+          const SizedBox(height: 12),
+          _TournamentPhaseField(
+              competition: c,
+              phaseCount: phaseCount,
+              selected: selectedPhase,
+              changed: (value) => setState(() => phase = value)),
+          const SizedBox(height: 12),
+        ],
+        if (c.ready && ties.isEmpty)
           const Text(
               'Le squadre di questa fase saranno definite al termine della fase precedente.'),
-        ...ties.map((tie) => ListTile(
-            title:
-                Text(tie.teams.map((id) => teamName(league, id)).join(' – ')),
-            subtitle: Text(
-                '${tournamentRoundName(c, tie.round)}${tie.winner == null ? '' : ' · Passa ${teamName(league, tie.winner!)}'}'),
-            trailing: tie.match == null
-                ? null
-                : Text('${tie.match!.score(0)} – ${tie.match!.score(1)}'))),
-        if (c.ready)
+        for (var index = 0; index < ties.length; index++) ...[
+          _TournamentResultCard(
+              league: league, competition: c, tie: ties[index]),
+          if (index != ties.length - 1) const SizedBox(height: 12),
+        ],
+        if (c.ready && ties.any((tie) => tie.teams.contains(''))) ...[
+          const SizedBox(height: 12),
           const Text(
-              'I turni successivi si completano con le squadre qualificate.'),
+              'Le squadre saranno definite al termine della fase precedente.',
+              style: TextStyle(
+                  color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
+        ],
       ],
-      if (winners.isNotEmpty)
-        ...winners.map((id) => ListTile(
-            leading: const Icon(Icons.emoji_events),
-            title: Text(teamName(league, id)),
-            subtitle: Text(
-                winners.length > 1 ? 'Primo posto condiviso' : 'Vincitrice'))),
+      if (c.kind == 'knockout' &&
+          selectedPhase == phaseCount &&
+          winners.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        for (final id in winners)
+          Text('${teamName(league, id)} · Vincitrice',
+              key: ValueKey('competition-winner-$id'),
+              style: const TextStyle(
+                  fontSize: 20, height: 26 / 20, fontWeight: FontWeight.w700)),
+      ],
       CompetitionScorers(league: league, competition: c),
     ]);
   }
+}
+
+class _TournamentPhaseField extends StatelessWidget {
+  const _TournamentPhaseField(
+      {required this.competition,
+      required this.phaseCount,
+      required this.selected,
+      required this.changed});
+
+  final Competition competition;
+  final int phaseCount;
+  final int selected;
+  final ValueChanged<int> changed;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          border: Border.all(color: HaykoColors.fieldLine),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Fase del torneo',
+              style: TextStyle(
+                  color: HaykoColors.mutedText,
+                  fontSize: 12,
+                  height: 16 / 12,
+                  fontWeight: FontWeight.w600)),
+          Expanded(
+              child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              key: const ValueKey('tournament-phase-filter'),
+              value: selected,
+              isExpanded: true,
+              icon: const Icon(Icons.arrow_drop_down, size: 20),
+              dropdownColor: HaykoColors.fieldSurface,
+              style: const TextStyle(
+                  color: HaykoColors.chalk, fontSize: 16, height: 24 / 16),
+              items: [
+                for (var round = 1; round <= phaseCount; round++)
+                  DropdownMenuItem(
+                      value: round,
+                      child: Text(tournamentRoundName(competition, round)))
+              ],
+              onChanged: (value) {
+                if (value != null) changed(value);
+              },
+            ),
+          )),
+        ]),
+      );
+}
+
+class _TournamentResultCard extends StatelessWidget {
+  const _TournamentResultCard(
+      {required this.league, required this.competition, required this.tie});
+
+  final League league;
+  final Competition competition;
+  final TournamentTie tie;
+
+  TeamPreset? team(int side) {
+    final id = tie.teams[side];
+    final teams = league.presets.where((team) => team.id == id);
+    return teams.isEmpty ? null : teams.first;
+  }
+
+  String get phaseLabel {
+    final value = tournamentRoundName(competition, tie.round);
+    return switch (value) {
+      'Semifinali' => 'Semifinale',
+      'Quarti di finale' => 'Quarto di finale',
+      'Ottavi di finale' => 'Ottavo di finale',
+      'Sedicesimi di finale' => 'Sedicesimo di finale',
+      _ => value,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final first = team(0), second = team(1), match = tie.match;
+    final details = tie.winner == null
+        ? phaseLabel
+        : '$phaseLabel · Passa ${teamName(league, tie.winner!)}';
+    return Container(
+      key: ValueKey('tournament-tie-${tie.round}-${tie.teams.join('-')}'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(12)),
+      child: Column(children: [
+        Row(children: [
+          _TournamentCardTeam(team: first),
+          SizedBox(
+              width: 42,
+              child: Text('${match?.score(0) ?? 0}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 24,
+                      height: 30 / 24,
+                      fontWeight: FontWeight.w800))),
+          const SizedBox(
+              width: 12,
+              child: Text('–',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: HaykoColors.mutedText,
+                      fontSize: 20,
+                      height: 26 / 20,
+                      fontWeight: FontWeight.w700))),
+          SizedBox(
+              width: 42,
+              child: Text('${match?.score(1) ?? 0}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 24,
+                      height: 30 / 24,
+                      fontWeight: FontWeight.w800))),
+          _TournamentCardTeam(team: second),
+        ]),
+        const SizedBox(height: 8),
+        Align(
+            alignment: Alignment.centerLeft,
+            child: Text(details,
+                style: const TextStyle(
+                    color: HaykoColors.mutedText,
+                    fontSize: 14,
+                    height: 20 / 14))),
+      ]),
+    );
+  }
+}
+
+class _TournamentCardTeam extends StatelessWidget {
+  const _TournamentCardTeam({required this.team});
+  final TeamPreset? team;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(children: [
+          Text(team?.name ?? 'Da definire',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Container(
+              width: 56,
+              height: 6,
+              color: team == null ? HaykoColors.fieldLine : Color(team!.color)),
+        ]),
+      );
 }
 
 class CompetitionCalendar extends StatefulWidget {

@@ -123,7 +123,7 @@ void main() {
     final filter = find.byKey(const ValueKey('tournament-phase-filter'));
     expect(
         tester.widget<DropdownButton<int>>(filter).items!.map((i) => i.value),
-        [0, 1, 2]);
+        [1, 2]);
     await tester.tap(filter);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Finale').last);
@@ -176,5 +176,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Giocatore 3'), findsOneWidget);
     expect(find.text('Giocatore 1 · Tu'), findsOneWidget);
+  });
+  testWidgets('finale conclusa mostra risultato e vincitrice', (tester) async {
+    final l = sample();
+
+    Match finished(String id, int round, List<String> teams, String winner) {
+      final indexes = teams
+          .map((team) => l.competitions.single.teamIds.indexOf(team))
+          .toList();
+      final match = Match(
+          id: id,
+          format: 2,
+          names: teams.map((team) => 'Squadra ${team.substring(1)}').toList(),
+          teams: indexes
+              .map((index) => ['p${index * 2}', 'p${index * 2 + 1}'])
+              .toList(),
+          presetIds: teams,
+          competitionId: 'c',
+          competitionRules: true,
+          knockoutRound: round)
+        ..start();
+      match.finish(winner: winner);
+      return match;
+    }
+
+    l.matches.addAll([
+      finished('s1', 1, ['t0', 't1'], 't0'),
+      finished('s2', 1, ['t2', 't3'], 't2'),
+      finished('f', 2, ['t0', 't2'], 't0'),
+    ]);
+    await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: CompetitionStatistics(league: l))));
+
+    final filter = tester.widget<DropdownButton<int>>(
+        find.byKey(const ValueKey('tournament-phase-filter')));
+    expect(filter.value, 2);
+    expect(find.text('Finale · Passa Squadra 0'), findsOneWidget);
+    expect(find.text('Squadra 0 · Vincitrice'), findsOneWidget);
   });
 }
