@@ -59,18 +59,21 @@ class _GoalPageState extends State<GoalPage> {
             appBar: AppBar(
                 toolbarHeight: stage == 'team' ? 88 : null,
                 title: Text(titles[stage]!),
-                leading:
-                    stage == 'scorer' || stage == 'assist' || stage == 'keeper'
-                        ? IconButton(
-                            tooltip: 'Passaggio precedente',
-                            onPressed: () => setState(
-                                () => stage = steps[steps.indexOf(stage) - 1]),
-                            icon: const Icon(Icons.arrow_back))
-                        : null,
+                leading: stage == 'scorer' ||
+                        stage == 'assist' ||
+                        stage == 'keeper' ||
+                        stage == 'review'
+                    ? IconButton(
+                        tooltip: 'Passaggio precedente',
+                        onPressed: () => setState(
+                            () => stage = steps[steps.indexOf(stage) - 1]),
+                        icon: const Icon(Icons.arrow_back))
+                    : null,
                 actions: stage == 'team' ||
                         stage == 'scorer' ||
                         stage == 'assist' ||
-                        stage == 'keeper'
+                        stage == 'keeper' ||
+                        stage == 'review'
                     ? null
                     : [
                         TextButton(
@@ -81,14 +84,16 @@ class _GoalPageState extends State<GoalPage> {
                 padding: EdgeInsets.all(stage == 'team' ||
                         stage == 'scorer' ||
                         stage == 'assist' ||
-                        stage == 'keeper'
+                        stage == 'keeper' ||
+                        stage == 'review'
                     ? 24
                     : 20),
                 children: [
                   if (stage != 'team' &&
                       stage != 'scorer' &&
                       stage != 'assist' &&
-                      stage != 'keeper')
+                      stage != 'keeper' &&
+                      stage != 'review')
                     TextButton(
                         onPressed: () => setState(
                             () => stage = steps[steps.indexOf(stage) - 1]),
@@ -206,16 +211,16 @@ class _GoalPageState extends State<GoalPage> {
                         }),
                   ],
                   if (stage == 'review') ...[
-                    Text(
-                        '${own ? 'Autogol a favore di' : 'Gol per'} ${m.names[team]}',
-                        style: const TextStyle(fontSize: 26)),
-                    Text(
-                        'Autore: ${l.playerName(scorer)}${own ? '' : '\nAssist: ${l.playerName(assist)}'}${competitive ? '' : '\nPortiere: ${l.playerName(keeper)}'}',
-                        style: const TextStyle(fontSize: 20)),
-                    if (!competitive && plan.mode == 'fixed')
-                      const Text('Portiere fisso attribuito automaticamente.'),
-                    const SizedBox(height: 24),
-                    FilledButton(
+                    _GoalSummaryCard(
+                      title:
+                          '${own ? 'Autogol a favore di' : 'Gol per'} ${m.names[team]}',
+                      scorer: l.playerName(scorer),
+                      assist: own ? null : l.playerName(assist),
+                      keeper: competitive ? null : l.playerName(keeper),
+                    ),
+                    const SizedBox(height: 12),
+                    _GoalPrimaryButton(
+                        label: 'Conferma gol',
                         onPressed: () => Navigator.pop(
                             context,
                             Goal(
@@ -226,11 +231,62 @@ class _GoalPageState extends State<GoalPage> {
                                 keeper: keeper,
                                 ownGoal: own,
                                 time: (occurred ?? DateTime.now().toUtc())
-                                    .toIso8601String())),
-                        child: const Text('Conferma gol')),
+                                    .toIso8601String()))),
+                    const SizedBox(height: 12),
+                    _GoalCancelButton(onPressed: () => Navigator.pop(context)),
                   ],
                 ])));
   }
+}
+
+class _GoalSummaryCard extends StatelessWidget {
+  const _GoalSummaryCard({
+    required this.title,
+    required this.scorer,
+    this.assist,
+    this.keeper,
+  });
+
+  final String title;
+  final String scorer;
+  final String? assist;
+  final String? keeper;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                height: 26 / 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              [
+                'Autore: $scorer',
+                if (assist != null) 'Assist: $assist',
+                if (keeper != null) 'Portiere: $keeper',
+              ].join('\n'),
+              style: const TextStyle(
+                color: HaykoColors.mutedText,
+                fontSize: 14,
+                height: 20 / 14,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _GoalTeamOption extends StatelessWidget {

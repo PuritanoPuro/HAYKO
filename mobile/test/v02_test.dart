@@ -125,6 +125,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Chi era in porta?'), findsOneWidget);
     expect(find.text('Nessun assist'), findsNothing);
+    await tester.tap(find.text('c'));
+    await tester.pumpAndSettle();
+    expect(find.text('Conferma gol'), findsNWidgets(2));
+    expect(find.text('Autogol a favore di A'), findsOneWidget);
+    expect(find.textContaining('Autore: d'), findsOneWidget);
+    expect(find.textContaining('Portiere: c'), findsOneWidget);
+    expect(find.textContaining('Assist:'), findsNothing);
   });
   testWidgets('formazione evidenzia selezione e richiede riepilogo',
       (tester) async {
