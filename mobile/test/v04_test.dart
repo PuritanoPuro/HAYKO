@@ -164,7 +164,7 @@ void main() {
             competition: l.competitions.single)));
     await tester.enterText(find.byType(TextFormField), 'Uno');
     for (final name in ['Alfa', 'Beta']) {
-      await tester.tap(find.text('Giocatore'));
+      await tester.tap(find.text('+ Giocatore'));
       await tester.pumpAndSettle();
       await tester.enterText(
           find.byKey(const ValueKey('roster-player-name')), name);

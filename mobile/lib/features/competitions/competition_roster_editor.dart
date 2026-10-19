@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
+import 'package:calcetto_mvp/features/account/components.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 
 class RosterEntry {
   final String id;
@@ -80,6 +82,11 @@ class _CompetitionRosterEditorState extends State<CompetitionRosterEditor> {
                       onChanged: (v) => number = v),
                 ])),
                 actions: [
+                  if (entry != null)
+                    TextButton(
+                        onPressed: () =>
+                            Navigator.pop(c, RosterEntry(entry.id, '', -1)),
+                        child: const Text('Rimuovi')),
                   TextButton(
                       onPressed: () => Navigator.pop(c),
                       child: const Text('Annulla')),
@@ -105,6 +112,10 @@ class _CompetitionRosterEditorState extends State<CompetitionRosterEditor> {
                       child: Text(entry == null ? 'Aggiungi' : 'Salva'))
                 ]));
     if (!mounted || result == null) return;
+    if (result.number == -1 && entry != null) {
+      await remove(entry);
+      return;
+    }
     setState(() {
       if (entry == null) {
         roster.add(result);
@@ -112,6 +123,118 @@ class _CompetitionRosterEditorState extends State<CompetitionRosterEditor> {
         roster[roster.indexOf(entry)] = result;
       }
     });
+  }
+
+  Widget teamField() => Container(
+        height: 76,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Squadra',
+                    style: TextStyle(
+                        color: HaykoColors.mutedText,
+                        fontSize: 12,
+                        height: 16 / 12,
+                        fontWeight: FontWeight.w600)),
+                Expanded(
+                  child: TextFormField(
+                    key: const ValueKey('competition-team-name'),
+                    initialValue: name,
+                    maxLength: 60,
+                    style: const TextStyle(fontSize: 16, height: 24 / 16),
+                    decoration: const InputDecoration(
+                      hintText: 'Nome squadra',
+                      counterText: '',
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                    ),
+                    onChanged: (value) => name = value,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Semantics(
+            button: true,
+            label: 'Cambia colore squadra',
+            child: InkWell(
+              key: const ValueKey('competition-team-color'),
+              customBorder: const CircleBorder(),
+              onTap: busy
+                  ? null
+                  : () async {
+                      final value = await chooseColor(context, color);
+                      if (value != null && mounted) {
+                        setState(() => color = value);
+                      }
+                    },
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration:
+                    BoxDecoration(color: Color(color), shape: BoxShape.circle),
+              ),
+            ),
+          ),
+        ]),
+      );
+
+  Widget rosterRow(RosterEntry entry) {
+    final current = widget.league.myPlayer == entry.id;
+    return Container(
+      key: ValueKey('competition-roster-${entry.id}'),
+      height: 76,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: current ? Border.all(color: HaykoColors.chalk) : null,
+      ),
+      child: Row(children: [
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Color(color),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text('${entry.number}',
+              style: TextStyle(
+                  color: contrastColor(color),
+                  fontSize: 24,
+                  height: 28 / 24,
+                  fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text('${entry.name}${current ? ' · Tu' : ''}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, height: 24 / 16)),
+        ),
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: IconButton(
+            tooltip: 'Modifica giocatore',
+            onPressed: busy ? null : () => player(entry),
+            icon: const Icon(Icons.edit, size: 24),
+          ),
+        ),
+      ]),
+    );
   }
 
   Future<void> remove(RosterEntry p) async {
@@ -211,56 +334,22 @@ class _CompetitionRosterEditorState extends State<CompetitionRosterEditor> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
+          toolbarHeight: 64,
           title:
               Text(widget.team == null ? 'Nuova squadra' : 'Modifica squadra')),
-      body: Column(children: [
-        Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(children: [
-              TextFormField(
-                  initialValue: name,
-                  maxLength: 60,
-                  decoration: const InputDecoration(labelText: 'Nome squadra'),
-                  onChanged: (v) => name = v),
-              ColorChoice(
-                  label: 'Colore squadra e giocatori',
-                  color: color,
-                  changed: (v) => setState(() => color = v)),
-              Row(children: [
-                Expanded(child: Text('${roster.length} giocatori')),
-                FilledButton(
-                    onPressed: busy ? null : submit,
-                    child: const Text('Salva squadra'))
-              ]),
-              TextButton.icon(
-                  onPressed: busy ? null : () => player(),
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Giocatore')),
-              const Text(
-                  'Aggiungi nome e numero: il giocatore entra direttamente nella rosa.'),
-            ])),
-        Expanded(
-            child: ListView(
-                children: roster
-                    .map((p) => Card(
-                        child: ListTile(
-                            leading: CircleAvatar(
-                                backgroundColor: Color(color),
-                                child: Text('${p.number}',
-                                    style: TextStyle(
-                                        color: contrastColor(color)))),
-                            title: Text(p.name),
-                            trailing:
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                              IconButton(
-                                  tooltip: 'Modifica giocatore',
-                                  onPressed: busy ? null : () => player(p),
-                                  icon: const Icon(Icons.edit)),
-                              IconButton(
-                                  tooltip: 'Rimuovi giocatore',
-                                  onPressed: busy ? null : () => remove(p),
-                                  icon: const Icon(Icons.delete_outline))
-                            ]))))
-                    .toList())),
-      ]));
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          teamField(),
+          const SizedBox(height: 12),
+          AccountButton('+ Giocatore',
+              outline: true, onPressed: busy ? null : () => player()),
+          if (roster.isNotEmpty) const SizedBox(height: 12),
+          for (var index = 0; index < roster.length; index++) ...[
+            rosterRow(roster[index]),
+            const SizedBox(height: 12),
+          ],
+          AccountButton('Salva squadra', onPressed: busy ? null : submit),
+        ],
+      ));
 }

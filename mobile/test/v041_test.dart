@@ -118,7 +118,9 @@ void main() {
     expect(find.text('a'), findsOneWidget);
     expect(find.text('d'), findsNothing);
     expect(find.byType(CheckboxListTile), findsNothing);
-    await tester.tap(find.byTooltip('Rimuovi giocatore').first);
+    await tester.tap(find.byTooltip('Modifica giocatore').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rimuovi'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Conferma'));
     await tester.pumpAndSettle();
