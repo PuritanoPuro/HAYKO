@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
-import 'package:calcetto_mvp/shared/customization.dart';
+import 'package:calcetto_mvp/features/account/components.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 
 class CompetitionMatchForm extends StatefulWidget {
   final League league;
@@ -28,6 +29,11 @@ class _CompetitionMatchFormState extends State<CompetitionMatchForm> {
       .where((tie) => tie.match == null)
       .toList();
   String fixtureKey(TournamentTie tie) => '${tie.round}:${tie.teams.join("|")}';
+  TournamentTie? get selectedTie {
+    final available = fixtures.where((tie) => tie.teams.every(ids.contains));
+    return available.isEmpty ? null : available.first;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -90,48 +96,230 @@ class _CompetitionMatchFormState extends State<CompetitionMatchForm> {
     }
   }
 
+  String get dateText {
+    const months = [
+      'gennaio',
+      'febbraio',
+      'marzo',
+      'aprile',
+      'maggio',
+      'giugno',
+      'luglio',
+      'agosto',
+      'settembre',
+      'ottobre',
+      'novembre',
+      'dicembre'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  String get timeText =>
+      '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+  Future<void> chooseDate() async {
+    final value = await showDatePicker(
+        context: context,
+        initialDate: date,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100));
+    if (value != null && mounted) {
+      setState(() => date =
+          DateTime(value.year, value.month, value.day, date.hour, date.minute));
+    }
+  }
+
+  Future<void> chooseTime() async {
+    final value = await showTimePicker(
+        context: context, initialTime: TimeOfDay.fromDateTime(date));
+    if (value != null && mounted) {
+      setState(() => date =
+          DateTime(date.year, date.month, date.day, value.hour, value.minute));
+    }
+  }
+
+  Widget field({
+    required String label,
+    required String value,
+    VoidCallback? onTap,
+    TextEditingController? controller,
+    Key? fieldKey,
+  }) =>
+      Material(
+        color: HaykoColors.fieldSurface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Container(
+            height: 76,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: HaykoColors.fieldLine),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(
+                        color: HaykoColors.mutedText,
+                        fontSize: 12,
+                        height: 16 / 12,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 24,
+                  child: controller == null
+                      ? Text(value,
+                          style: const TextStyle(fontSize: 16, height: 24 / 16))
+                      : TextField(
+                          key: fieldKey,
+                          controller: controller,
+                          maxLength: 120,
+                          style: const TextStyle(fontSize: 16, height: 24 / 16),
+                          decoration: const InputDecoration(
+                            counterText: '',
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  Widget matchScore() {
+    final teams = ids
+        .map((id) => widget.league.presets.firstWhere((team) => team.id == id))
+        .toList();
+    final tie = selectedTie;
+    final details = tie == null
+        ? '${c.format}v${c.format}'
+        : '${c.kind == 'knockout' ? tournamentRoundName(c, tie.round) : 'Giornata ${tie.round}'} · ${c.format}v${c.format}';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(12)),
+      child: Column(children: [
+        Row(children: [
+          _MatchTeam(team: teams[0]),
+          const SizedBox(
+              width: 42,
+              child: Text('0',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 24,
+                      height: 30 / 24,
+                      fontWeight: FontWeight.w800))),
+          const SizedBox(
+              width: 12,
+              child: Text('–',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: HaykoColors.mutedText,
+                      fontSize: 20,
+                      height: 26 / 20,
+                      fontWeight: FontWeight.w700))),
+          const SizedBox(
+              width: 42,
+              child: Text('0',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 24,
+                      height: 30 / 24,
+                      fontWeight: FontWeight.w800))),
+          _MatchTeam(team: teams[1]),
+        ]),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(details,
+              style: const TextStyle(
+                  color: HaykoColors.mutedText, fontSize: 14, height: 20 / 14)),
+        ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Nuova partita')),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
-        Text('${c.format}v${c.format}', style: const TextStyle(fontSize: 22)),
-        if (widget.initialTeams != null)
-          Card(
-              child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                      ids
-                          .map((id) => widget.league.presets
-                              .firstWhere((p) => p.id == id)
-                              .name)
-                          .join(' – '),
-                      style: const TextStyle(fontSize: 22)))),
+      appBar: AppBar(
+          toolbarHeight: 64, title: const Text('Partita della competizione')),
+      body: ListView(padding: const EdgeInsets.all(24), children: [
         if (widget.initialTeams == null)
-          DropdownButton<String>(
-              key: const ValueKey('calendar-fixture-select'),
-              value: selectedFixture,
-              isExpanded: true,
-              hint: const Text('Scegli la partita dal calendario'),
-              items: fixtures
-                  .map((tie) => DropdownMenuItem(
-                      value: fixtureKey(tie),
-                      child: Text(
-                          '${c.kind == 'knockout' ? tournamentRoundName(c, tie.round) : 'Giornata ${tie.round}'} · ${tie.teams.map((id) => widget.league.presets.firstWhere((p) => p.id == id).name).join(' – ')}',
-                          maxLines: 2)))
-                  .toList(),
-              onChanged: (v) => setState(() {
-                    selectedFixture = v;
-                    final tie =
-                        fixtures.firstWhere((tie) => fixtureKey(tie) == v);
-                    ids[0] = tie.teams[0];
-                    ids[1] = tie.teams[1];
-                  })),
+          Container(
+            height: 76,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                color: HaykoColors.fieldSurface,
+                border: Border.all(color: HaykoColors.fieldLine),
+                borderRadius: BorderRadius.circular(12)),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                  key: const ValueKey('calendar-fixture-select'),
+                  value: selectedFixture,
+                  isExpanded: true,
+                  hint: const Text('Scegli la partita dal calendario'),
+                  dropdownColor: HaykoColors.fieldSurface,
+                  items: fixtures
+                      .map((tie) => DropdownMenuItem(
+                          value: fixtureKey(tie),
+                          child: Text(
+                              '${c.kind == 'knockout' ? tournamentRoundName(c, tie.round) : 'Giornata ${tie.round}'} · ${tie.teams.map((id) => widget.league.presets.firstWhere((p) => p.id == id).name).join(' – ')}',
+                              maxLines: 2)))
+                      .toList(),
+                  onChanged: (v) => setState(() {
+                        selectedFixture = v;
+                        final tie =
+                            fixtures.firstWhere((tie) => fixtureKey(tie) == v);
+                        ids[0] = tie.teams[0];
+                        ids[1] = tie.teams[1];
+                      })),
+            ),
+          ),
+        if (widget.initialTeams == null) const SizedBox(height: 12),
         if (widget.initialTeams == null && fixtures.isEmpty)
           const Text('Non ci sono incontri disponibili da programmare.'),
-        EventDetailsFields(
-            date: date, venue: venue, changed: (v) => setState(() => date = v)),
-        const Text(
-            'Tutta la rosa sarà disponibile per gol e assist, comprese le riserve.'),
-        FilledButton(onPressed: create, child: const Text('Crea partita')),
+        if (ids.every((id) => id != null)) ...[
+          matchScore(),
+          const SizedBox(height: 12),
+        ],
+        field(label: 'Data', value: dateText, onTap: chooseDate),
+        const SizedBox(height: 12),
+        field(label: 'Ora', value: timeText, onTap: chooseTime),
+        const SizedBox(height: 12),
+        field(
+            label: 'Luogo · facoltativo',
+            value: '',
+            controller: venue,
+            fieldKey: const ValueKey('event-venue')),
+        const SizedBox(height: 12),
+        AccountButton('Crea partita', onPressed: create),
       ]));
+}
+
+class _MatchTeam extends StatelessWidget {
+  const _MatchTeam({required this.team});
+  final TeamPreset team;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(children: [
+          Text(team.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 14, height: 20 / 14, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Container(width: 56, height: 6, color: Color(team.color)),
+        ]),
+      );
 }

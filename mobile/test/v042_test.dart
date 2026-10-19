@@ -67,7 +67,10 @@ void main() {
     await tester.pumpWidget(MaterialApp(
         home: CompetitionMatchForm(
             league: sample(), initialTeams: const ['t0', 't1'])));
-    expect(find.text('Squadra 0 – Squadra 1'), findsOneWidget);
+    expect(find.text('Partita della competizione'), findsOneWidget);
+    expect(find.text('Squadra 0'), findsOneWidget);
+    expect(find.text('Squadra 1'), findsOneWidget);
+    expect(find.text('0'), findsNWidgets(2));
     expect(find.byType(DropdownButton<String>), findsNothing);
     expect(find.byKey(const ValueKey('event-venue')), findsOneWidget);
   });
