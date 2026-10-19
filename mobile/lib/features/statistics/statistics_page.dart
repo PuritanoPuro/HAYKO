@@ -138,38 +138,57 @@ class _StatisticsTable extends StatelessWidget {
   static const widths = <double>[114, 36, 34, 34, 40, 36, 40];
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-              color: HaykoColors.fieldSurface,
-              border: Border.all(color: HaykoColors.fieldLine),
-              borderRadius: BorderRadius.circular(12)),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Column(
-              children: [
-                const _StatisticsRow(
-                    header: true,
-                    values: ['Giocatore', 'PG', 'V', 'S', 'GF', 'A', 'GS']),
-                for (final player in players)
-                  _StatisticsRow(
-                    playerId: player.id,
-                    highlighted: player.id == currentPlayerId,
-                    values: [
-                      player.name,
-                      '${totals[player.id]!.played}',
-                      '${totals[player.id]!.wins}',
-                      '${totals[player.id]!.losses}',
-                      '${totals[player.id]!.goals}',
-                      '${totals[player.id]!.assists}',
-                      '${totals[player.id]!.conceded}',
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          final columnsWidth =
+              widths.fold<double>(0, (sum, width) => sum + width);
+          final tableWidth = constraints.maxWidth > columnsWidth
+              ? constraints.maxWidth
+              : columnsWidth;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                  color: HaykoColors.fieldSurface,
+                  border: Border.all(color: HaykoColors.fieldLine),
+                  borderRadius: BorderRadius.circular(12)),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: tableWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _StatisticsRow(header: true, values: [
+                        'Giocatore',
+                        'PG',
+                        'V',
+                        'S',
+                        'GF',
+                        'A',
+                        'GS'
+                      ]),
+                      for (final player in players)
+                        _StatisticsRow(
+                          playerId: player.id,
+                          highlighted: player.id == currentPlayerId,
+                          values: [
+                            player.name,
+                            '${totals[player.id]!.played}',
+                            '${totals[player.id]!.wins}',
+                            '${totals[player.id]!.losses}',
+                            '${totals[player.id]!.goals}',
+                            '${totals[player.id]!.assists}',
+                            '${totals[player.id]!.conceded}',
+                          ],
+                        ),
                     ],
                   ),
-              ],
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
 }
 
@@ -187,18 +206,27 @@ class _StatisticsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: playerId == null ? null : ValueKey('statistics-row-$playerId'),
+        key: header
+            ? const ValueKey('statistics-header')
+            : ValueKey('statistics-row-$playerId'),
         height: 48,
-        color: header || highlighted
-            ? HaykoColors.fieldLine
-            : HaykoColors.fieldSurface,
+        decoration: BoxDecoration(
+          color: header
+              ? HaykoColors.fieldBackground
+              : highlighted
+                  ? HaykoColors.fieldLine
+                  : HaykoColors.fieldSurface,
+          border: const Border(
+            bottom: BorderSide(color: HaykoColors.fieldBackground, width: 1),
+          ),
+        ),
         child: Row(
           children: [
             for (var i = 0; i < values.length; i++)
               SizedBox(
                 width: _StatisticsTable.widths[i],
                 child: Padding(
-                  padding: const EdgeInsets.all(4),
+                  padding: EdgeInsets.fromLTRB(i == 0 ? 12 : 4, 4, 4, 4),
                   child: Align(
                     alignment: i == 0 ? Alignment.centerLeft : Alignment.center,
                     child: Text(values[i],

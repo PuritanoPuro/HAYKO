@@ -127,8 +127,10 @@ void main() {
         .widget<Container>(find.byKey(const ValueKey('statistics-row-b')));
     final firstRow = tester
         .widget<Container>(find.byKey(const ValueKey('statistics-row-a')));
-    expect(currentRow.color, HaykoColors.fieldLine);
-    expect(firstRow.color, HaykoColors.fieldSurface);
+    expect(
+        (currentRow.decoration as BoxDecoration).color, HaykoColors.fieldLine);
+    expect(
+        (firstRow.decoration as BoxDecoration).color, HaykoColors.fieldSurface);
 
     await tester.ensureVisible(find.byKey(const ValueKey('ranking-b')));
     await tester.pumpAndSettle();
