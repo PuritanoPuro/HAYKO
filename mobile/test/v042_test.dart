@@ -17,14 +17,50 @@ League sample({String kind = 'knockout'}) => League('l', 'Coppa',
     ]);
 
 void main() {
-  testWidgets('configurazione torneo distingue i due incontri', (tester) async {
+  testWidgets('configurazione torneo usa slot e filtro delle fasi',
+      (tester) async {
     final l = sample();
     await tester.pumpWidget(MaterialApp(
         home: CalendarOrder(league: l, competition: l.competitions.single)));
+    expect(find.text('Fase del torneo'), findsOneWidget);
+    final phase = find.byKey(const ValueKey('calendar-round-select'));
+    expect(
+        tester
+            .widget<DropdownButton<int>>(phase)
+            .items!
+            .map((item) => item.value),
+        [1, 2]);
     expect(find.text('Incontro 1'), findsOneWidget);
     expect(find.text('Incontro 2'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('Squadra 1')).dy,
-        lessThan(tester.getTopLeft(find.text('Incontro 2')).dy));
+    expect(find.byKey(const ValueKey('calendar-slot-0-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('calendar-slot-1-1')), findsOneWidget);
+    expect(find.byType(ReorderableListView), findsNothing);
+    await tester.tap(phase);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Finale').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Da definire dal turno precedente'), findsNWidgets(2));
+  });
+  testWidgets('selezionare una squadra scambia gli slot senza duplicati',
+      (tester) async {
+    final l = sample(kind: 'league');
+    await tester.pumpWidget(MaterialApp(
+        home: CalendarOrder(league: l, competition: l.competitions.single)));
+    final first = find.byKey(const ValueKey('calendar-slot-0-0'));
+    final original = tester.widget<DropdownButton<String>>(first).value;
+    await tester.tap(first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Squadra 2').last);
+    await tester.pumpAndSettle();
+    expect(tester.widget<DropdownButton<String>>(first).value, 't2');
+    final values = find
+        .byType(DropdownButton<String>)
+        .evaluate()
+        .map((element) => (element.widget as DropdownButton<String>).value)
+        .whereType<String>()
+        .toList();
+    expect(values.toSet().length, values.length);
+    expect(values, contains(original));
   });
   testWidgets('programmazione incontro scelto non ripete selezione squadre',
       (tester) async {

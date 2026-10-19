@@ -693,6 +693,7 @@ class CompetitionScorers extends StatelessWidget {
 
 class _CalendarOrderState extends State<CalendarOrder> {
   late final List<String> ids;
+  int selectedRound = 1;
 
   @override
   void initState() {
@@ -700,122 +701,208 @@ class _CalendarOrderState extends State<CalendarOrder> {
     ids = [...widget.competition.teamIds];
   }
 
-  String initials(TeamPreset team) {
-    final words = team.name.trim().split(RegExp(r'\s+'));
-    if (words.isEmpty || words.first.isEmpty) return '?';
-    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  Competition get preview => Competition(
+        widget.competition.id,
+        widget.competition.name,
+        widget.competition.kind,
+        widget.competition.format,
+        [...ids],
+        doubleLeg: widget.competition.doubleLeg,
+        allowDraft: true,
+      );
+
+  List<int> get rounds {
+    if (widget.competition.kind == 'league') {
+      final values = leagueFixtures(widget.league, preview)
+          .map((tie) => tie.round)
+          .toSet()
+          .toList();
+      values.sort();
+      return values;
+    }
+    final values = <int>[];
+    var teams = ids.length, round = 1;
+    while (teams >= 2) {
+      values.add(round++);
+      teams ~/= 2;
+    }
+    return values;
   }
 
-  Widget teamRow(int index) {
-    final team =
-        widget.league.presets.firstWhere((team) => team.id == ids[index]);
-    final first = index.isEven;
-    final last = !first || index == ids.length - 1;
+  String roundLabel(int round) => widget.competition.kind == 'league'
+      ? 'Giornata $round'
+      : tournamentRoundName(preview, round);
+
+  List<TournamentTie> get visibleTies {
+    if (widget.competition.kind == 'league') {
+      return leagueFixtures(widget.league, preview)
+          .where((tie) => tie.round == selectedRound)
+          .toList();
+    }
+    if (selectedRound == 1) {
+      return [
+        for (var index = 0; index < ids.length; index += 2)
+          TournamentTie(1, [ids[index], ids[index + 1]], null)
+      ];
+    }
+    final teamCount = ids.length >> (selectedRound - 1);
+    return [
+      for (var index = 0; index < teamCount ~/ 2; index++)
+        TournamentTie(selectedRound, const ['', ''], null)
+    ];
+  }
+
+  void selectTeam(String current, String selected) {
+    if (current == selected) return;
+    final currentIndex = ids.indexOf(current);
+    final selectedIndex = ids.indexOf(selected);
+    if (currentIndex < 0 || selectedIndex < 0) return;
+    setState(() {
+      ids[currentIndex] = selected;
+      ids[selectedIndex] = current;
+    });
+  }
+
+  Widget teamOption(String id) {
+    final team = widget.league.presets.firstWhere((team) => team.id == id);
+    return Row(children: [
+      Container(
+          width: 12,
+          height: 12,
+          decoration:
+              BoxDecoration(color: Color(team.color), shape: BoxShape.circle)),
+      const SizedBox(width: 8),
+      Expanded(
+          child: Text(team.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+    ]);
+  }
+
+  Widget slot(String? teamId, int matchIndex, int slotIndex) {
+    final enabled = teamId != null;
     return Container(
-      key: ValueKey(ids[index]),
-      margin: EdgeInsets.fromLTRB(24, first ? 6 : 0, 24, last ? 6 : 0),
-      padding: EdgeInsets.fromLTRB(16, first ? 16 : 0, 16, last ? 16 : 0),
+      height: 76,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: HaykoColors.fieldSurface,
-        borderRadius: BorderRadius.vertical(
-          top: first ? const Radius.circular(16) : Radius.zero,
-          bottom: last ? const Radius.circular(16) : Radius.zero,
-        ),
+        border: Border.all(color: HaykoColors.fieldLine),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (first) ...[
-          Text('Incontro ${index ~/ 2 + 1}',
-              style: const TextStyle(
-                  fontSize: 20, height: 26 / 20, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-        ],
+        Text('Squadra ${slotIndex + 1}',
+            style: const TextStyle(
+                color: HaykoColors.mutedText,
+                fontSize: 12,
+                height: 16 / 12,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
         SizedBox(
-          height: 80,
-          child: Row(children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Color(team.color),
-              child: Text(initials(team),
-                  style: TextStyle(
-                      color: contrastColor(team.color),
-                      fontSize: 12,
-                      height: 16 / 12,
-                      fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(team.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 16, height: 24 / 16)),
-                    const Text('Squadra partecipante',
-                        style: TextStyle(
-                            color: HaykoColors.mutedText,
-                            fontSize: 12,
-                            height: 16 / 12,
-                            fontWeight: FontWeight.w600)),
-                  ]),
-            ),
-            ReorderableDragStartListener(
-              index: index,
-              child: const SizedBox(
-                width: 48,
-                height: 48,
-                child: Icon(Icons.drag_handle, size: 20),
-              ),
-            ),
-          ]),
+          height: 24,
+          child: enabled
+              ? DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    key: ValueKey('calendar-slot-$matchIndex-$slotIndex'),
+                    isExpanded: true,
+                    value: teamId,
+                    icon: const Icon(Icons.arrow_drop_down, size: 20),
+                    dropdownColor: HaykoColors.fieldSurface,
+                    style: const TextStyle(
+                        color: HaykoColors.chalk,
+                        fontSize: 16,
+                        height: 24 / 16),
+                    items: [
+                      for (final id in ids)
+                        DropdownMenuItem(value: id, child: teamOption(id))
+                    ],
+                    onChanged: (selected) {
+                      if (selected != null) selectTeam(teamId, selected);
+                    },
+                  ),
+                )
+              : const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Da definire dal turno precedente',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: HaykoColors.mutedText,
+                          fontSize: 16,
+                          height: 24 / 16)),
+                ),
         ),
       ]),
     );
   }
 
+  Widget matchCard(TournamentTie tie, int index) {
+    final known = tie.teams.every((id) => id.isNotEmpty);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: HaykoColors.fieldSurface,
+          borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Incontro ${index + 1}',
+            style: const TextStyle(
+                fontSize: 20, height: 26 / 20, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        slot(known ? tie.teams[0] : null, index, 0),
+        const SizedBox(height: 8),
+        slot(known ? tie.teams[1] : null, index, 1),
+      ]),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-            toolbarHeight: 64, title: const Text('Configura calendario')),
-        body: ListView(children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 6),
-            child: _CalendarConfigurationField(),
+  Widget build(BuildContext context) {
+    final options = rounds;
+    if (options.isNotEmpty && !options.contains(selectedRound)) {
+      selectedRound = options.first;
+    }
+    final ties = visibleTies;
+    return Scaffold(
+      appBar:
+          AppBar(toolbarHeight: 64, title: const Text('Configura calendario')),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          _CalendarConfigurationField(
+            label: widget.competition.kind == 'knockout'
+                ? 'Fase del torneo'
+                : 'Giornata',
+            rounds: options,
+            selected: selectedRound,
+            roundLabel: roundLabel,
+            changed: (round) => setState(() => selectedRound = round),
           ),
-          ReorderableListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            buildDefaultDragHandles: false,
-            itemCount: ids.length,
-            onReorderItem: (from, to) => setState(() {
-              ids.insert(to, ids.removeAt(from));
-            }),
-            proxyDecorator: (child, index, animation) => Material(
-              color: Colors.transparent,
-              child: FadeTransition(
-                opacity: Tween<double>(begin: .88, end: 1).animate(animation),
-                child: child,
-              ),
-            ),
-            itemBuilder: (context, index) => teamRow(index),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 6, 24, 24),
-            child: Column(children: [
-              AccountButton('Conferma calendario',
-                  onPressed: () => Navigator.pop(context, ids)),
-              const SizedBox(height: 12),
-              AccountButton('Annulla',
-                  outline: true, onPressed: () => Navigator.pop(context)),
-            ]),
-          ),
-        ]),
-      );
+          const SizedBox(height: 12),
+          for (var index = 0; index < ties.length; index++) ...[
+            matchCard(ties[index], index),
+            const SizedBox(height: 12),
+          ],
+          AccountButton('Conferma calendario',
+              onPressed: () => Navigator.pop(context, ids)),
+          const SizedBox(height: 12),
+          AccountButton('Annulla',
+              outline: true, onPressed: () => Navigator.pop(context)),
+        ],
+      ),
+    );
+  }
 }
 
 class _CalendarConfigurationField extends StatelessWidget {
-  const _CalendarConfigurationField();
+  const _CalendarConfigurationField(
+      {required this.label,
+      required this.rounds,
+      required this.selected,
+      required this.roundLabel,
+      required this.changed});
+
+  final String label;
+  final List<int> rounds;
+  final int selected;
+  final String Function(int) roundLabel;
+  final ValueChanged<int> changed;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -826,18 +913,38 @@ class _CalendarConfigurationField extends StatelessWidget {
           border: Border.all(color: HaykoColors.fieldLine),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Giornata',
-                style: TextStyle(
+            Text(label,
+                style: const TextStyle(
                     color: HaykoColors.mutedText,
                     fontSize: 12,
                     height: 16 / 12,
                     fontWeight: FontWeight.w600)),
-            SizedBox(height: 4),
-            Text('Giornata 1  ▾',
-                style: TextStyle(fontSize: 16, height: 24 / 16)),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 24,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  key: const ValueKey('calendar-round-select'),
+                  isExpanded: true,
+                  value: selected,
+                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                  dropdownColor: HaykoColors.fieldSurface,
+                  style: const TextStyle(
+                      color: HaykoColors.chalk, fontSize: 16, height: 24 / 16),
+                  items: [
+                    for (final round in rounds)
+                      DropdownMenuItem(
+                          value: round, child: Text(roundLabel(round)))
+                  ],
+                  onChanged: (round) {
+                    if (round != null) changed(round);
+                  },
+                ),
+              ),
+            ),
           ],
         ),
       );
