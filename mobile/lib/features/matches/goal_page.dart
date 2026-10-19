@@ -88,24 +88,28 @@ class _GoalPageState extends State<GoalPage> {
             appBar: AppBar(
                 toolbarHeight: stage == 'team' ? 88 : null,
                 title: Text(titles[stage]!),
-                leading: stage == 'scorer'
+                leading: stage == 'scorer' || stage == 'assist'
                     ? IconButton(
                         tooltip: 'Passaggio precedente',
-                        onPressed: () => setState(() => stage = 'team'),
+                        onPressed: () => setState(() =>
+                            stage = stage == 'assist' ? 'scorer' : 'team'),
                         icon: const Icon(Icons.arrow_back))
                     : null,
-                actions: stage == 'team' || stage == 'scorer'
-                    ? null
-                    : [
-                        TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Annulla'))
-                      ]),
+                actions:
+                    stage == 'team' || stage == 'scorer' || stage == 'assist'
+                        ? null
+                        : [
+                            TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Annulla'))
+                          ]),
             body: ListView(
                 padding: EdgeInsets.all(
-                    stage == 'team' || stage == 'scorer' ? 24 : 20),
+                    stage == 'team' || stage == 'scorer' || stage == 'assist'
+                        ? 24
+                        : 20),
                 children: [
-                  if (stage != 'team' && stage != 'scorer')
+                  if (stage != 'team' && stage != 'scorer' && stage != 'assist')
                     TextButton(
                         onPressed: () => setState(
                             () => stage = steps[steps.indexOf(stage) - 1]),
@@ -171,42 +175,46 @@ class _GoalPageState extends State<GoalPage> {
                   if (stage == 'keeper' && plan.mode == 'rotation')
                     Text(
                         'Turno previsto: ${l.playerName(suggested)}. Seleziona chi era realmente in porta.'),
-                  if (stage == 'assist' || stage == 'keeper') ...[
-                    ...sorted
-                        .where((id) => stage != 'assist' || id != scorer)
-                        .map((id) =>
-                            option(
-                                '${competitive ? competitionPlayerLabel(l, m, stage == 'scorer' && own ? 1 - team : team, id) : l.playerName(id)}${stage == 'keeper' && id == suggested ? ' · turno previsto' : ''}',
-                                () {
-                              if (stage == 'scorer') {
-                                scorer = id;
-                                assist = null;
-                              } else if (stage == 'assist') {
-                                assist = id;
-                              } else {
-                                keeper = id;
-                              }
-                              next();
-                            },
-                                highlighted:
-                                    stage == 'keeper' && id == suggested,
-                                color: competitive
-                                    ? m.teamColors[stage == 'scorer' && own
-                                        ? 1 - team
-                                        : team]
-                                    : l.players
-                                        .firstWhere((p) => p.id == id)
-                                        .color)),
-                    option(stage == 'assist' ? 'Nessun assist' : 'Non indicato',
-                        () {
-                      if (stage == 'scorer') {
-                        scorer = null;
-                        assist = null;
-                      } else if (stage == 'assist') {
-                        assist = null;
-                      } else {
-                        keeper = null;
-                      }
+                  if (stage == 'assist') ...[
+                    for (final id in sorted.where((id) => id != scorer)) ...[
+                      _GoalPlayerOption(
+                          label: competitive
+                              ? competitionPlayerLabel(l, m, team, id)
+                              : l.playerName(id),
+                          subtitle: m.names[team],
+                          color: competitive
+                              ? m.teamColors[team]
+                              : l.players
+                                  .firstWhere((player) => player.id == id)
+                                  .color,
+                          onTap: () {
+                            assist = id;
+                            next();
+                          }),
+                      const SizedBox(height: 12),
+                    ],
+                    _GoalPrimaryButton(
+                        label: 'Nessun assist',
+                        onPressed: () {
+                          assist = null;
+                          next();
+                        }),
+                  ],
+                  if (stage == 'keeper') ...[
+                    ...sorted.map((id) => option(
+                            '${competitive ? competitionPlayerLabel(l, m, team, id) : l.playerName(id)}${id == suggested ? ' · turno previsto' : ''}',
+                            () {
+                          keeper = id;
+                          next();
+                        },
+                            highlighted: id == suggested,
+                            color: competitive
+                                ? m.teamColors[team]
+                                : l.players
+                                    .firstWhere((p) => p.id == id)
+                                    .color)),
+                    option('Non indicato', () {
+                      keeper = null;
                       next();
                     }),
                   ],
@@ -419,6 +427,29 @@ class _GoalCancelButton extends StatelessWidget {
             backgroundColor: HaykoColors.fieldSurface,
             foregroundColor: HaykoColors.chalk,
             side: const BorderSide(color: HaykoColors.fieldLine),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            textStyle: const TextStyle(
+                fontSize: 16, height: 24 / 16, fontWeight: FontWeight.w700),
+          ),
+          onPressed: onPressed,
+          child: Text(label),
+        ),
+      );
+}
+
+class _GoalPrimaryButton extends StatelessWidget {
+  const _GoalPrimaryButton({required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 52,
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: HaykoColors.chalk,
+            foregroundColor: HaykoColors.fieldBackground,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             textStyle: const TextStyle(
