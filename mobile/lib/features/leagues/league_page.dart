@@ -165,7 +165,7 @@ class _LeaguePageState extends State<LeaguePage> {
       ),
       Expanded(
           child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 88),
               children: [
             if (matches.isEmpty)
               Padding(
@@ -174,6 +174,7 @@ class _LeaguePageState extends State<LeaguePage> {
                       'Nessuna partita ${matchStatus == 'live' ? 'in corso' : matchStatus == 'scheduled' ? 'programmata' : 'terminata'}.')),
             for (final match in matches) ...[
               _MatchScoreCard(
+                  league: l,
                   match: match,
                   onTap: () async {
                     await Navigator.push(
@@ -487,16 +488,23 @@ class _LeaguePageState extends State<LeaguePage> {
 }
 
 class _MatchScoreCard extends StatelessWidget {
-  const _MatchScoreCard({required this.match, required this.onTap});
+  const _MatchScoreCard(
+      {required this.league, required this.match, required this.onTap});
+  final League league;
   final Match match;
   final VoidCallback onTap;
 
   String get details {
+    final competition = league.type == 'competition';
     final lines = <String>[
-      '${_friendlyDate(match.scheduledAt)} · ${match.format} vs ${match.format}',
-      if (match.venue.isNotEmpty) match.venue,
+      competition
+          ? '${competitionRoundLabel(league, match)} · ${match.format}v${match.format}'
+          : '${_friendlyDate(match.scheduledAt)} · ${match.format} vs ${match.format}',
       if (match.status == 'live')
-        'Tempo partita: ${clockText(matchElapsed(match, DateTime.now().toUtc()))}',
+        'Tempo partita: ${clockText(matchElapsed(match, DateTime.now().toUtc()))}'
+      else if (competition)
+        _friendlyDate(match.scheduledAt),
+      if (match.venue.isNotEmpty) match.venue,
     ];
     return lines.join('\n');
   }

@@ -94,6 +94,28 @@ void main() {
     expect(find.text('Genera calendario casuale'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets('partita di campionato mostra giornata formato e data',
+      (tester) async {
+    final l = sample(kind: 'league');
+    l.matches.add(Match(
+        id: 'm',
+        format: 2,
+        names: const ['Squadra 0', 'Squadra 3'],
+        teams: const [
+          ['p0', 'p1'],
+          ['p6', 'p7']
+        ],
+        presetIds: const ['t0', 't3'],
+        teamColors: const [0xffff7a3d, 0xffe3f24a],
+        competitionId: 'c',
+        competitionRules: true,
+        scheduledAt: DateTime(2026, 10, 16, 21).toUtc().toIso8601String()));
+    await tester.pumpWidget(
+        MaterialApp(home: LeaguePage(league: l, save: () async {})));
+    expect(find.text('Partite programmate'), findsOneWidget);
+    expect(find.textContaining('Giornata 1 · 2v2'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
   testWidgets('filtro fasi offre anche finale ancora da definire',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
