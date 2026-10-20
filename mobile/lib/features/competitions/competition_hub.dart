@@ -925,10 +925,6 @@ class _CompetitionRankingPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: ListView(padding: const EdgeInsets.all(24), children: [
-        Text(title,
-            style: const TextStyle(
-                fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 12),
         for (final player in players) ...[
           _CompetitionPlayerStatRow(
               player: player,

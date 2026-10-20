@@ -174,6 +174,7 @@ void main() {
     expect(find.text('Giocatore 1 · Tu'), findsNWidgets(2));
     await tester.tap(find.text('Vedi tutti i marcatori'));
     await tester.pumpAndSettle();
+    expect(find.text('Marcatori'), findsOneWidget);
     expect(find.text('Giocatore 3'), findsOneWidget);
     expect(find.text('Giocatore 1 · Tu'), findsOneWidget);
   });
