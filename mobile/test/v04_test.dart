@@ -99,6 +99,10 @@ void main() {
     expect(bar.destinations.length, 3);
     expect(find.text('Giocatori'), findsOneWidget);
     expect(find.text('Calendario'), findsNothing);
+    expect(find.byType(PopupMenuButton<String>), findsNothing);
+    expect(find.byTooltip('Impostazioni lega'), findsOneWidget);
+    expect(find.byTooltip('Impostazioni app'), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('footer competizione mostra squadre e calendario',
