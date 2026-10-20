@@ -145,6 +145,19 @@ void main() {
     expect(find.byKey(const ValueKey('competition-team-name')), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets('giocatore semplice vede la squadra senza poterla modificare',
+      (tester) async {
+    final l = league()
+      ..shared = true
+      ..myRole = 'member';
+    await tester.pumpWidget(MaterialApp(
+        home: CompetitionTeams(league: l, save: () async {}, changed: () {})));
+    expect(find.text('+ Squadra'), findsNothing);
+    await tester.tap(find.text(l.presets.first.name));
+    await tester.pumpAndSettle();
+    expect(find.text('Modifica squadra'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('creazione squadra iscrive partecipante con numeri automatici',
       (tester) async {
     final l = League(
