@@ -137,6 +137,12 @@ void main() {
     expect(find.text('Alfa'), findsNothing);
     expect(find.text('+ Giocatore'), findsOneWidget);
 
+    await tester.tap(find.byKey(const ValueKey('filtered-add-player')));
+    await tester.pumpAndSettle();
+    expect(find.text('Nuovo giocatore'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(const ValueKey('selection-counter')));
     await tester.pumpAndSettle();
     final search =
