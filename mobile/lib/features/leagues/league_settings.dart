@@ -50,26 +50,18 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
     if (mounted) setState(() => busy = false);
   }
 
-  Future<void> changeColor({required bool primary}) async {
-    final previous = primary ? l.primaryColor : l.secondaryColor;
+  Future<void> changeColor() async {
+    final previous = l.primaryColor;
     final next = await chooseColor(context, previous);
     if (next == null || next == previous || !mounted) return;
     setState(() {
       busy = true;
-      if (primary) {
-        l.primaryColor = next;
-      } else {
-        l.secondaryColor = next;
-      }
+      l.primaryColor = next;
     });
     try {
       await widget.save();
     } catch (e) {
-      if (primary) {
-        l.primaryColor = previous;
-      } else {
-        l.secondaryColor = previous;
-      }
+      l.primaryColor = previous;
       if (mounted) showError(context, e);
     }
     if (mounted) setState(() => busy = false);
@@ -122,14 +114,9 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
                     label: 'Salva nome', onPressed: busy ? null : saveName),
                 const SizedBox(height: 12),
                 _ColorField(
-                    label: 'Colore primario',
+                    label: 'Colore lega',
                     color: l.primaryColor,
-                    onTap: busy ? null : () => changeColor(primary: true)),
-                const SizedBox(height: 12),
-                _ColorField(
-                    label: 'Colore secondario',
-                    color: l.secondaryColor,
-                    onTap: busy ? null : () => changeColor(primary: false)),
+                    onTap: busy ? null : changeColor),
                 const SizedBox(height: 12),
                 if (widget.delete != null && l.president)
                   _DangerButton(
