@@ -71,18 +71,20 @@ class CompetitionTeams extends StatelessWidget {
           return _CompetitionTeamRow(
               team: p,
               winner: winners.contains(p.id),
-              onTap: () async {
-                await Navigator.push<TeamPreset>(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => TeamEditor(
-                            league: league,
-                            save: save,
-                            team: p,
-                            competition: c,
-                            initialFormat: c.format)));
-                if (context.mounted) changed();
-              });
+              onTap: !league.manage
+                  ? null
+                  : () async {
+                      await Navigator.push<TeamPreset>(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => TeamEditor(
+                                  league: league,
+                                  save: save,
+                                  team: p,
+                                  competition: c,
+                                  initialFormat: c.format)));
+                      if (context.mounted) changed();
+                    });
         }),
         if (index != c.teamIds.length - 1) const SizedBox(height: 12),
       ],
@@ -96,7 +98,7 @@ class _CompetitionTeamRow extends StatelessWidget {
 
   final TeamPreset team;
   final bool winner;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   String get initials {
     final words = team.name.trim().split(RegExp(r'\s+'));
