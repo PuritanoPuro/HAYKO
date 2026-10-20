@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart'
     show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/presentation.dart';
@@ -9,6 +10,9 @@ import 'package:calcetto_mvp/features/teams/team_presets_page.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/statistics/statistics_page.dart';
+import 'package:calcetto_mvp/shared/customization.dart';
+import 'package:calcetto_mvp/shared/ui.dart';
+import 'package:calcetto_mvp/design_system/hayko_theme.dart';
 
 void main() {
   test('presenze poi vittorie poi gol prima del nome', () {
@@ -197,5 +201,38 @@ void main() {
     });
     expect(RotationAlerts.instance.scheduleInfo, contains('Android'));
     expect(RotationAlerts.instance.scheduleInfo, isNot(contains('iOS')));
+  });
+  testWidgets('dialoghi compatti e selettore orario usano le rotelle HAYKO',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(MaterialApp(
+        theme: buildHaykoTheme(),
+        home: Builder(
+            builder: (context) => Column(children: [
+                  TextButton(
+                      onPressed: () => confirm(
+                          context, 'Terminare la partita?', 'Confermi?'),
+                      child: const Text('Conferma partita')),
+                  TextButton(
+                      onPressed: () => chooseHaykoTime(
+                          context, const TimeOfDay(hour: 18, minute: 30)),
+                      child: const Text('Orario')),
+                ]))));
+
+    await tester.tap(find.text('Conferma partita'));
+    await tester.pumpAndSettle();
+    expect(
+        tester.getSize(find.byKey(const ValueKey('hayko-dialog-panel'))).height,
+        lessThan(360));
+    await tester.tap(find.text('Indietro'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Orario'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ore'), findsOneWidget);
+    expect(find.text('Minuti'), findsOneWidget);
+    expect(find.byType(CupertinoPicker), findsNWidgets(2));
+    expect(find.byType(TimePickerDialog), findsNothing);
   });
 }

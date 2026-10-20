@@ -470,8 +470,8 @@ class _NewMatchPageState extends State<NewMatchPage> {
         firstDate: DateTime(2000),
         lastDate: DateTime(2100));
     if (date == null || !mounted) return;
-    final time = await showTimePicker(
-        context: context, initialTime: TimeOfDay.fromDateTime(scheduled));
+    final time =
+        await chooseHaykoTime(context, TimeOfDay.fromDateTime(scheduled));
     if (time == null || !mounted) return;
     setState(() => scheduled =
         DateTime(date.year, date.month, date.day, time.hour, time.minute));

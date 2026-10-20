@@ -3,6 +3,7 @@ import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/shared/customization.dart';
 
 class CompetitionMatchForm extends StatefulWidget {
   final League league;
@@ -130,8 +131,7 @@ class _CompetitionMatchFormState extends State<CompetitionMatchForm> {
   }
 
   Future<void> chooseTime() async {
-    final value = await showTimePicker(
-        context: context, initialTime: TimeOfDay.fromDateTime(date));
+    final value = await chooseHaykoTime(context, TimeOfDay.fromDateTime(date));
     if (value != null && mounted) {
       setState(() => date =
           DateTime(date.year, date.month, date.day, value.hour, value.minute));

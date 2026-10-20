@@ -53,7 +53,7 @@ class _InviteCodeDialogState extends State<InviteCodeDialog> {
 
   @override
   Widget build(BuildContext context) => HaykoDialog(
-        title: 'Codice invito copiato',
+        title: 'Codice invito',
         content: Material(
           color: Colors.transparent,
           child: Column(mainAxisSize: MainAxisSize.min, children: [

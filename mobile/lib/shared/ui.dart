@@ -28,6 +28,7 @@ class HaykoDialog extends StatelessWidget {
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         backgroundColor: Colors.transparent,
         child: Container(
+          key: const ValueKey('hayko-dialog-panel'),
           constraints: const BoxConstraints(maxWidth: 342),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -45,7 +46,11 @@ class HaykoDialog extends StatelessWidget {
                       fontWeight: FontWeight.w800)),
             ),
             const SizedBox(height: 16),
-            Flexible(child: content),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.55),
+              child: SingleChildScrollView(child: content),
+            ),
             const SizedBox(height: 20),
             for (var index = 0; index < actions.length; index++) ...[
               SizedBox(

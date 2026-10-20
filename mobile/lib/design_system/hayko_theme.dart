@@ -48,6 +48,21 @@ ThemeData buildHaykoTheme() {
         surfaceTintColor: Colors.transparent),
     cardTheme: base.cardTheme.copyWith(
         color: HaykoColors.fieldSurface, surfaceTintColor: Colors.transparent),
+    filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+            minimumSize: const Size(48, 52),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)))),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+            minimumSize: const Size(48, 52),
+            side: const BorderSide(color: HaykoColors.fieldLine),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)))),
+    textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)))),
     dialogTheme: base.dialogTheme.copyWith(
         backgroundColor: HaykoColors.fieldSurface,
         surfaceTintColor: Colors.transparent,
@@ -108,14 +123,6 @@ ThemeData buildHaykoTheme() {
     datePickerTheme: DatePickerThemeData(
         backgroundColor: HaykoColors.fieldSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-            side: const BorderSide(color: HaykoColors.fieldLine),
-            borderRadius: BorderRadius.circular(16))),
-    timePickerTheme: TimePickerThemeData(
-        backgroundColor: HaykoColors.fieldSurface,
-        dialBackgroundColor: HaykoColors.fieldBackground,
-        hourMinuteColor: HaykoColors.fieldBackground,
-        dayPeriodColor: HaykoColors.fieldBackground,
         shape: RoundedRectangleBorder(
             side: const BorderSide(color: HaykoColors.fieldLine),
             borderRadius: BorderRadius.circular(16))),

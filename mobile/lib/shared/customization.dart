@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
@@ -194,6 +195,108 @@ String dateLabel(String? value) {
   return '${two(d.day)}/${two(d.month)}/${d.year} · ${two(d.hour)}:${two(d.minute)}';
 }
 
+Future<TimeOfDay?> chooseHaykoTime(
+    BuildContext context, TimeOfDay initial) async {
+  var hour = initial.hour;
+  var minute = initial.minute;
+  final hourController = FixedExtentScrollController(initialItem: hour);
+  final minuteController = FixedExtentScrollController(initialItem: minute);
+  final result = await showDialog<TimeOfDay>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setState) => HaykoDialog(
+                title: 'Seleziona orario',
+                content: Material(
+                  color: Colors.transparent,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Row(children: [
+                      Expanded(
+                          child: Text('Ore',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: HaykoColors.mutedText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600))),
+                      SizedBox(width: 24),
+                      Expanded(
+                          child: Text('Minuti',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: HaykoColors.mutedText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600))),
+                    ]),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 176,
+                      child: Row(children: [
+                        Expanded(
+                            child: _TimeWheel(
+                                controller: hourController,
+                                count: 24,
+                                onChanged: (value) =>
+                                    setState(() => hour = value))),
+                        const SizedBox(
+                            width: 24,
+                            child: Center(
+                                child: Text(':',
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700)))),
+                        Expanded(
+                            child: _TimeWheel(
+                                controller: minuteController,
+                                count: 60,
+                                onChanged: (value) =>
+                                    setState(() => minute = value))),
+                      ]),
+                    ),
+                  ]),
+                ),
+                actions: [
+                  FilledButton(
+                      onPressed: () => Navigator.pop(
+                          dialogContext, TimeOfDay(hour: hour, minute: minute)),
+                      child: const Text('Conferma')),
+                  OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Annulla')),
+                ],
+              )));
+  await Future<void>.delayed(const Duration(milliseconds: 300));
+  hourController.dispose();
+  minuteController.dispose();
+  return result;
+}
+
+class _TimeWheel extends StatelessWidget {
+  const _TimeWheel(
+      {required this.controller, required this.count, required this.onChanged});
+
+  final FixedExtentScrollController controller;
+  final int count;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) => CupertinoPicker.builder(
+        scrollController: controller,
+        itemExtent: 44,
+        useMagnifier: true,
+        magnification: 1.08,
+        selectionOverlay: CupertinoPickerDefaultSelectionOverlay(
+            background: HaykoColors.fieldLine.withValues(alpha: 0.72)),
+        onSelectedItemChanged: onChanged,
+        childCount: count,
+        itemBuilder: (context, index) => Center(
+          child: Text(index.toString().padLeft(2, '0'),
+              style: const TextStyle(
+                  color: HaykoColors.chalk,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700)),
+        ),
+      );
+}
+
 class EventDetailsFields extends StatelessWidget {
   final DateTime date;
   final TextEditingController venue;
@@ -229,9 +332,8 @@ class EventDetailsFields extends StatelessWidget {
                   label: Text(
                       '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}'),
                   onPressed: () async {
-                    final value = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.fromDateTime(date));
+                    final value = await chooseHaykoTime(
+                        context, TimeOfDay.fromDateTime(date));
                     if (!context.mounted) return;
                     if (value != null) {
                       changed(DateTime(date.year, date.month, date.day,
