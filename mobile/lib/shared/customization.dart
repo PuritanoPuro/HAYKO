@@ -12,10 +12,10 @@ ThemeData leagueTheme(BuildContext context, League l) {
   // e i pulsanti del tema globale HAYKO.
   return base.copyWith(
     navigationBarTheme: base.navigationBarTheme.copyWith(
-        indicatorColor: Color(l.secondaryColor).withValues(alpha: 0.25)),
+        indicatorColor: Color(l.primaryColor).withValues(alpha: 0.25)),
     colorScheme: base.colorScheme.copyWith(
-        secondary: Color(l.secondaryColor),
-        onSecondary: contrastColor(l.secondaryColor)),
+        secondary: Color(l.primaryColor),
+        onSecondary: contrastColor(l.primaryColor)),
   );
 }
 
@@ -133,15 +133,13 @@ Future<int?> chooseColor(BuildContext context, int initial) async {
 class IdentityEdit {
   final String name;
   final int color;
-  final int? secondary;
-  IdentityEdit(this.name, this.color, this.secondary);
+  IdentityEdit(this.name, this.color);
 }
 
 Future<IdentityEdit?> editIdentity(
-    BuildContext context, String title, String name, int color,
-    {int? secondary}) async {
+    BuildContext context, String title, String name, int color) async {
   final text = TextEditingController(text: name);
-  var primary = color, second = secondary;
+  var primary = color;
   final result = await showDialog<IdentityEdit>(
       context: context,
       builder: (c) => StatefulBuilder(
@@ -157,15 +155,9 @@ Future<IdentityEdit?> editIdentity(
                           maxLength: 60,
                           decoration: const InputDecoration(labelText: 'Nome')),
                       ColorChoice(
-                          label:
-                              secondary == null ? 'Colore' : 'Colore primario',
+                          label: 'Colore',
                           color: primary,
                           changed: (v) => set(() => primary = v)),
-                      if (second != null)
-                        ColorChoice(
-                            label: 'Colore secondario',
-                            color: second!,
-                            changed: (v) => set(() => second = v)),
                     ])),
                   ),
                   actions: [
@@ -173,9 +165,7 @@ Future<IdentityEdit?> editIdentity(
                         onPressed: () {
                           if (text.text.trim().isNotEmpty) {
                             Navigator.pop(
-                                c,
-                                IdentityEdit(
-                                    text.text.trim(), primary, second));
+                                c, IdentityEdit(text.text.trim(), primary));
                           }
                         },
                         child: const Text('Salva')),
