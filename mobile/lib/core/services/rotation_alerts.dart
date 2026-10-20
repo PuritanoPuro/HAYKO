@@ -218,6 +218,25 @@ class RotationAlerts {
                 presentAlert: true, presentSound: true)));
   }
 
+  Future<void> showSocialNotification(
+      {required String title, required String body}) async {
+    await initialize();
+    if (!ready) return;
+    await plugin.show(
+        92000 + Object.hash(title, body).abs() % 7000,
+        title,
+        body,
+        const NotificationDetails(
+            android: AndroidNotificationDetails(
+                'league_access', 'Richieste di accesso',
+                channelDescription:
+                    'Nuove richieste di accesso e richieste approvate',
+                importance: Importance.high,
+                priority: Priority.high),
+            iOS: DarwinNotificationDetails(
+                presentAlert: true, presentSound: true)));
+  }
+
   Future<void> syncLiveNotifications() async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
     final live = <String, ({League league, Match match})>{};
