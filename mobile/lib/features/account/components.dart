@@ -17,7 +17,7 @@ class AccountScaffold extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           toolbarHeight: toolbarHeight,
-          centerTitle: false,
+          centerTitle: back,
           automaticallyImplyLeading: false,
           leadingWidth: back ? 72 : null,
           leading: back
@@ -31,7 +31,7 @@ class AccountScaffold extends StatelessWidget {
                           onPressed: () => Navigator.maybePop(context))),
                 )
               : null,
-          titleSpacing: back ? 0 : 24,
+          titleSpacing: back ? NavigationToolbar.kMiddleSpacing : 24,
           title: SizedBox(
               height: toolbarHeight,
               child: Padding(
