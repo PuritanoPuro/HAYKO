@@ -45,7 +45,14 @@ ThemeData buildHaykoTheme() {
     appBarTheme: base.appBarTheme.copyWith(
         backgroundColor: HaykoColors.fieldBackground,
         foregroundColor: HaykoColors.chalk,
-        surfaceTintColor: Colors.transparent),
+        surfaceTintColor: Colors.transparent,
+        centerTitle: true,
+        titleTextStyle: const TextStyle(
+            fontFamily: 'BricolageGrotesque',
+            color: HaykoColors.chalk,
+            fontSize: 20,
+            height: 1.3,
+            fontWeight: FontWeight.w800)),
     cardTheme: base.cardTheme.copyWith(
         color: HaykoColors.fieldSurface, surfaceTintColor: Colors.transparent),
     filledButtonTheme: FilledButtonThemeData(
