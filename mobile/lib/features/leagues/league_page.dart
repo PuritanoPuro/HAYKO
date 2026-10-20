@@ -194,9 +194,23 @@ class _LeaguePageState extends State<LeaguePage> {
   }
 
   Future<void> addPlayer() async {
-    final name = await askText(context, 'Nome giocatore');
-    if (name == null) return;
-    final p = Player(newId(), name);
+    final result = await Navigator.push<PlayerEditResult>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => PlayerEditPage(
+                name: '',
+                color: l.primaryColor,
+                creating: true,
+                unavailableNames: l.players.map((p) => p.name).toList())));
+    if (result == null) return;
+    final name = result.name.trim();
+    if (name.isEmpty ||
+        l.players
+            .any((player) => player.name.toLowerCase() == name.toLowerCase())) {
+      if (mounted) showError(context, 'Inserisci un nome nuovo e non vuoto.');
+      return;
+    }
+    final p = Player(newId(), name, color: result.color);
     l.players.add(p);
     try {
       await widget.save();

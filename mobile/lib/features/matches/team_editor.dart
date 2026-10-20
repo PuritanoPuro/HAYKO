@@ -5,49 +5,31 @@ import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/features/competitions/competition_roster_editor.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/features/leagues/player_edit_page.dart';
 
 Future<Player?> addLeaguePlayer(
     BuildContext context, League l, Save? save) async {
   var name = '';
   var color = l.primaryColor;
-  final player = await showDialog<Player>(
-      context: context,
-      builder: (c) => StatefulBuilder(
-          builder: (c, set) => AlertDialog(
-                  title: const Text('Aggiungi giocatore'),
-                  content: SingleChildScrollView(
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    TextFormField(
-                        maxLength: 60,
-                        decoration:
-                            const InputDecoration(labelText: 'Nome giocatore'),
-                        onChanged: (v) => name = v),
-                    ColorChoice(
-                        label: 'Colore giocatore',
-                        color: color,
-                        changed: (v) => set(() => color = v)),
-                  ])),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(c),
-                        child: const Text('Annulla')),
-                    FilledButton(
-                        onPressed: () {
-                          final value = name.trim();
-                          if (value.isEmpty ||
-                              l.players.any((p) =>
-                                  p.name.toLowerCase() ==
-                                  value.toLowerCase())) {
-                            showError(
-                                c, 'Inserisci un nome nuovo e non vuoto.');
-                            return;
-                          }
-                          Navigator.pop(
-                              c, Player(newId(), value, color: color));
-                        },
-                        child: const Text('Aggiungi'))
-                  ])));
-  if (player == null) return null;
+  final result = await Navigator.push<PlayerEditResult>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => PlayerEditPage(
+              name: name,
+              color: color,
+              creating: true,
+              unavailableNames: l.players.map((p) => p.name).toList())));
+  if (result == null) return null;
+  name = result.name.trim();
+  color = result.color;
+  if (name.isEmpty ||
+      l.players.any((p) => p.name.toLowerCase() == name.toLowerCase())) {
+    if (context.mounted) {
+      showError(context, 'Inserisci un nome nuovo e non vuoto.');
+    }
+    return null;
+  }
+  final player = Player(newId(), name, color: color);
   l.players.add(player);
   try {
     await save?.call();

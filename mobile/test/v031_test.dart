@@ -133,11 +133,12 @@ void main() {
             initialFormat: 2)));
     await tester.tap(find.text('+ Giocatore'));
     await tester.pumpAndSettle();
+    expect(find.text('Nuovo giocatore'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byKey(const ValueKey('player-color-field')), findsOneWidget);
     await tester.enterText(
-        find.descendant(
-            of: find.byType(AlertDialog), matching: find.byType(TextFormField)),
-        'Nuovo');
-    await tester.tap(find.widgetWithText(FilledButton, 'Aggiungi'));
+        find.byKey(const ValueKey('player-name-field')), 'Nuovo');
+    await tester.tap(find.text('Aggiungi giocatore'));
     await tester.pumpAndSettle();
     expect(l.players.last.name, 'Nuovo');
     expect(saves, 1);

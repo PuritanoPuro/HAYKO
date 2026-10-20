@@ -65,58 +65,16 @@ class _CompetitionRosterEditorState extends State<CompetitionRosterEditor> {
       setState(() => roster.add(result));
       return;
     }
-    var value = entry.name;
-    var number = '${entry.number}';
-    final result = await showDialog<RosterEntry>(
-        context: context,
-        builder: (c) => AlertDialog(
-                title: const Text('Modifica giocatore'),
-                content: SingleChildScrollView(
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  TextFormField(
-                      key: const ValueKey('roster-player-name'),
-                      initialValue: value,
-                      maxLength: 60,
-                      decoration:
-                          const InputDecoration(labelText: 'Nome giocatore'),
-                      onChanged: (v) => value = v),
-                  TextFormField(
-                      key: const ValueKey('roster-player-number'),
-                      initialValue: number,
-                      maxLength: 2,
-                      keyboardType: TextInputType.number,
-                      decoration:
-                          const InputDecoration(labelText: 'Numero di maglia'),
-                      onChanged: (v) => number = v),
-                ])),
-                actions: [
-                  TextButton(
-                      onPressed: () =>
-                          Navigator.pop(c, RosterEntry(entry.id, '', -1)),
-                      child: const Text('Rimuovi')),
-                  TextButton(
-                      onPressed: () => Navigator.pop(c),
-                      child: const Text('Annulla')),
-                  FilledButton(
-                      onPressed: () {
-                        final n = int.tryParse(number), text = value.trim();
-                        if (text.isEmpty ||
-                            n == null ||
-                            n < 0 ||
-                            n > 99 ||
-                            roster.any((p) =>
-                                p.id != entry.id &&
-                                (p.number == n ||
-                                    p.name.toLowerCase() ==
-                                        text.toLowerCase()))) {
-                          showError(c,
-                              'Inserisci nome e numero da 0 a 99, diversi dagli altri giocatori della squadra.');
-                          return;
-                        }
-                        Navigator.pop(c, RosterEntry(entry.id, text, n));
-                      },
-                      child: const Text('Salva'))
-                ]));
+    final result = await Navigator.push<RosterEntry>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _CompetitionPlayerEditor(
+          teamName: name.trim().isEmpty ? 'Squadra' : name.trim(),
+          roster: List.unmodifiable(roster),
+          initialEntry: entry,
+        ),
+      ),
+    );
     if (!mounted || result == null) return;
     if (result.number == -1) {
       await remove(entry);
@@ -359,10 +317,12 @@ class _CompetitionRosterEditorState extends State<CompetitionRosterEditor> {
 class _CompetitionPlayerEditor extends StatefulWidget {
   final String teamName;
   final List<RosterEntry> roster;
+  final RosterEntry? initialEntry;
 
   const _CompetitionPlayerEditor({
     required this.teamName,
     required this.roster,
+    this.initialEntry,
   });
 
   @override
@@ -377,6 +337,12 @@ class _CompetitionPlayerEditorState extends State<_CompetitionPlayerEditor> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initialEntry;
+    if (initial != null) {
+      nameController.text = initial.name;
+      numberController = TextEditingController(text: '${initial.number}');
+      return;
+    }
     var next = 1;
     while (widget.roster.any((player) => player.number == next)) {
       next++;
@@ -395,8 +361,9 @@ class _CompetitionPlayerEditorState extends State<_CompetitionPlayerEditor> {
     final name = nameController.text.trim();
     final number = int.tryParse(numberController.text);
     final duplicate = widget.roster.any((player) =>
-        player.number == number ||
-        player.name.toLowerCase() == name.toLowerCase());
+        player.id != widget.initialEntry?.id &&
+        (player.number == number ||
+            player.name.toLowerCase() == name.toLowerCase()));
     if (name.isEmpty ||
         number == null ||
         number < 0 ||
@@ -406,7 +373,8 @@ class _CompetitionPlayerEditorState extends State<_CompetitionPlayerEditor> {
           'Inserisci nome e numero da 0 a 99, diversi dagli altri giocatori della squadra.');
       return;
     }
-    Navigator.pop(context, RosterEntry(newId(), name, number));
+    Navigator.pop(
+        context, RosterEntry(widget.initialEntry?.id ?? newId(), name, number));
   }
 
   Widget field({
@@ -466,7 +434,9 @@ class _CompetitionPlayerEditorState extends State<_CompetitionPlayerEditor> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           toolbarHeight: 64,
-          title: const Text('Nuovo giocatore'),
+          title: Text(widget.initialEntry == null
+              ? 'Nuovo giocatore'
+              : 'Modifica giocatore'),
         ),
         body: ListView(
           padding: const EdgeInsets.all(24),
@@ -488,7 +458,33 @@ class _CompetitionPlayerEditorState extends State<_CompetitionPlayerEditor> {
             const SizedBox(height: 12),
             field(label: 'Squadra', value: widget.teamName),
             const SizedBox(height: 12),
-            AccountButton('Aggiungi giocatore', onPressed: submit),
+            AccountButton(
+                widget.initialEntry == null
+                    ? 'Aggiungi giocatore'
+                    : 'Salva giocatore',
+                onPressed: submit),
+            if (widget.initialEntry != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(
+                      context, RosterEntry(widget.initialEntry!.id, '', -1)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xffffb4ab),
+                    backgroundColor: HaykoColors.fieldSurface,
+                    side: const BorderSide(color: Color(0xffffb4ab)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(
+                        fontSize: 16,
+                        height: 24 / 16,
+                        fontWeight: FontWeight.w700),
+                  ),
+                  child: const Text('Rimuovi dalla squadra'),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             AccountButton('Annulla',
                 outline: true, onPressed: () => Navigator.pop(context)),

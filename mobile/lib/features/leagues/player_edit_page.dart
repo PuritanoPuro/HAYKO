@@ -21,10 +21,14 @@ class PlayerEditPage extends StatefulWidget {
       {super.key,
       required this.name,
       required this.color,
+      this.creating = false,
+      this.unavailableNames = const [],
       this.deletionBlockedReason});
 
   final String name;
   final int color;
+  final bool creating;
+  final List<String> unavailableNames;
   final String? deletionBlockedReason;
 
   @override
@@ -55,6 +59,11 @@ class _PlayerEditPageState extends State<PlayerEditPage> {
     final value = name.text.trim();
     if (value.isEmpty) {
       showError(context, 'Inserisci il nome del giocatore.');
+      return;
+    }
+    if (widget.unavailableNames
+        .any((name) => name.toLowerCase() == value.toLowerCase())) {
+      showError(context, 'Esiste già un giocatore con questo nome.');
       return;
     }
     Navigator.pop(context, PlayerEditResult.saved(value, color));
@@ -90,8 +99,9 @@ class _PlayerEditPageState extends State<PlayerEditPage> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
             toolbarHeight: 64,
-            title: const Text('Modifica giocatore',
-                style: TextStyle(
+            title: Text(
+                widget.creating ? 'Nuovo giocatore' : 'Modifica giocatore',
+                style: const TextStyle(
                     fontSize: 20, height: 1.3, fontWeight: FontWeight.w700))),
         body: SafeArea(
           top: false,
@@ -175,26 +185,29 @@ class _PlayerEditPageState extends State<PlayerEditPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              AccountButton('Salva', onPressed: save),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 52,
-                child: OutlinedButton(
-                  onPressed: delete,
-                  style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xffffb4ab),
-                      backgroundColor: HaykoColors.fieldSurface,
-                      side: const BorderSide(color: Color(0xffffb4ab)),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(
-                          fontFamily: 'BricolageGrotesque',
-                          fontSize: 16,
-                          height: 1.5,
-                          fontWeight: FontWeight.w700)),
-                  child: const Text('Elimina giocatore'),
+              AccountButton(widget.creating ? 'Aggiungi giocatore' : 'Salva',
+                  onPressed: save),
+              if (!widget.creating) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: delete,
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xffffb4ab),
+                        backgroundColor: HaykoColors.fieldSurface,
+                        side: const BorderSide(color: Color(0xffffb4ab)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        textStyle: const TextStyle(
+                            fontFamily: 'BricolageGrotesque',
+                            fontSize: 16,
+                            height: 1.5,
+                            fontWeight: FontWeight.w700)),
+                    child: const Text('Elimina giocatore'),
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 12),
               AccountButton('Annulla',
                   outline: true, onPressed: () => Navigator.pop(context)),

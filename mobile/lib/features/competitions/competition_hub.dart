@@ -956,67 +956,75 @@ class _CompetitionStandingsTable extends StatelessWidget {
           border: Border.all(color: HaykoColors.fieldLine),
         ),
         clipBehavior: Clip.antiAlias,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            headingRowColor:
-                const WidgetStatePropertyAll(HaykoColors.fieldLine),
-            headingRowHeight: 48,
-            dataRowMinHeight: 48,
-            dataRowMaxHeight: 48,
-            horizontalMargin: 4,
-            columnSpacing: 12,
-            dividerThickness: 0,
-            headingTextStyle: const TextStyle(
-                color: HaykoColors.chalk,
-                fontSize: 12,
-                height: 16 / 12,
-                fontWeight: FontWeight.w600),
-            dataTextStyle: const TextStyle(
-                color: HaykoColors.chalk, fontSize: 14, height: 20 / 14),
-            columns: [
-              for (final name in const [
-                'Squadra',
-                'PG',
-                'V',
-                'P',
-                'S',
-                'GF',
-                'GS',
-                'DR',
-                'Punti'
-              ])
-                DataColumn(label: Text(name))
-            ],
-            rows: [
-              for (final row in rows)
-                DataRow(cells: [
-                  DataCell(SizedBox(
-                      width: 118,
-                      child: Row(children: [
-                        Container(
-                            width: 4, height: 20, color: Color(row.team.color)),
-                        const SizedBox(width: 4),
-                        Expanded(
-                            child: Text(row.team.name,
-                                maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        if (winners.contains(row.team.id))
-                          const Icon(Icons.emoji_events,
-                              size: 16, color: Color(0xffe3f24a)),
-                      ]))),
-                  for (final value in [
-                    row.played,
-                    row.wins,
-                    row.draws,
-                    row.losses,
-                    row.goals,
-                    row.conceded,
-                    row.difference,
-                    row.points
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: DataTable(
+                headingRowColor:
+                    const WidgetStatePropertyAll(HaykoColors.fieldLine),
+                headingRowHeight: 48,
+                dataRowMinHeight: 48,
+                dataRowMaxHeight: 48,
+                horizontalMargin: 4,
+                columnSpacing: 12,
+                dividerThickness: 0,
+                headingTextStyle: const TextStyle(
+                    color: HaykoColors.chalk,
+                    fontSize: 12,
+                    height: 16 / 12,
+                    fontWeight: FontWeight.w600),
+                dataTextStyle: const TextStyle(
+                    color: HaykoColors.chalk, fontSize: 14, height: 20 / 14),
+                columns: [
+                  for (final name in const [
+                    'Squadra',
+                    'PG',
+                    'V',
+                    'P',
+                    'S',
+                    'GF',
+                    'GS',
+                    'DR',
+                    'Punti'
                   ])
-                    DataCell(Center(child: Text('$value'))),
-                ]),
-            ],
+                    DataColumn(label: Text(name))
+                ],
+                rows: [
+                  for (final row in rows)
+                    DataRow(cells: [
+                      DataCell(SizedBox(
+                          width: 118,
+                          child: Row(children: [
+                            Container(
+                                width: 4,
+                                height: 20,
+                                color: Color(row.team.color)),
+                            const SizedBox(width: 4),
+                            Expanded(
+                                child: Text(row.team.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis)),
+                            if (winners.contains(row.team.id))
+                              const Icon(Icons.emoji_events,
+                                  size: 16, color: Color(0xffe3f24a)),
+                          ]))),
+                      for (final value in [
+                        row.played,
+                        row.wins,
+                        row.draws,
+                        row.losses,
+                        row.goals,
+                        row.conceded,
+                        row.difference,
+                        row.points
+                      ])
+                        DataCell(Center(child: Text('$value'))),
+                    ]),
+                ],
+              ),
+            ),
           ),
         ),
       );

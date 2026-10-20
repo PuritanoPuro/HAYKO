@@ -120,7 +120,10 @@ void main() {
     expect(find.byType(CheckboxListTile), findsNothing);
     await tester.tap(find.byTooltip('Modifica giocatore').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Rimuovi'));
+    expect(find.text('Modifica giocatore'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Salva giocatore'), findsOneWidget);
+    await tester.tap(find.text('Rimuovi dalla squadra'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Conferma'));
     await tester.pumpAndSettle();
