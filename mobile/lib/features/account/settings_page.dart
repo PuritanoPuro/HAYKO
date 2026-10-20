@@ -4,27 +4,12 @@ import 'package:calcetto_mvp/core/services/cloud.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
-import 'package:calcetto_mvp/features/account/profile_page.dart';
-import 'package:calcetto_mvp/features/account/profile_service.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
   @override
   Widget build(BuildContext context) =>
       AccountScaffold(title: 'Impostazioni', children: [
-        AccountButton('Profilo', outline: true, onPressed: () async {
-          try {
-            final p = await ProfileService.load();
-            if (!context.mounted) return;
-            await Navigator.push(context,
-                MaterialPageRoute(builder: (_) => ProfilePage(initial: p)));
-          } catch (_) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Profilo non disponibile. Riprova.')));
-            }
-          }
-        }),
         AccountButton('Impostazioni notifiche',
             outline: true,
             onPressed: () => Navigator.push(
