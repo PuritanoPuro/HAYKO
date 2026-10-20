@@ -127,10 +127,15 @@ void main() {
         .widget<Container>(find.byKey(const ValueKey('statistics-row-b')));
     final firstRow = tester
         .widget<Container>(find.byKey(const ValueKey('statistics-row-a')));
-    expect(
-        (currentRow.decoration as BoxDecoration).color, HaykoColors.fieldLine);
+    expect((currentRow.decoration as BoxDecoration).color,
+        HaykoColors.fieldSurface);
     expect(
         (firstRow.decoration as BoxDecoration).color, HaykoColors.fieldSurface);
+    final header = tester
+        .widget<Container>(find.byKey(const ValueKey('statistics-header')));
+    expect((header.decoration as BoxDecoration).color, HaykoColors.fieldLine);
+    expect(find.byKey(const ValueKey('statistics-current-b')), findsOneWidget);
+    expect(find.byKey(const ValueKey('statistics-current-a')), findsNothing);
 
     await tester.ensureVisible(find.byKey(const ValueKey('ranking-b')));
     await tester.pumpAndSettle();

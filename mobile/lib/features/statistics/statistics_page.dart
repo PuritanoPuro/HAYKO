@@ -171,7 +171,9 @@ class _StatisticsTable extends StatelessWidget {
                       for (final player in players)
                         _StatisticsRow(
                           playerId: player.id,
-                          highlighted: player.id == currentPlayerId,
+                          indicatorColor: player.id == currentPlayerId
+                              ? Color(player.color)
+                              : null,
                           values: [
                             player.name,
                             '${totals[player.id]!.played}',
@@ -196,12 +198,12 @@ class _StatisticsRow extends StatelessWidget {
   const _StatisticsRow({
     required this.values,
     this.header = false,
-    this.highlighted = false,
+    this.indicatorColor,
     this.playerId,
   });
   final List<String> values;
   final bool header;
-  final bool highlighted;
+  final Color? indicatorColor;
   final String? playerId;
 
   @override
@@ -211,11 +213,7 @@ class _StatisticsRow extends StatelessWidget {
             : ValueKey('statistics-row-$playerId'),
         height: 48,
         decoration: BoxDecoration(
-          color: header
-              ? HaykoColors.fieldBackground
-              : highlighted
-                  ? HaykoColors.fieldLine
-                  : HaykoColors.fieldSurface,
+          color: header ? HaykoColors.fieldLine : HaykoColors.fieldSurface,
           border: const Border(
             bottom: BorderSide(color: HaykoColors.fieldBackground, width: 1),
           ),
@@ -226,17 +224,42 @@ class _StatisticsRow extends StatelessWidget {
               SizedBox(
                 width: _StatisticsTable.widths[i],
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(i == 0 ? 12 : 4, 4, 4, 4),
+                  padding: EdgeInsets.fromLTRB(
+                      i == 0 ? (header ? 12 : 4) : 4, 4, 4, 4),
                   child: Align(
                     alignment: i == 0 ? Alignment.centerLeft : Alignment.center,
-                    child: Text(values[i],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: header ? 12 : 14,
-                            height: header ? 16 / 12 : 20 / 14,
-                            fontWeight:
-                                header ? FontWeight.w600 : FontWeight.w400)),
+                    child: i == 0 && !header
+                        ? Row(
+                            children: [
+                              if (indicatorColor != null) ...[
+                                Container(
+                                  key: ValueKey('statistics-current-$playerId'),
+                                  width: 4,
+                                  height: 20,
+                                  color: indicatorColor,
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Expanded(
+                                child: Text(values[i],
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontSize: 14,
+                                        height: 20 / 14,
+                                        fontWeight: FontWeight.w400)),
+                              ),
+                            ],
+                          )
+                        : Text(values[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: header ? 12 : 14,
+                                height: header ? 16 / 12 : 20 / 14,
+                                fontWeight: header
+                                    ? FontWeight.w600
+                                    : FontWeight.w400)),
                   ),
                 ),
               ),
