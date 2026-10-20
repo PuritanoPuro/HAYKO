@@ -64,7 +64,7 @@ class HaykoHome extends StatelessWidget {
           height: 32.488,
           child: Center(
             child: SvgPicture.asset(
-              'assets/brand/hayko_falcon_no_black.svg',
+              'assets/brand/hayko_falcon_app_v2.svg',
               width: 72,
               height: 32.239,
               semanticsLabel: 'HAYKO',

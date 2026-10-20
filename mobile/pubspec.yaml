@@ -21,6 +21,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/brand/hayko_falcon_no_black.svg
+    - assets/brand/hayko_falcon_app_v2.svg
     - assets/brand/hayko_wordmark_clean.svg
     - assets/fonts/OFL.txt
   fonts:

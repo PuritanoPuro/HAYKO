@@ -169,19 +169,20 @@ Asset master:
 
 ```text
 mobile/assets/brand/hayko_falcon_no_black.svg
+mobile/assets/brand/hayko_falcon_app_v2.svg
 mobile/assets/brand/hayko_wordmark_clean.svg
 mobile/assets/brand/hayko_app_icon.svg
 ```
 
 ### Icona app corrente
 
-L’icona usa il falco originale, ingrandito secondo la variante verde della tavola “Icona app — confronto”, su sfondo verde HAYKO `#326E57`. Sono presenti tutte le dimensioni native iOS e Android. I PNG iOS non hanno trasparenza.
+L’icona usa il falco V2 fornito nel pacchetto `HAYKO_APP_ICON_V2.zip`, su sfondo verde HAYKO `#0E2B22`. Lo stesso falco V2 trasparente è usato nell’header della home “Le tue leghe”; la splash conserva gli asset precedenti. Sono presenti tutte le dimensioni native iOS e Android. I PNG iOS non hanno trasparenza.
 
 Ultimi commit relativi all’icona:
 
 - `fb60333` — prima esportazione nativa;
 - `18fffe1` — proporzioni del falco più vicine al riferimento;
-- `64446d1` — sfondo verde HAYKO più chiaro.
+- `64446d1` — precedente variante con sfondo verde più chiaro, poi sostituita dal falco V2 e dallo sfondo `#0E2B22`.
 
 ## 8. Navigazione e comportamento iniziale
 
