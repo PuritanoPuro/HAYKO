@@ -4,6 +4,7 @@ import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/features/matches/goal_page.dart';
 import 'package:calcetto_mvp/features/matches/formation.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
+import 'package:calcetto_mvp/features/home/home_page.dart';
 
 void main() {
   final epoch = DateTime.utc(2026, 10, 12, 14);
@@ -111,6 +112,15 @@ void main() {
     expect(alerts.first.text, contains('d in porta'));
     m.finish();
     expect(rotationNotices([league(m)], epoch), isEmpty);
+  });
+  test('notifiche social segnalano solo richieste nuove e approvazioni', () {
+    expect(newPendingRequests(null, {'l|u'}), isEmpty);
+    expect(newPendingRequests({'l|u'}, {'l|u', 'l|v'}), {'l|v'});
+    expect(newlyApprovedRequests(null, {'l': 'approved'}), isEmpty);
+    expect(
+        newlyApprovedRequests({'l': 'pending', 'x': 'approved'},
+            {'l': 'approved', 'x': 'approved'}),
+        {'l'});
   });
   testWidgets('autogol va direttamente al portiere senza pagina assist',
       (tester) async {
