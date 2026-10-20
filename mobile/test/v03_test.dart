@@ -194,6 +194,8 @@ void main() {
             delete: () async {
               removed++;
             })));
+    expect(find.text('Colore lega'), findsOneWidget);
+    expect(find.text('Colore secondario'), findsNothing);
     await Scrollable.ensureVisible(tester.element(find.text('Elimina lega')),
         alignment: 0.5);
     await tester.pumpAndSettle();
