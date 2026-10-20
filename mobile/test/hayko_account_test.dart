@@ -5,6 +5,7 @@ import 'package:calcetto_mvp/features/account/invite_links.dart';
 import 'package:calcetto_mvp/features/account/league_store.dart';
 import 'package:calcetto_mvp/features/account/profile_page.dart';
 import 'package:calcetto_mvp/features/account/profile_service.dart';
+import 'package:calcetto_mvp/features/account/settings_page.dart';
 import 'package:calcetto_mvp/design_system/hayko_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -105,6 +106,12 @@ void main() {
     expect(saved!.firstName, 'Filippo');
     expect(saved!.lastName, 'Fuschini');
     expect(find.text('Profilo salvato'), findsOneWidget);
+  });
+  testWidgets('impostazioni non duplicano il collegamento al profilo',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: SettingsPage()));
+    expect(find.text('Profilo'), findsNothing);
+    expect(find.text('Impostazioni notifiche'), findsOneWidget);
   });
   test(
       'offline conserva sequenza avvio gol chiusura e riprende dopo riapertura',
