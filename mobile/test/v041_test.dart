@@ -146,12 +146,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
-  testWidgets('statistiche competizione DR senza filtri e tabella giocatori',
+  testWidgets('statistiche competizione usa Goal e Pt senza filtri',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: CompetitionStatistics(league: sample()))));
-    expect(find.text('DR'), findsOneWidget);
-    expect(find.text('DG'), findsNothing);
+    expect(find.text('Goal'), findsOneWidget);
+    expect(find.text('Pt'), findsOneWidget);
+    expect(find.text('DR'), findsNothing);
     expect(find.text('Giocatore'), findsNothing);
     expect(find.byType(DropdownButton<int>), findsNothing);
     expect(find.byType(DataTable), findsOneWidget);
