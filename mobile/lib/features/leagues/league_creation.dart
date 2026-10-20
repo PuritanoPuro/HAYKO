@@ -49,13 +49,12 @@ class _LeagueCreationState extends State<LeagueCreation> {
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         toolbarHeight: 64,
-        centerTitle: false,
+        centerTitle: true,
         leadingWidth: 52,
         leading: IconButton(
             tooltip: 'Indietro',
             icon: const Icon(Icons.arrow_back, size: 24),
             onPressed: () => Navigator.maybePop(context)),
-        titleSpacing: 0,
         title: const Text('Nuova lega',
             style: TextStyle(
                 fontFamily: 'BricolageGrotesque',
