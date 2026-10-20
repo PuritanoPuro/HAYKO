@@ -15,6 +15,20 @@ import 'dart:async';
 
 import 'package:calcetto_mvp/features/leagues/league_page.dart';
 
+class HomeNavigationGate {
+  bool active = false;
+
+  Future<void> run(Future<void> Function() action) async {
+    if (active) return;
+    active = true;
+    try {
+      await action();
+    } finally {
+      active = false;
+    }
+  }
+}
+
 class Home extends StatefulWidget {
   const Home({super.key});
   @override
@@ -24,6 +38,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> with WidgetsBindingObserver {
   List<League> leagues = [];
   bool busy = true;
+  final navigationGate = HomeNavigationGate();
   String? error;
   Timer? syncTimer;
   @override
@@ -114,15 +129,17 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
 
   Future<void> createLeague() async {
-    final l = await Navigator.push<League>(
-        context, MaterialPageRoute(builder: (_) => const LeagueCreation()));
-    if (l == null) return;
-    try {
-      await Cloud.client.rpc('bc_create', params: {'p_state': l.toJson()});
-      await load();
-    } catch (e) {
-      if (mounted) showError(context, e);
-    }
+    await openOnce(() async {
+      final l = await Navigator.push<League>(
+          context, MaterialPageRoute(builder: (_) => const LeagueCreation()));
+      if (l == null) return;
+      try {
+        await Cloud.client.rpc('bc_create', params: {'p_state': l.toJson()});
+        await load();
+      } catch (e) {
+        if (mounted) showError(context, e);
+      }
+    });
   }
 
   Future<void> deleteLeague(League l) async {
@@ -137,34 +154,38 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
 
   Future<void> openLeague(League l) async {
-    try {
-      await Cloud.refresh(l);
-      if (!mounted) return;
-      if (l.myPlayer == null) await Cloud.identify(context, l);
-      if (!mounted || l.myPlayer == null) return;
-      await Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => LeaguePage(
-                  league: l,
-                  save: () => Cloud.save(l),
-                  reload: () => Cloud.refresh(l),
-                  onDelete: () => deleteLeague(l))));
-      await load();
-    } catch (e) {
-      if (mounted) showError(context, e);
-    }
+    await openOnce(() async {
+      try {
+        await Cloud.refresh(l);
+        if (!mounted) return;
+        if (l.myPlayer == null) await Cloud.identify(context, l);
+        if (!mounted || l.myPlayer == null) return;
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => LeaguePage(
+                    league: l,
+                    save: () => Cloud.save(l),
+                    reload: () => Cloud.refresh(l),
+                    onDelete: () => deleteLeague(l))));
+        await load();
+      } catch (e) {
+        if (mounted) showError(context, e);
+      }
+    });
   }
 
   Future<void> openProfile() async {
-    try {
-      final p = await ProfileService.load();
-      if (!mounted) return;
-      await Navigator.push(
-          context, MaterialPageRoute(builder: (_) => ProfilePage(initial: p)));
-    } catch (e) {
-      if (mounted) showError(context, e);
-    }
+    await openOnce(() async {
+      try {
+        final p = await ProfileService.load();
+        if (!mounted) return;
+        await Navigator.push(context,
+            MaterialPageRoute(builder: (_) => ProfilePage(initial: p)));
+      } catch (e) {
+        if (mounted) showError(context, e);
+      }
+    });
   }
 
   void openPendingInvite() {
@@ -180,9 +201,20 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
 
   Future<void> openShared() async {
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (_) => const CloudHome()));
-    if (mounted) await load();
+    await openOnce(() async {
+      await Navigator.push(
+          context, MaterialPageRoute(builder: (_) => const CloudHome()));
+      if (mounted) await load();
+    });
+  }
+
+  Future<void> openSettings() async {
+    await openOnce(() => Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const SettingsPage())));
+  }
+
+  Future<void> openOnce(Future<void> Function() action) async {
+    await navigationGate.run(action);
   }
 
   @override
@@ -207,7 +239,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             onRefresh: load,
             onSharedLeagues: openShared,
             onAccount: openProfile,
-            onSettings: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const SettingsPage())),
+            onSettings: openSettings,
           ));
 }
