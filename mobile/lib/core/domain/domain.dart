@@ -354,7 +354,7 @@ class League {
   bool get manage => !shared || myRole == 'president' || myRole == 'admin';
   bool get president => !shared || myRole == 'president';
   bool canRecord(Match m) =>
-      !shared || (currentUser != null && m.creatorId == currentUser);
+      !shared || (manage && currentUser != null && m.creatorId == currentUser);
   String playerName(String? id) =>
       id == null ? 'Non indicato' : players.firstWhere((p) => p.id == id).name;
   Map<String, dynamic> toJson() => {
