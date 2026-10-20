@@ -135,7 +135,7 @@ class _StatisticsTable extends StatelessWidget {
   final List<Player> players;
   final Map<String, PlayerStats> totals;
   final String? currentPlayerId;
-  static const widths = <double>[114, 36, 34, 34, 40, 36, 40];
+  static const widths = <double>[122, 36, 34, 34, 40, 36, 40];
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -224,8 +224,7 @@ class _StatisticsRow extends StatelessWidget {
               SizedBox(
                 width: _StatisticsTable.widths[i],
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      i == 0 ? (header ? 12 : 4) : 4, 4, 4, 4),
+                  padding: EdgeInsets.fromLTRB(i == 0 ? 12 : 4, 4, 4, 4),
                   child: Align(
                     alignment: i == 0 ? Alignment.centerLeft : Alignment.center,
                     child: i == 0 && !header
@@ -238,7 +237,7 @@ class _StatisticsRow extends StatelessWidget {
                                   height: 20,
                                   color: indicatorColor,
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 6),
                               ],
                               Expanded(
                                 child: Text(values[i],
