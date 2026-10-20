@@ -409,12 +409,13 @@ class _LeaguePageState extends State<LeaguePage> {
                               shape: BoxShape.circle))),
               ]),
               itemBuilder: (_) => [
-                const PopupMenuItem(
-                    value: 'settings',
-                    child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.settings_outlined),
-                        title: Text('Impostazioni lega'))),
+                if (l.manage)
+                  const PopupMenuItem(
+                      value: 'settings',
+                      child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.settings_outlined),
+                          title: Text('Impostazioni lega'))),
                 if (l.shared)
                   const PopupMenuItem(
                       value: 'refresh',
