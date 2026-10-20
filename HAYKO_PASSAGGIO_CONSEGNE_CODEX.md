@@ -89,6 +89,8 @@ Per una build Android configurata:
 flutter build apk --debug --dart-define-from-file=cloud-config.local.json
 ```
 
+Gli APK destinati ai test manuali sono archiviati localmente per versione in `releases/android/<versione>/`. I binari sono esclusi da Git; README e checksum restano versionati. La build `0.2.0+2` è una release interna firmata con la chiave debug e non è destinata al Play Store.
+
 ## 5. Obiettivo del prodotto
 
 HAYKO è un’app Flutter per iOS e Android dedicata al calcetto. Gestisce:

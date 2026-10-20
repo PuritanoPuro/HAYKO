@@ -34,3 +34,6 @@ __pycache__/
 
 # SQL test dependencies
 node_modules/
+
+# Local versioned mobile test artifacts
+releases/**/*.apk

@@ -1,0 +1,1 @@
+497c1ae564d57b1bfe6d408250ba7f073442122037e398b1df7dfeed8960c007  HAYKO-0.2.0-build2-android-internal.apk
