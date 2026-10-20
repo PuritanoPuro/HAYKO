@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:calcetto_mvp/design_system/hayko_home.dart';
+import 'package:calcetto_mvp/features/home/home_page.dart';
 import 'package:calcetto_mvp/design_system/hayko_theme.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +9,24 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('la home ignora tocchi di navigazione ripetuti', () async {
+    final gate = HomeNavigationGate();
+    final release = Completer<void>();
+    var openings = 0;
+
+    final first = gate.run(() async {
+      openings++;
+      await release.future;
+    });
+    await Future<void>.delayed(Duration.zero);
+    await gate.run(() async => openings++);
+
+    expect(openings, 1);
+    release.complete();
+    await first;
+    await gate.run(() async => openings++);
+    expect(openings, 2);
+  });
   Widget home({
     List<League> leagues = const [],
     ValueChanged<League>? open,
