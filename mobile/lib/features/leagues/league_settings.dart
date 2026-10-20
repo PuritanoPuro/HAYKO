@@ -100,13 +100,12 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
       child: Scaffold(
           appBar: AppBar(
             toolbarHeight: 64,
-            centerTitle: false,
+            centerTitle: true,
             leadingWidth: 52,
             leading: IconButton(
                 tooltip: 'Indietro',
                 icon: const Icon(Icons.arrow_back, size: 24),
                 onPressed: () => Navigator.maybePop(context)),
-            titleSpacing: 0,
             title: const Text('Impostazioni lega',
                 style: TextStyle(
                     fontFamily: 'BricolageGrotesque',
@@ -275,13 +274,12 @@ class _LeagueDeletePage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         toolbarHeight: 64,
-        centerTitle: false,
+        centerTitle: true,
         leadingWidth: 52,
         leading: IconButton(
             tooltip: 'Indietro',
             icon: const Icon(Icons.arrow_back, size: 24),
             onPressed: () => Navigator.maybePop(context)),
-        titleSpacing: 0,
         title: const Text('Impostazioni lega',
             style: TextStyle(
                 fontFamily: 'BricolageGrotesque',
