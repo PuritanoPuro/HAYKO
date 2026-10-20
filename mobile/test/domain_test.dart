@@ -74,4 +74,15 @@ void main() {
     expect(stats(l, null)['c']!.conceded, 0);
     expect(pairs(l, null), isEmpty);
   });
+  test('un giocatore semplice non controlla neppure una partita creata prima',
+      () {
+    final m = match()..creatorId = 'user';
+    final l = league(m)
+      ..shared = true
+      ..currentUser = 'user'
+      ..myRole = 'member';
+    expect(l.canRecord(m), isFalse);
+    l.myRole = 'admin';
+    expect(l.canRecord(m), isTrue);
+  });
 }
