@@ -154,6 +154,26 @@ void main() {
     await flushing;
     expect(store.pending, 0);
   });
+  test('piu richieste di sincronizzazione attendono lo stesso invio', () async {
+    final response = Completer<int>();
+    final store = LeagueStore('userA', (name, params) async => response.future);
+    await store.queue(row('live'));
+
+    final first = store.flush();
+    await Future<void>.delayed(Duration.zero);
+    final second = store.flush();
+    var secondCompleted = false;
+    second.whenComplete(() => secondCompleted = true);
+
+    await Future<void>.delayed(Duration.zero);
+    expect(secondCompleted, isFalse);
+    expect(store.pending, 1);
+
+    response.complete(1);
+    await Future.wait([first, second]);
+    expect(secondCompleted, isTrue);
+    expect(store.pending, 0);
+  });
   test('cache e modifiche offline sono separate per account', () async {
     final a = LeagueStore('userA', (name, params) async => 0);
     await a.queue(row('live'));
