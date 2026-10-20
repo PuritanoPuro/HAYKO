@@ -42,7 +42,7 @@ void main() {
     expect(
         Theme.of(context).scaffoldBackgroundColor, HaykoColors.fieldBackground);
     expect(Theme.of(context).colorScheme.primary, HaykoColors.chalk);
-    expect(Theme.of(context).colorScheme.secondary, const Color(0xff40c9ff));
+    expect(Theme.of(context).colorScheme.secondary, const Color(0xffff0000));
     expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
         isNull);
     expect(l.toJson(), before);
