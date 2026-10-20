@@ -121,20 +121,23 @@ class _MatchPageState extends State<MatchPage> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (c) => StatefulBuilder(
-            builder: (c, set) => AlertDialog(
-                    title: const Text('Modifica dettagli partita'),
-                    content: SingleChildScrollView(
-                        child: EventDetailsFields(
-                            date: date,
-                            venue: location,
-                            changed: (v) => set(() => date = v))),
+            builder: (c, set) => HaykoDialog(
+                    title: 'Modifica dettagli partita',
+                    content: Material(
+                      color: Colors.transparent,
+                      child: SingleChildScrollView(
+                          child: EventDetailsFields(
+                              date: date,
+                              venue: location,
+                              changed: (v) => set(() => date = v))),
+                    ),
                     actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(c, false),
-                          child: const Text('Annulla')),
                       FilledButton(
                           onPressed: () => Navigator.pop(c, true),
-                          child: const Text('Salva'))
+                          child: const Text('Salva')),
+                      OutlinedButton(
+                          onPressed: () => Navigator.pop(c, false),
+                          child: const Text('Annulla')),
                     ])));
     final value = location.text;
     await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -147,13 +150,23 @@ class _MatchPageState extends State<MatchPage> {
     if (m.knockoutRound != null && m.score(0) == m.score(1)) {
       winner = await showDialog<String>(
           context: context,
-          builder: (c) =>
-              SimpleDialog(title: const Text('Chi passa il turno?'), children: [
-                for (var t = 0; t < 2; t++)
-                  SimpleDialogOption(
-                      onPressed: () => Navigator.pop(c, m.presetIds[t]),
-                      child: Text(m.names[t]))
-              ]));
+          builder: (c) => HaykoDialog(
+                  title: 'Chi passa il turno?',
+                  content: const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                        'Seleziona la squadra che accede alla fase successiva.',
+                        style: TextStyle(
+                            color: HaykoColors.mutedText,
+                            fontSize: 14,
+                            height: 20 / 14)),
+                  ),
+                  actions: [
+                    for (var t = 0; t < 2; t++)
+                      OutlinedButton(
+                          onPressed: () => Navigator.pop(c, m.presetIds[t]),
+                          child: Text(m.names[t]))
+                  ]));
       if (winner == null) return;
     }
     if (!mounted) return;

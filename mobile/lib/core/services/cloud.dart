@@ -152,16 +152,23 @@ class Cloud {
     final label = chosen == '__new__' ? name! : l.playerName(chosen);
     final confirmed = await showDialog<bool>(
         context: context,
-        builder: (c) => AlertDialog(
-              title: const Text('Confermi il tuo giocatore?'),
-              content: Text('Nella lega sarai $label.'),
+        builder: (c) => HaykoDialog(
+              title: 'Confermi il tuo giocatore?',
+              content: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Nella lega sarai $label.',
+                    style: const TextStyle(
+                        color: HaykoColors.mutedText,
+                        fontSize: 14,
+                        height: 20 / 14)),
+              ),
               actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(c, false),
-                    child: const Text('Modifica')),
                 FilledButton(
                     onPressed: () => Navigator.pop(c, true),
-                    child: const Text('Conferma'))
+                    child: const Text('Conferma')),
+                OutlinedButton(
+                    onPressed: () => Navigator.pop(c, false),
+                    child: const Text('Modifica')),
               ],
             ));
     if (confirmed != true) return;

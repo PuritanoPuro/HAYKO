@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/shared/ui.dart';
 
 /// The code has already been copied when this dialog opens. The explicit
 /// action lets the user copy it again without generating another invitation.
@@ -50,30 +52,45 @@ class _InviteCodeDialogState extends State<InviteCodeDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Codice invito copiato'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          SelectableText(widget.code,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 2)),
-          const SizedBox(height: 16),
-          const Text(
-              'Valido per 7 giorni. Chi lo usa invia una richiesta di accesso da approvare.'),
-          if (error != null) ...[
+  Widget build(BuildContext context) => HaykoDialog(
+        title: 'Codice invito copiato',
+        content: Material(
+          color: Colors.transparent,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              decoration: BoxDecoration(
+                  color: HaykoColors.fieldBackground,
+                  border: Border.all(color: HaykoColors.fieldLine),
+                  borderRadius: BorderRadius.circular(12)),
+              child: SelectableText(widget.code,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2)),
+            ),
             const SizedBox(height: 16),
-            Text(error!),
-          ],
-        ]),
+            const Text(
+                'Valido per 7 giorni. Chi lo usa invia una richiesta di accesso da approvare.',
+                style:
+                    TextStyle(color: HaykoColors.mutedText, height: 20 / 14)),
+            if (error != null) ...[
+              const SizedBox(height: 16),
+              Text(error!),
+            ],
+          ]),
+        ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Chiudi')),
           FilledButton.icon(
             onPressed: copying ? null : copy,
             icon: const Icon(Icons.copy),
             label: const Text('Copia codice'),
           ),
+          OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Chiudi')),
         ],
       );
 }

@@ -76,16 +76,23 @@ class _PlayerEditPageState extends State<PlayerEditPage> {
     }
     final confirmed = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Elimina giocatore'),
-            content: Text('Vuoi eliminare ${widget.name} dalla lega?'),
+          builder: (context) => HaykoDialog(
+            title: 'Elimina giocatore',
+            content: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Vuoi eliminare ${widget.name} dalla lega?',
+                  style: const TextStyle(
+                      color: HaykoColors.mutedText,
+                      fontSize: 14,
+                      height: 20 / 14)),
+            ),
             actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Annulla')),
-              TextButton(
+              FilledButton(
                   onPressed: () => Navigator.pop(context, true),
                   child: const Text('Elimina')),
+              OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Annulla')),
             ],
           ),
         ) ??

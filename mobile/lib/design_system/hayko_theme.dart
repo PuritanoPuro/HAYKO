@@ -94,6 +94,31 @@ ThemeData buildHaykoTheme() {
     floatingActionButtonTheme: base.floatingActionButtonTheme.copyWith(
         backgroundColor: HaykoColors.chalk,
         foregroundColor: HaykoColors.fieldBackground),
+    snackBarTheme: SnackBarThemeData(
+        backgroundColor: HaykoColors.fieldSurface,
+        contentTextStyle: base.textTheme.bodyMedium?.copyWith(
+            color: HaykoColors.chalk, fontFamily: 'BricolageGrotesque'),
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+            side: const BorderSide(color: HaykoColors.fieldLine),
+            borderRadius: BorderRadius.circular(12))),
+    progressIndicatorTheme:
+        const ProgressIndicatorThemeData(color: HaykoColors.chalk),
+    datePickerTheme: DatePickerThemeData(
+        backgroundColor: HaykoColors.fieldSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+            side: const BorderSide(color: HaykoColors.fieldLine),
+            borderRadius: BorderRadius.circular(16))),
+    timePickerTheme: TimePickerThemeData(
+        backgroundColor: HaykoColors.fieldSurface,
+        dialBackgroundColor: HaykoColors.fieldBackground,
+        hourMinuteColor: HaykoColors.fieldBackground,
+        dayPeriodColor: HaykoColors.fieldBackground,
+        shape: RoundedRectangleBorder(
+            side: const BorderSide(color: HaykoColors.fieldLine),
+            borderRadius: BorderRadius.circular(16))),
     dividerColor: HaykoColors.fieldLine,
     inputDecorationTheme: base.inputDecorationTheme.copyWith(
         labelStyle: const TextStyle(color: HaykoColors.mutedText),

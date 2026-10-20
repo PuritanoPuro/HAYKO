@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/shared/ui.dart';
 
 Color contrastColor(int color) =>
     Color(color).computeLuminance() > 0.45 ? Colors.black : Colors.white;
@@ -60,41 +62,53 @@ Future<int?> chooseColor(BuildContext context, int initial) async {
   final result = await showDialog<int>(
       context: context,
       builder: (c) => StatefulBuilder(
-          builder: (c, set) => AlertDialog(
-                  title: const Text('Scegli colore'),
-                  content: SingleChildScrollView(
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Wrap(spacing: 10, runSpacing: 10, children: [
-                      for (final value in palette)
-                        InkWell(
-                            onTap: () => set(() {
-                                  selected = value;
-                                  hex.text = value
-                                      .toRadixString(16)
-                                      .padLeft(8, '0')
-                                      .substring(2)
-                                      .toUpperCase();
-                                }),
-                            child: CircleAvatar(
-                                backgroundColor: Color(value),
-                                child: selected == value
-                                    ? Icon(Icons.check,
-                                        color: contrastColor(value))
-                                    : null))
-                    ]),
-                    const SizedBox(height: 16),
-                    TextField(
-                        controller: hex,
-                        maxLength: 6,
-                        decoration: const InputDecoration(
-                            labelText: 'Colore personalizzato',
-                            prefixText: '#',
-                            helperText: 'Sei cifre: ad esempio FF8800')),
-                  ])),
+          builder: (c, set) => HaykoDialog(
+                  title: 'Scegli colore',
+                  content: Material(
+                    color: Colors.transparent,
+                    child: SingleChildScrollView(
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                      Wrap(spacing: 12, runSpacing: 12, children: [
+                        for (final value in palette)
+                          InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => set(() {
+                                    selected = value;
+                                    hex.text = value
+                                        .toRadixString(16)
+                                        .padLeft(8, '0')
+                                        .substring(2)
+                                        .toUpperCase();
+                                  }),
+                              child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                      color: Color(value),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: selected == value
+                                              ? HaykoColors.chalk
+                                              : HaykoColors.fieldLine,
+                                          width: selected == value ? 3 : 1)),
+                                  child: selected == value
+                                      ? Icon(Icons.check,
+                                          color: contrastColor(value))
+                                      : null))
+                      ]),
+                      const SizedBox(height: 16),
+                      TextField(
+                          controller: hex,
+                          maxLength: 6,
+                          decoration: const InputDecoration(
+                              labelText: 'Colore personalizzato',
+                              prefixText: '#',
+                              helperText: 'Sei cifre: ad esempio FF8800')),
+                    ])),
+                  ),
                   actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(c),
-                        child: const Text('Annulla')),
                     FilledButton(
                         onPressed: () {
                           final value =
@@ -105,7 +119,10 @@ Future<int?> chooseColor(BuildContext context, int initial) async {
                             Navigator.pop(c, 0xff000000 | value);
                           }
                         },
-                        child: const Text('Seleziona'))
+                        child: const Text('Seleziona')),
+                    OutlinedButton(
+                        onPressed: () => Navigator.pop(c),
+                        child: const Text('Annulla')),
                   ])));
   await Future<void>.delayed(const Duration(milliseconds: 300));
   hex.dispose();
@@ -127,28 +144,30 @@ Future<IdentityEdit?> editIdentity(
   final result = await showDialog<IdentityEdit>(
       context: context,
       builder: (c) => StatefulBuilder(
-          builder: (c, set) => AlertDialog(
-                  title: Text(title),
-                  content: SingleChildScrollView(
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    TextField(
-                        controller: text,
-                        maxLength: 60,
-                        decoration: const InputDecoration(labelText: 'Nome')),
-                    ColorChoice(
-                        label: secondary == null ? 'Colore' : 'Colore primario',
-                        color: primary,
-                        changed: (v) => set(() => primary = v)),
-                    if (second != null)
+          builder: (c, set) => HaykoDialog(
+                  title: title,
+                  content: Material(
+                    color: Colors.transparent,
+                    child: SingleChildScrollView(
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                      TextField(
+                          controller: text,
+                          maxLength: 60,
+                          decoration: const InputDecoration(labelText: 'Nome')),
                       ColorChoice(
-                          label: 'Colore secondario',
-                          color: second!,
-                          changed: (v) => set(() => second = v)),
-                  ])),
+                          label:
+                              secondary == null ? 'Colore' : 'Colore primario',
+                          color: primary,
+                          changed: (v) => set(() => primary = v)),
+                      if (second != null)
+                        ColorChoice(
+                            label: 'Colore secondario',
+                            color: second!,
+                            changed: (v) => set(() => second = v)),
+                    ])),
+                  ),
                   actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(c),
-                        child: const Text('Annulla')),
                     FilledButton(
                         onPressed: () {
                           if (text.text.trim().isNotEmpty) {
@@ -158,7 +177,10 @@ Future<IdentityEdit?> editIdentity(
                                     text.text.trim(), primary, second));
                           }
                         },
-                        child: const Text('Salva'))
+                        child: const Text('Salva')),
+                    OutlinedButton(
+                        onPressed: () => Navigator.pop(c),
+                        child: const Text('Annulla')),
                   ])));
   await Future<void>.delayed(const Duration(milliseconds: 300));
   text.dispose();

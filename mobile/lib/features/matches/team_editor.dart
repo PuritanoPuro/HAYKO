@@ -184,17 +184,17 @@ class _TeamEditorState extends State<TeamEditor> {
     var value = '${numbers[id] ?? 1}';
     final result = await showDialog<int>(
         context: context,
-        builder: (c) => AlertDialog(
-                title: Text('Numero di ${widget.league.playerName(id)}'),
-                content: TextFormField(
-                    initialValue: value,
-                    keyboardType: TextInputType.number,
-                    maxLength: 2,
-                    onChanged: (v) => value = v),
+        builder: (c) => HaykoDialog(
+                title: 'Numero di ${widget.league.playerName(id)}',
+                content: Material(
+                  color: Colors.transparent,
+                  child: TextFormField(
+                      initialValue: value,
+                      keyboardType: TextInputType.number,
+                      maxLength: 2,
+                      onChanged: (v) => value = v),
+                ),
                 actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(c),
-                      child: const Text('Annulla')),
                   FilledButton(
                       onPressed: () {
                         final n = int.tryParse(value);
@@ -208,7 +208,10 @@ class _TeamEditorState extends State<TeamEditor> {
                         }
                         Navigator.pop(c, n);
                       },
-                      child: const Text('Salva'))
+                      child: const Text('Salva')),
+                  OutlinedButton(
+                      onPressed: () => Navigator.pop(c),
+                      child: const Text('Annulla')),
                 ]));
     if (mounted && result != null) setState(() => numbers[id] = result);
   }
