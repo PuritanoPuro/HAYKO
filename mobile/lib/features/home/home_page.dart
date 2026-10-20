@@ -15,6 +15,19 @@ import 'dart:async';
 
 import 'package:calcetto_mvp/features/leagues/league_page.dart';
 
+Set<String> newPendingRequests(Set<String>? previous, Set<String> current) =>
+    previous == null ? <String>{} : current.difference(previous);
+
+Set<String> newlyApprovedRequests(
+        Map<String, String>? previous, Map<String, String> current) =>
+    previous == null
+        ? <String>{}
+        : current.entries
+            .where((entry) =>
+                entry.value == 'approved' && previous[entry.key] != 'approved')
+            .map((entry) => entry.key)
+            .toSet();
+
 class HomeNavigationGate {
   bool active = false;
 
@@ -41,6 +54,9 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   final navigationGate = HomeNavigationGate();
   String? error;
   Timer? syncTimer;
+  Timer? socialTimer;
+  Set<String>? pendingRequestSnapshot;
+  Map<String, String>? ownRequestSnapshot;
   @override
   void initState() {
     super.initState();
@@ -50,12 +66,15 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     final cache = Cloud.store;
     syncTimer = Timer.periodic(
         const Duration(seconds: 20), (_) => unawaited(cache.flush()));
+    socialTimer = Timer.periodic(const Duration(seconds: 15),
+        (_) => unawaited(refreshSocialNotifications()));
     load();
   }
 
   @override
   void dispose() {
     syncTimer?.cancel();
+    socialTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     RotationAlerts.instance.openMatch.removeListener(notificationSelected);
     InviteLinks.pending.removeListener(openPendingInvite);
@@ -67,6 +86,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       unawaited(Cloud.store.flush());
       unawaited(RotationAlerts.instance.sync(leagues));
+      unawaited(refreshSocialNotifications());
     }
   }
 
@@ -83,6 +103,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           error = null;
         });
       }
+      await refreshSocialNotifications(initialize: true);
       notificationSelected();
       openPendingInvite();
     } catch (_) {
@@ -93,6 +114,52 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               'Impossibile caricare le leghe. Controlla la connessione e riprova.';
         });
       }
+    }
+  }
+
+  Future<void> refreshSocialNotifications({bool initialize = false}) async {
+    if (!mounted || busy || error != null) return;
+    try {
+      final pending = <String>{};
+      final labels = <String, String>{};
+      for (final league in leagues.where((league) => league.manage)) {
+        final rows = await Cloud.client
+            .rpc('hayko_requests', params: {'p_id': league.id}) as List;
+        for (final raw in rows) {
+          final row = Map<String, dynamic>.from(raw as Map);
+          final key = '${league.id}|${row['user_id']}';
+          pending.add(key);
+          labels[key] = '${row['name'] ?? 'Un giocatore'}';
+        }
+      }
+      final ownRows = await Cloud.client.rpc('hayko_requests') as List;
+      final own = <String, String>{};
+      final ownLabels = <String, String>{};
+      for (final raw in ownRows) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final key = '${row['league_id']}';
+        own[key] = '${row['status']}';
+        ownLabels[key] = '${row['league_name'] ?? 'la lega'}';
+      }
+      if (!initialize) {
+        for (final key in newPendingRequests(pendingRequestSnapshot, pending)) {
+          final league = leagues.firstWhere((l) => key.startsWith('${l.id}|'));
+          await RotationAlerts.instance.showSocialNotification(
+              title: 'Nuova richiesta di accesso',
+              body: '${labels[key]} vuole entrare in ${league.name}.');
+        }
+      }
+      if (!initialize) {
+        for (final key in newlyApprovedRequests(ownRequestSnapshot, own)) {
+          await RotationAlerts.instance.showSocialNotification(
+              title: 'Richiesta approvata',
+              body: 'Ora puoi accedere a ${ownLabels[key]}.');
+        }
+      }
+      pendingRequestSnapshot = pending;
+      ownRequestSnapshot = own;
+    } catch (_) {
+      // Il controllo viene ripetuto al prossimo intervallo o alla riapertura.
     }
   }
 
