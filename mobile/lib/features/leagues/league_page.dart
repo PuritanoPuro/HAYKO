@@ -10,6 +10,7 @@ import 'package:calcetto_mvp/features/leagues/league_settings.dart';
 import 'package:calcetto_mvp/features/leagues/player_edit_page.dart';
 import 'package:calcetto_mvp/features/competitions/competition_hub.dart';
 import 'package:calcetto_mvp/features/teams/team_presets_page.dart';
+import 'package:calcetto_mvp/features/account/settings_page.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'dart:async';
 
@@ -380,86 +381,42 @@ class _LeaguePageState extends State<LeaguePage> {
     );
   }
 
-  Future<void> selectLeagueAction(String action) async {
-    if (action == 'settings') await openLeagueSettings();
-    if (action == 'refresh') await reloadLeague();
-    if (action == 'social') await openLeagueSocial();
-  }
-
   @override
   Widget build(BuildContext context) => Theme(
       data: leagueTheme(context, l),
       child: Scaffold(
           appBar: AppBar(toolbarHeight: 64, title: Text(l.name), actions: [
-            PopupMenuButton<String>(
-              tooltip: 'Azioni lega',
-              onSelected: selectLeagueAction,
-              icon: Stack(clipBehavior: Clip.none, children: [
-                const Icon(Icons.more_vert),
-                if (hasPendingRequests)
-                  Positioned(
-                      key: const ValueKey('member-request-dot'),
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                              color: Color(0xffff7a3d),
-                              shape: BoxShape.circle))),
-              ]),
-              itemBuilder: (_) => [
-                if (l.manage)
-                  const PopupMenuItem(
-                      value: 'settings',
-                      child: ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.settings_outlined),
-                          title: Text('Impostazioni lega'))),
-                if (l.shared)
-                  const PopupMenuItem(
-                      value: 'refresh',
-                      child: ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.refresh),
-                          title: Text('Aggiorna'))),
-                if (l.shared)
-                  PopupMenuItem(
-                      value: 'social',
-                      child: ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Stack(clipBehavior: Clip.none, children: [
-                            const Icon(Icons.group_add_outlined),
-                            if (hasPendingRequests)
-                              Positioned(
-                                  right: -3,
-                                  top: -3,
-                                  child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                          color: Color(0xffff7a3d),
-                                          shape: BoxShape.circle))),
-                          ]),
-                          title: const Text('Giocatori e inviti'))),
-              ],
-            ),
+            if (l.manage)
+              IconButton(
+                  tooltip: 'Impostazioni lega',
+                  onPressed: openLeagueSettings,
+                  icon: const Icon(Icons.tune)),
+            IconButton(
+                tooltip: 'Impostazioni app',
+                onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const SettingsPage())),
+                icon: const Icon(Icons.settings)),
+            const SizedBox(width: 8),
           ]),
-          body: tab == 3 && l.type == 'competition'
-              ? CompetitionCalendar(
-                  league: l, save: widget.save, changed: () => setState(() {}))
-              : tab == 2
-                  ? (l.type == 'competition'
-                      ? CompetitionStatistics(league: l)
-                      : StatisticsPage(league: l))
-                  : tab == 0
-                      ? matchesBody()
-                      : l.type == 'competition'
-                          ? CompetitionTeams(
-                              league: l,
-                              save: widget.save,
-                              changed: () => setState(() {}))
-                          : playersBody(),
+          body: RefreshIndicator(
+              onRefresh: reloadLeague,
+              child: tab == 3 && l.type == 'competition'
+                  ? CompetitionCalendar(
+                      league: l,
+                      save: widget.save,
+                      changed: () => setState(() {}))
+                  : tab == 2
+                      ? (l.type == 'competition'
+                          ? CompetitionStatistics(league: l)
+                          : StatisticsPage(league: l))
+                      : tab == 0
+                          ? matchesBody()
+                          : l.type == 'competition'
+                              ? CompetitionTeams(
+                                  league: l,
+                                  save: widget.save,
+                                  changed: () => setState(() {}))
+                              : playersBody()),
           floatingActionButton: !l.manage
               ? null
               : tab == 0
