@@ -16,6 +16,7 @@ class LeagueStore extends ChangeNotifier {
   bool initialized = false, syncing = false;
   String? problem;
   Future<void> serial = Future<void>.value();
+  Future<void>? _flushFuture;
   String get key => 'hayko.leagues.$userId';
   int get pending => operations.length;
 
@@ -65,8 +66,17 @@ class LeagueStore extends ChangeNotifier {
         }
         notifyListeners();
       });
-  Future<void> flush() async {
-    if (syncing) return;
+  Future<void> flush() {
+    final active = _flushFuture;
+    if (active != null) return active;
+    final future = _performFlush();
+    _flushFuture = future;
+    return future.whenComplete(() {
+      if (identical(_flushFuture, future)) _flushFuture = null;
+    });
+  }
+
+  Future<void> _performFlush() async {
     syncing = true;
     problem = null;
     notifyListeners();
