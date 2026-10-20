@@ -966,7 +966,7 @@ class _CompetitionStandingsTable extends StatelessWidget {
                 dataRowMinHeight: 48,
                 dataRowMaxHeight: 48,
                 horizontalMargin: 4,
-                columnSpacing: 12,
+                columnSpacing: 8,
                 dividerThickness: 0,
                 headingTextStyle: const TextStyle(
                     color: HaykoColors.chalk,
@@ -976,18 +976,18 @@ class _CompetitionStandingsTable extends StatelessWidget {
                 dataTextStyle: const TextStyle(
                     color: HaykoColors.chalk, fontSize: 14, height: 20 / 14),
                 columns: [
-                  for (final name in const [
-                    'Squadra',
-                    'PG',
-                    'V',
-                    'P',
-                    'S',
-                    'GF',
-                    'GS',
-                    'DR',
-                    'Punti'
-                  ])
-                    DataColumn(label: Text(name))
+                  const DataColumn(
+                      label: SizedBox(width: 118, child: Text('Squadra'))),
+                  for (final name in const ['PG', 'V', 'P', 'S'])
+                    DataColumn(
+                        label: SizedBox(
+                            width: 26, child: Center(child: Text(name)))),
+                  const DataColumn(
+                      label: SizedBox(
+                          width: 46, child: Center(child: Text('Goal')))),
+                  const DataColumn(
+                      label: SizedBox(
+                          width: 26, child: Center(child: Text('Pt')))),
                 ],
                 rows: [
                   for (final row in rows)
@@ -1013,12 +1013,16 @@ class _CompetitionStandingsTable extends StatelessWidget {
                         row.wins,
                         row.draws,
                         row.losses,
-                        row.goals,
-                        row.conceded,
-                        row.difference,
-                        row.points
                       ])
-                        DataCell(Center(child: Text('$value'))),
+                        DataCell(SizedBox(
+                            width: 26, child: Center(child: Text('$value')))),
+                      DataCell(SizedBox(
+                          width: 46,
+                          child: Center(
+                              child: Text('${row.goals}:${row.conceded}')))),
+                      DataCell(SizedBox(
+                          width: 26,
+                          child: Center(child: Text('${row.points}')))),
                     ]),
                 ],
               ),
