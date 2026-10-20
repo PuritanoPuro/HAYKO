@@ -781,51 +781,68 @@ class _LiveGoalRow extends StatelessWidget {
   final bool enabled;
   final VoidCallback onUndo;
 
-  String get title {
-    final prefix = goal.voided ? 'Annullato · ' : '';
-    if (goal.ownGoal) return '${prefix}Autogol per ${match.names[goal.team]}';
-    return '${prefix}Gol ${match.names[goal.team]} · ${league.playerName(goal.scorer)}';
-  }
-
-  String get details {
-    final keeper = league.type == 'competition' || match.competitionRules
-        ? ''
-        : ' · In porta: ${league.playerName(goal.keeper)}';
-    if (goal.ownGoal) {
-      return 'Autore: ${league.playerName(goal.scorer)}$keeper';
-    }
-    final assist = goal.assist == null
-        ? 'Nessun assist'
-        : 'Assist: ${league.playerName(goal.assist)}';
-    return '$assist$keeper';
-  }
+  Widget detail(IconData icon, String label, String value, {Key? key}) => Row(
+        key: key,
+        children: [
+          Icon(icon, size: 16, color: HaykoColors.mutedText),
+          const SizedBox(width: 6),
+          Expanded(
+              child: Text('$label: $value',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: HaykoColors.mutedText,
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600))),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) => Container(
         constraints: const BoxConstraints(minHeight: 72),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
         decoration: BoxDecoration(
             color: HaykoColors.fieldSurface,
-            borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border(
+                left: BorderSide(
+                    color: Color(match.teamColors[goal.team]), width: 4))),
         child: Row(children: [
           Expanded(
               child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, height: 1.5)),
-                const SizedBox(height: 4),
-                Text(details,
+                Text(
+                    goal.voided
+                        ? 'Annullato · ${match.names[goal.team]}'
+                        : match.names[goal.team],
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        color: HaykoColors.mutedText,
-                        fontSize: 12,
-                        height: 16 / 12,
-                        fontWeight: FontWeight.w600)),
+                        fontSize: 16,
+                        height: 1.5,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                detail(
+                    goal.ownGoal ? Icons.sync_problem : Icons.sports_soccer,
+                    goal.ownGoal ? 'Autogol' : 'Marcatore',
+                    league.playerName(goal.scorer),
+                    key: const ValueKey('goal-scorer-detail')),
+                if (!goal.ownGoal) ...[
+                  const SizedBox(height: 4),
+                  detail(Icons.directions_run, 'Assistman',
+                      league.playerName(goal.assist),
+                      key: const ValueKey('goal-assist-detail')),
+                ],
+                if (league.type != 'competition' &&
+                    !match.competitionRules) ...[
+                  const SizedBox(height: 4),
+                  detail(Icons.sports_handball, 'Portiere',
+                      league.playerName(goal.keeper),
+                      key: const ValueKey('goal-keeper-detail')),
+                ],
               ])),
           if (enabled)
             SizedBox(
