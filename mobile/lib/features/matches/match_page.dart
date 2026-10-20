@@ -781,10 +781,10 @@ class _LiveGoalRow extends StatelessWidget {
   final bool enabled;
   final VoidCallback onUndo;
 
-  Widget detail(IconData icon, String label, String value, {Key? key}) => Row(
+  Widget detail(Widget icon, String label, String value, {Key? key}) => Row(
         key: key,
         children: [
-          Icon(icon, size: 16, color: HaykoColors.mutedText),
+          SizedBox(width: 16, height: 16, child: icon),
           const SizedBox(width: 6),
           Expanded(
               child: Text('$label: $value',
@@ -826,20 +826,26 @@ class _LiveGoalRow extends StatelessWidget {
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
                 detail(
-                    goal.ownGoal ? Icons.sync_problem : Icons.sports_soccer,
+                    Icon(
+                        goal.ownGoal ? Icons.sync_problem : Icons.sports_soccer,
+                        size: 16,
+                        color: HaykoColors.mutedText),
                     goal.ownGoal ? 'Autogol' : 'Marcatore',
                     league.playerName(goal.scorer),
                     key: const ValueKey('goal-scorer-detail')),
                 if (!goal.ownGoal) ...[
                   const SizedBox(height: 4),
-                  detail(Icons.directions_run, 'Assistman',
+                  detail(const _FootballBootIcon(), 'Assistman',
                       league.playerName(goal.assist),
                       key: const ValueKey('goal-assist-detail')),
                 ],
                 if (league.type != 'competition' &&
                     !match.competitionRules) ...[
                   const SizedBox(height: 4),
-                  detail(Icons.sports_handball, 'Portiere',
+                  detail(
+                      const Icon(Icons.front_hand,
+                          size: 16, color: HaykoColors.mutedText),
+                      'Portiere',
                       league.playerName(goal.keeper),
                       key: const ValueKey('goal-keeper-detail')),
                 ],
@@ -855,4 +861,51 @@ class _LiveGoalRow extends StatelessWidget {
             ),
         ]),
       );
+}
+
+class _FootballBootIcon extends StatelessWidget {
+  const _FootballBootIcon();
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(
+        angle: -0.55,
+        child: CustomPaint(
+          key: const ValueKey('football-boot-icon'),
+          painter: _FootballBootPainter(),
+        ),
+      );
+}
+
+class _FootballBootPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = HaykoColors.mutedText
+      ..style = PaintingStyle.fill;
+    final boot = Path()
+      ..moveTo(size.width * .18, size.height * .08)
+      ..lineTo(size.width * .62, size.height * .08)
+      ..lineTo(size.width * .66, size.height * .52)
+      ..quadraticBezierTo(size.width * .88, size.height * .58, size.width * .96,
+          size.height * .78)
+      ..quadraticBezierTo(size.width * .98, size.height * .92, size.width * .80,
+          size.height * .92)
+      ..lineTo(size.width * .14, size.height * .92)
+      ..quadraticBezierTo(size.width * .02, size.height * .88, size.width * .08,
+          size.height * .72)
+      ..lineTo(size.width * .18, size.height * .58)
+      ..close();
+    canvas.drawPath(boot, paint);
+    final stud = Paint()
+      ..color = HaykoColors.mutedText
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(size.width * .28, size.height * .92),
+        Offset(size.width * .28, size.height), stud);
+    canvas.drawLine(Offset(size.width * .72, size.height * .92),
+        Offset(size.width * .72, size.height), stud);
+  }
+
+  @override
+  bool shouldRepaint(_FootballBootPainter oldDelegate) => false;
 }
