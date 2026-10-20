@@ -269,14 +269,22 @@ class _LeagueCard extends StatelessWidget {
                             fontWeight: FontWeight.w400,
                             letterSpacing: 0,
                           )),
-                      Text(
-                        '${competition ? 'Competizione' : 'Amatoriale'} · ${league.players.length} giocatori · ${league.matches.length} partite',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 16 / 12,
-                          fontWeight: FontWeight.w600,
-                          color: HaykoColors.mutedText,
-                          letterSpacing: 0,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          competition
+                              ? 'Competizione · ${league.presets.where((team) => !team.archived).length} squadre · ${league.matches.length} partite'
+                              : 'Amatoriale · ${league.players.length} giocatori · ${league.matches.length} partite',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w600,
+                            color: HaykoColors.mutedText,
+                            letterSpacing: 0,
+                          ),
                         ),
                       ),
                     ]),
