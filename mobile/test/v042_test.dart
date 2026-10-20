@@ -170,6 +170,13 @@ void main() {
     await tester.pumpWidget(
         MaterialApp(home: Scaffold(body: CompetitionStatistics(league: l))));
     expect(find.text('Classifica squadre'), findsOneWidget);
+    for (final header in const ['PG', 'V', 'P', 'S', 'Goal', 'Pt']) {
+      expect(find.text(header), findsOneWidget);
+    }
+    expect(find.text('GF'), findsNothing);
+    expect(find.text('GS'), findsNothing);
+    expect(find.text('DR'), findsNothing);
+    expect(find.text('2:2'), findsWidgets);
     expect(find.text('Vedi tutti i marcatori'), findsOneWidget);
     expect(find.text('Giocatore 1 · Tu'), findsNWidgets(2));
     await tester.tap(find.text('Vedi tutti i marcatori'));
