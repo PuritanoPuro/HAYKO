@@ -176,7 +176,7 @@ mobile/assets/brand/hayko_app_icon.svg
 
 ### Icona app corrente
 
-L’icona usa il falco V2 fornito nel pacchetto `HAYKO_APP_ICON_V2.zip`, su sfondo verde HAYKO `#0E2B22`. Lo stesso falco V2 trasparente è usato nell’header della home “Le tue leghe”; la splash conserva gli asset precedenti. Sono presenti tutte le dimensioni native iOS e Android. I PNG iOS non hanno trasparenza.
+L’icona usa il falco V2 fornito nel pacchetto `HAYKO_APP_ICON_V2.zip`, su sfondo verde HAYKO `#0E2B22`. Lo stesso falco V2 trasparente è usato nell’header della home “Le tue leghe” e nella splash. Sono presenti tutte le dimensioni native iOS e Android. I PNG iOS non hanno trasparenza.
 
 Ultimi commit relativi all’icona:
 

@@ -28,7 +28,7 @@ class HaykoSplash extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SvgPicture.asset(
-                        'assets/brand/hayko_falcon_no_black.svg',
+                        'assets/brand/hayko_falcon_app_v2.svg',
                         width: 210,
                         height: 94.756,
                       ),
