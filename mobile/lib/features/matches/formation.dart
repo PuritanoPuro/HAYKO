@@ -412,8 +412,10 @@ class _NewMatchPageState extends State<NewMatchPage> {
                       child: SizedBox(
                         width: 124,
                         height: 52,
-                        child: AccountButton('+ Giocatore',
-                            outline: true, onPressed: addPlayer),
+                        child: TextFieldTapRegion(
+                          child: AccountButton('+ Giocatore',
+                              outline: true, onPressed: addPlayer),
+                        ),
                       ),
                     ),
             ),
@@ -429,10 +431,14 @@ class _NewMatchPageState extends State<NewMatchPage> {
                 if (index == players.length) {
                   return Padding(
                     padding: EdgeInsets.only(top: players.isEmpty ? 0 : 12),
-                    child: SizedBox(
-                        width: double.infinity,
-                        child: AccountButton('+ Giocatore',
-                            outline: true, onPressed: addPlayer)),
+                    child: TextFieldTapRegion(
+                      child: SizedBox(
+                          width: double.infinity,
+                          child: AccountButton('+ Giocatore',
+                              key: const ValueKey('filtered-add-player'),
+                              outline: true,
+                              onPressed: addPlayer)),
+                    ),
                   );
                 }
                 final p = players[index];
