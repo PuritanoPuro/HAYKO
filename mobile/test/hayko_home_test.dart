@@ -76,7 +76,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Amatoriale · 1 giocatori · 0 partite'), findsOneWidget);
-    expect(find.text('Competizione · 0 giocatori · 0 partite'), findsOneWidget);
+    expect(find.text('Competizione · 0 squadre · 0 partite'), findsOneWidget);
     expect(find.byIcon(Icons.groups), findsOneWidget);
     expect(find.byIcon(Icons.emoji_events), findsOneWidget);
     await tester.tap(find.text('Coppa'));
