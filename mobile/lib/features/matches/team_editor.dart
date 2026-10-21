@@ -104,6 +104,75 @@ class _TeamEditorState extends State<TeamEditor> {
     }
   }
 
+  Future<void> addToSavedTeam() async {
+    if (selected.length >= format) {
+      showError(context, 'La squadra ha già $format giocatori.');
+      return;
+    }
+    final available = widget.league.players
+        .where((player) => !selected.contains(player.id))
+        .toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final choice = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: HaykoColors.fieldBackground,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (sheetContext) => SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(sheetContext).height * .72),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Aggiungi giocatore',
+                            style: TextStyle(
+                                fontSize: 24,
+                                height: 1.25,
+                                fontWeight: FontWeight.w800))),
+                    const SizedBox(height: 16),
+                    Flexible(
+                      child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: available.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (_, index) {
+                            final player = available[index];
+                            return ListTile(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                tileColor: HaykoColors.fieldSurface,
+                                leading: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Color(player.color)),
+                                title: Text(player.name),
+                                trailing: const Icon(Icons.add),
+                                onTap: () =>
+                                    Navigator.pop(sheetContext, player.id));
+                          }),
+                    ),
+                    if (available.isNotEmpty) const SizedBox(height: 12),
+                    AccountButton('+ Nuovo giocatore',
+                        outline: true,
+                        onPressed: () =>
+                            Navigator.pop(sheetContext, '__new__')),
+                  ]),
+                ),
+              ),
+            ));
+    if (!mounted || choice == null) return;
+    if (choice == '__new__') {
+      await add();
+      return;
+    }
+    final player = widget.league.players.firstWhere((p) => p.id == choice);
+    setState(() => select(player, true));
+  }
+
   Future<void> submit() async {
     final l = widget.league;
     if (name.trim().isEmpty ||
@@ -357,7 +426,7 @@ class _TeamEditorState extends State<TeamEditor> {
         colorField(),
         const SizedBox(height: 12),
         AccountButton('+ Giocatore',
-            outline: true, onPressed: busy ? null : add),
+            outline: true, onPressed: busy ? null : addToSavedTeam),
         const SizedBox(height: 12),
         for (final player in members) ...[
           _TeamMemberRow(
