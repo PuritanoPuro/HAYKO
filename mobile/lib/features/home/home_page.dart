@@ -146,14 +146,17 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           final league = leagues.firstWhere((l) => key.startsWith('${l.id}|'));
           await RotationAlerts.instance.showSocialNotification(
               title: 'Nuova richiesta di accesso',
-              body: '${labels[key]} vuole entrare in ${league.name}.');
+              body: '${labels[key]} vuole entrare in ${league.name}.',
+              payload:
+                  jsonEncode({'type': 'join_request', 'league': league.id}));
         }
       }
       if (!initialize) {
         for (final key in newlyApprovedRequests(ownRequestSnapshot, own)) {
           await RotationAlerts.instance.showSocialNotification(
               title: 'Richiesta approvata',
-              body: 'Ora puoi accedere a ${ownLabels[key]}.');
+              body: 'Ora puoi accedere a ${ownLabels[key]}.',
+              payload: jsonEncode({'type': 'league', 'league': key}));
         }
       }
       pendingRequestSnapshot = pending;
@@ -178,10 +181,24 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       final found = leagues.where((l) => l.id == data['league']).toList();
       if (found.isEmpty) throw StateError('Lega non disponibile.');
-      final l = found.first,
-          m = l.matches.firstWhere((m) => m.id == data['match']);
+      final l = found.first;
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
+      if (data['type'] == 'join_request' || data['type'] == 'league') {
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => LeaguePage(
+                    league: l,
+                    save: () => Cloud.save(l),
+                    reload: () => Cloud.refresh(l),
+                    initialTab: data['type'] == 'join_request' ? 1 : 0,
+                    openPlayersAndInvites: data['type'] == 'join_request',
+                    onDelete: () => deleteLeague(l))));
+        await load();
+        return;
+      }
+      final m = l.matches.firstWhere((m) => m.id == data['match']);
       await Navigator.push(
           context,
           MaterialPageRoute(
