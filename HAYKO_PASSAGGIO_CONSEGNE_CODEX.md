@@ -326,7 +326,7 @@ Limiti ancora importanti:
 - polling e refresh non equivalgono a realtime garantito;
 - email, deep link e concorrenza multi-device richiedono test reali;
 - le notifiche push Android sono configurate lato Firebase/Supabase e richiedono la validazione finale su dispositivo;
-- le notifiche push iOS richiedono ancora il caricamento di una chiave APNs nel progetto Firebase.
+- le notifiche push iOS richiedono l'iscrizione all'Apple Developer Program, il caricamento di una chiave APNs nel progetto Firebase e la riattivazione della capability Push Notifications in Xcode. La capability è stata disabilitata per consentire l'installazione con il team personale gratuito; il file `Runner.entitlements` resta predisposto per l'attivazione futura.
 
 Architettura push corrente:
 
