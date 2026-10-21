@@ -867,11 +867,15 @@ class _FootballBootIcon extends StatelessWidget {
   const _FootballBootIcon();
 
   @override
-  Widget build(BuildContext context) => Transform.rotate(
-        angle: -0.55,
-        child: CustomPaint(
-          key: const ValueKey('football-boot-icon'),
-          painter: _FootballBootPainter(),
+  Widget build(BuildContext context) => SizedBox(
+        width: 16,
+        height: 16,
+        child: Transform.rotate(
+          angle: -0.45,
+          child: CustomPaint(
+            key: const ValueKey('football-boot-icon'),
+            painter: _FootballBootPainter(),
+          ),
         ),
       );
 }
@@ -881,29 +885,30 @@ class _FootballBootPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = HaykoColors.mutedText
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.35
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
     final boot = Path()
-      ..moveTo(size.width * .18, size.height * .08)
-      ..lineTo(size.width * .62, size.height * .08)
-      ..lineTo(size.width * .66, size.height * .52)
-      ..quadraticBezierTo(size.width * .88, size.height * .58, size.width * .96,
-          size.height * .78)
-      ..quadraticBezierTo(size.width * .98, size.height * .92, size.width * .80,
-          size.height * .92)
-      ..lineTo(size.width * .14, size.height * .92)
-      ..quadraticBezierTo(size.width * .02, size.height * .88, size.width * .08,
+      ..moveTo(size.width * .25, size.height * .08)
+      ..lineTo(size.width * .56, size.height * .08)
+      ..lineTo(size.width * .61, size.height * .48)
+      ..quadraticBezierTo(size.width * .72, size.height * .58, size.width * .91,
+          size.height * .65)
+      ..quadraticBezierTo(
+          size.width, size.height * .69, size.width * .94, size.height * .80)
+      ..quadraticBezierTo(size.width * .90, size.height * .87, size.width * .76,
+          size.height * .86)
+      ..lineTo(size.width * .18, size.height * .86)
+      ..quadraticBezierTo(size.width * .07, size.height * .85, size.width * .10,
           size.height * .72)
-      ..lineTo(size.width * .18, size.height * .58)
+      ..lineTo(size.width * .23, size.height * .55)
       ..close();
     canvas.drawPath(boot, paint);
-    final stud = Paint()
-      ..color = HaykoColors.mutedText
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(size.width * .28, size.height * .92),
-        Offset(size.width * .28, size.height), stud);
-    canvas.drawLine(Offset(size.width * .72, size.height * .92),
-        Offset(size.width * .72, size.height), stud);
+    canvas.drawLine(Offset(size.width * .30, size.height * .86),
+        Offset(size.width * .30, size.height * .96), paint);
+    canvas.drawLine(Offset(size.width * .72, size.height * .86),
+        Offset(size.width * .72, size.height * .96), paint);
   }
 
   @override
