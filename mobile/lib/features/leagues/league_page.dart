@@ -42,6 +42,9 @@ class _LeaguePageState extends State<LeaguePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.reload != null) unawaited(refreshInitialLeague());
+    });
     listClock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && l.matches.any((m) => m.status == 'live')) setState(() {});
     });
@@ -55,6 +58,16 @@ class _LeaguePageState extends State<LeaguePage> {
     } else if (!l.matches.any((m) => m.status == 'scheduled') &&
         l.matches.any((m) => m.status == 'finished')) {
       matchStatus = 'finished';
+    }
+  }
+
+  Future<void> refreshInitialLeague() async {
+    try {
+      await widget.reload?.call();
+      await refreshPendingRequests();
+      if (mounted) setState(() {});
+    } catch (_) {
+      // L'apertura usa i dati locali e il prossimo aggiornamento ritenta.
     }
   }
 
@@ -448,7 +461,23 @@ class _LeaguePageState extends State<LeaguePage> {
                   const NavigationDestination(
                       icon: Icon(Icons.sports_soccer), label: 'Partite'),
                   NavigationDestination(
-                      icon: const Icon(Icons.groups),
+                      icon: Stack(clipBehavior: Clip.none, children: [
+                        const Icon(Icons.groups),
+                        if (hasPendingRequests)
+                          Positioned(
+                            key: const ValueKey('players-footer-request-dot'),
+                            right: -5,
+                            top: -4,
+                            child: Container(
+                              width: 9,
+                              height: 9,
+                              decoration: const BoxDecoration(
+                                color: Color(0xffff7a3d),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ]),
                       label: l.type == 'competition' ? 'Squadre' : 'Giocatori'),
                   const NavigationDestination(
                       icon: Icon(Icons.bar_chart), label: 'Statistiche'),
