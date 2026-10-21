@@ -223,9 +223,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   Future<void> openLeague(League l) async {
     await openOnce(() async {
       try {
-        await Cloud.refresh(l);
-        if (!mounted) return;
-        if (l.myPlayer == null) await Cloud.identify(context, l);
+        if (l.myPlayer == null) {
+          await Cloud.refresh(l);
+          if (!mounted) return;
+          await Cloud.identify(context, l);
+        }
         if (!mounted || l.myPlayer == null) return;
         await Navigator.push(
             context,
