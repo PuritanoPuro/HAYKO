@@ -262,6 +262,9 @@ class _CloudHomeState extends State<CloudHome> {
     requests = (await Cloud.client.rpc('hayko_requests') as List)
         .map((r) => Map<String, dynamic>.from(r))
         .toList();
+    if (requests.any((request) => request['status'] == 'rejected')) {
+      await Cloud.client.rpc('hayko_acknowledge_rejected_requests');
+    }
   }
 
   Future<void> previewInvite() async {
@@ -277,9 +280,11 @@ class _CloudHomeState extends State<CloudHome> {
   }
 
   Future<void> open(League l) async {
-    await Cloud.refresh(l);
-    if (!mounted) return;
-    if (l.myPlayer == null) await Cloud.identify(context, l);
+    if (l.myPlayer == null) {
+      await Cloud.refresh(l);
+      if (!mounted) return;
+      await Cloud.identify(context, l);
+    }
     if (!mounted || l.myPlayer == null) return;
     await Navigator.push(
         context,
