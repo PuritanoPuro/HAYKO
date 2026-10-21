@@ -954,81 +954,78 @@ class _CompetitionStandingsTable extends StatelessWidget {
           border: Border.all(color: HaykoColors.fieldLine),
         ),
         clipBehavior: Clip.antiAlias,
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: DataTable(
-                headingRowColor:
-                    const WidgetStatePropertyAll(HaykoColors.fieldLine),
-                headingRowHeight: 48,
-                dataRowMinHeight: 48,
-                dataRowMaxHeight: 48,
-                horizontalMargin: 4,
-                columnSpacing: 8,
-                dividerThickness: 0,
-                headingTextStyle: const TextStyle(
-                    color: HaykoColors.chalk,
-                    fontSize: 12,
-                    height: 16 / 12,
-                    fontWeight: FontWeight.w600),
-                dataTextStyle: const TextStyle(
-                    color: HaykoColors.chalk, fontSize: 14, height: 20 / 14),
-                columns: [
-                  const DataColumn(
-                      label: SizedBox(width: 118, child: Text('Squadra'))),
-                  for (final name in const ['PG', 'V', 'P', 'S'])
-                    DataColumn(
-                        label: SizedBox(
-                            width: 26, child: Center(child: Text(name)))),
-                  const DataColumn(
-                      label: SizedBox(
-                          width: 46, child: Center(child: Text('Goal')))),
-                  const DataColumn(
-                      label: SizedBox(
-                          width: 26, child: Center(child: Text('Pt')))),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const _CompetitionStandingsRow(
+              header: true,
+              values: ['Squadra', 'PG', 'V', 'P', 'S', 'Goal', 'Pt']),
+          for (final row in rows)
+            _CompetitionStandingsRow(
+                color: Color(row.team.color),
+                winner: winners.contains(row.team.id),
+                values: [
+                  row.team.name,
+                  '${row.played}',
+                  '${row.wins}',
+                  '${row.draws}',
+                  '${row.losses}',
+                  '${row.goals}:${row.conceded}',
+                  '${row.points}'
+                ]),
+        ]),
+      );
+}
+
+class _CompetitionStandingsRow extends StatelessWidget {
+  const _CompetitionStandingsRow(
+      {required this.values,
+      this.header = false,
+      this.color,
+      this.winner = false});
+  final List<String> values;
+  final bool header, winner;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+            color: header ? HaykoColors.fieldLine : HaykoColors.fieldSurface,
+            border: header
+                ? null
+                : const Border(
+                    bottom: BorderSide(color: HaykoColors.fieldBackground))),
+        child: Row(children: [
+          Expanded(
+              flex: 5,
+              child: Row(children: [
+                if (!header) ...[
+                  Container(width: 4, height: 20, color: color),
+                  const SizedBox(width: 6),
                 ],
-                rows: [
-                  for (final row in rows)
-                    DataRow(cells: [
-                      DataCell(SizedBox(
-                          width: 118,
-                          child: Row(children: [
-                            Container(
-                                width: 4,
-                                height: 20,
-                                color: Color(row.team.color)),
-                            const SizedBox(width: 4),
-                            Expanded(
-                                child: Text(row.team.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis)),
-                            if (winners.contains(row.team.id))
-                              const Icon(Icons.emoji_events,
-                                  size: 16, color: Color(0xffe3f24a)),
-                          ]))),
-                      for (final value in [
-                        row.played,
-                        row.wins,
-                        row.draws,
-                        row.losses,
-                      ])
-                        DataCell(SizedBox(
-                            width: 26, child: Center(child: Text('$value')))),
-                      DataCell(SizedBox(
-                          width: 46,
-                          child: Center(
-                              child: Text('${row.goals}:${row.conceded}')))),
-                      DataCell(SizedBox(
-                          width: 26,
-                          child: Center(child: Text('${row.points}')))),
-                    ]),
-                ],
-              ),
-            ),
-          ),
-        ),
+                Expanded(
+                    child: Text(values.first,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: header ? 12 : 14,
+                            fontWeight:
+                                header ? FontWeight.w600 : FontWeight.w400))),
+                if (winner)
+                  const Icon(Icons.emoji_events,
+                      size: 16, color: Color(0xffe3f24a)),
+              ])),
+          for (var i = 1; i < values.length; i++)
+            Expanded(
+                flex: i == 5 ? 2 : 1,
+                child: Text(values[i],
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: TextStyle(
+                        fontSize: header ? 12 : 14,
+                        fontWeight:
+                            header ? FontWeight.w600 : FontWeight.w400))),
+        ]),
       );
 }
 
