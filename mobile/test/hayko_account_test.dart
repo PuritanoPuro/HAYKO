@@ -181,6 +181,29 @@ void main() {
     expect(secondCompleted, isTrue);
     expect(store.pending, 0);
   });
+  test('un salvataggio negato non blocca le modifiche successive', () async {
+    final calls = <String>[];
+    final store = LeagueStore('userA', (name, params) async {
+      calls.add(params['p_id'] as String);
+      if (calls.length == 1) {
+        throw StateError('PRESIDENT_REQUIRED');
+      }
+      return 1;
+    });
+    await store.queue(row('live'));
+    final second = row('finished');
+    second['state']['id'] = 'another-league';
+    await store.queue(second);
+
+    await store.flush();
+
+    expect(calls, ['league', 'another-league']);
+    expect(store.pending, 0);
+    expect(store.problem, contains('non consentita'));
+    final reopened = LeagueStore('userA', (name, params) async => 0);
+    await reopened.initialize();
+    expect(reopened.pending, 0);
+  });
   test('cache e modifiche offline sono separate per account', () async {
     final a = LeagueStore('userA', (name, params) async => 0);
     await a.queue(row('live'));
