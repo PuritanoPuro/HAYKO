@@ -7,6 +7,7 @@ import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/presentation.dart';
 import 'package:calcetto_mvp/features/matches/goal_page.dart';
 import 'package:calcetto_mvp/features/teams/team_presets_page.dart';
+import 'package:calcetto_mvp/features/leagues/league_page.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/statistics/statistics_page.dart';
@@ -15,6 +16,31 @@ import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/design_system/hayko_theme.dart';
 
 void main() {
+  test('apertura lega preferisce partite live e altrimenti programmate', () {
+    final league = League('l', 'L', [
+      for (final id in ['a', 'b', 'c', 'd']) Player(id, id)
+    ], [
+      Match(id: 'f', format: 2, names: const [
+        'A',
+        'B'
+      ], teams: const [
+        ['a', 'b'],
+        ['c', 'd']
+      ])
+        ..start()
+        ..finish()
+    ]);
+    expect(initialMatchStatus(league), 'scheduled');
+    league.matches.add(Match(id: 'live', format: 2, names: const [
+      'A',
+      'B'
+    ], teams: const [
+      ['a', 'b'],
+      ['c', 'd']
+    ])
+      ..start());
+    expect(initialMatchStatus(league), 'live');
+  });
   test('presenze poi vittorie poi gol prima del nome', () {
     final l = League('l', 'L', [
       for (final id in ['a', 'b', 'x', 'y', 'c', 'z', 'd', 'w'])
@@ -195,6 +221,34 @@ void main() {
     expect(p.archived, true);
     expect(l.matches.single.presetIds.first, 'p');
     expect(League.fromJson(l.toJson()).presets.single.archived, true);
+  });
+  testWidgets('squadra salvata aggiunge un giocatore gia esistente',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final preset = TeamPreset('p', 'Salvata', ['a', 'b']);
+    final league = League('l', 'L', [
+      Player('a', 'Alfa'),
+      Player('b', 'Beta'),
+      Player('c', 'Carlo'),
+    ], [], presets: [
+      preset
+    ]);
+    await tester.pumpWidget(MaterialApp(
+        theme: buildHaykoTheme(),
+        home: TeamPresetsPage(league: league, save: () async {})));
+    await tester.tap(find.text('Salvata'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Rimuovi dalla squadra').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('+ Giocatore'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aggiungi giocatore'), findsOneWidget);
+    expect(find.text('Carlo'), findsOneWidget);
+    await tester.tap(find.text('Carlo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Carlo'), findsOneWidget);
+    expect(find.text('Nella squadra'), findsNWidgets(2));
   });
   test('messaggio Android non contiene istruzioni iOS', () {
     final previous = debugDefaultTargetPlatformOverride;
