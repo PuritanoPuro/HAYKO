@@ -155,7 +155,12 @@ void main() {
     expect(find.text('DR'), findsNothing);
     expect(find.text('Giocatore'), findsNothing);
     expect(find.byType(DropdownButton<int>), findsNothing);
-    expect(find.byType(DataTable), findsOneWidget);
+    expect(find.byType(DataTable), findsNothing);
+    expect(
+        find.byWidgetPredicate((widget) =>
+            widget is SingleChildScrollView &&
+            widget.scrollDirection == Axis.horizontal),
+        findsNothing);
   });
   testWidgets('goal riserva passa da assist a riepilogo senza portiere',
       (tester) async {
