@@ -140,6 +140,11 @@ void main() {
     expect((header.decoration as BoxDecoration).color, HaykoColors.fieldLine);
     expect(find.byKey(const ValueKey('statistics-current-b')), findsOneWidget);
     expect(find.byKey(const ValueKey('statistics-current-a')), findsNothing);
+    expect(
+        find.byWidgetPredicate((widget) =>
+            widget is SingleChildScrollView &&
+            widget.scrollDirection == Axis.horizontal),
+        findsNothing);
 
     await tester.ensureVisible(find.byKey(const ValueKey('ranking-b')));
     await tester.pumpAndSettle();
