@@ -142,9 +142,10 @@ class _StatisticsTable extends StatelessWidget {
         builder: (context, constraints) {
           final columnsWidth =
               widths.fold<double>(0, (sum, width) => sum + width);
-          final tableWidth = constraints.maxWidth > columnsWidth
-              ? constraints.maxWidth
-              : columnsWidth;
+          final scale = constraints.maxWidth / columnsWidth;
+          final fittedWidths = [
+            for (final width in widths) width * scale,
+          ];
           return ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: DecoratedBox(
@@ -152,14 +153,13 @@ class _StatisticsTable extends StatelessWidget {
                   color: HaykoColors.fieldSurface,
                   border: Border.all(color: HaykoColors.fieldLine),
                   borderRadius: BorderRadius.circular(12)),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: tableWidth,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const _StatisticsRow(header: true, values: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _StatisticsRow(
+                      widths: fittedWidths,
+                      header: true,
+                      values: const [
                         'Giocatore',
                         'PG',
                         'V',
@@ -168,25 +168,24 @@ class _StatisticsTable extends StatelessWidget {
                         'A',
                         'GS'
                       ]),
-                      for (final player in players)
-                        _StatisticsRow(
-                          playerId: player.id,
-                          indicatorColor: player.id == currentPlayerId
-                              ? Color(player.color)
-                              : null,
-                          values: [
-                            player.name,
-                            '${totals[player.id]!.played}',
-                            '${totals[player.id]!.wins}',
-                            '${totals[player.id]!.losses}',
-                            '${totals[player.id]!.goals}',
-                            '${totals[player.id]!.assists}',
-                            '${totals[player.id]!.conceded}',
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
+                  for (final player in players)
+                    _StatisticsRow(
+                      widths: fittedWidths,
+                      playerId: player.id,
+                      indicatorColor: player.id == currentPlayerId
+                          ? Color(player.color)
+                          : null,
+                      values: [
+                        player.name,
+                        '${totals[player.id]!.played}',
+                        '${totals[player.id]!.wins}',
+                        '${totals[player.id]!.losses}',
+                        '${totals[player.id]!.goals}',
+                        '${totals[player.id]!.assists}',
+                        '${totals[player.id]!.conceded}',
+                      ],
+                    ),
+                ],
               ),
             ),
           );
@@ -200,11 +199,13 @@ class _StatisticsRow extends StatelessWidget {
     this.header = false,
     this.indicatorColor,
     this.playerId,
+    required this.widths,
   });
   final List<String> values;
   final bool header;
   final Color? indicatorColor;
   final String? playerId;
+  final List<double> widths;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -222,7 +223,7 @@ class _StatisticsRow extends StatelessWidget {
           children: [
             for (var i = 0; i < values.length; i++)
               SizedBox(
-                width: _StatisticsTable.widths[i],
+                width: widths[i],
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(i == 0 ? 12 : 4, 4, 4, 4),
                   child: Align(
