@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart'
     show LicenseEntryWithLineBreaks, LicenseRegistry;
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart'
+    show DeviceOrientation, SystemChrome, rootBundle;
 import 'package:flutter/material.dart';
 import 'package:calcetto_mvp/features/account/invite_links.dart';
 import 'package:calcetto_mvp/core/services/cloud.dart';
@@ -17,6 +18,8 @@ const _splashDuration = Duration(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations(
+      const [DeviceOrientation.portraitUp]);
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks(const ['Bricolage Grotesque'],
         await rootBundle.loadString('assets/fonts/OFL.txt'));
