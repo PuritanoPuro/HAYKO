@@ -119,8 +119,9 @@ class _CompetitionsPageState extends State<CompetitionsPage> {
         Text(c.kind == 'league'
             ? 'Campionato · 3 punti vittoria, 1 pareggio, 0 sconfitta'
             : 'Torneo a eliminazione · turni successivi dopo la conclusione del precedente'),
-        SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+        FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: DataTable(
                 columnSpacing: 16,
                 columns: [
