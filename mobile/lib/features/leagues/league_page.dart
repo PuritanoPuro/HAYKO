@@ -21,12 +21,16 @@ class LeaguePage extends StatefulWidget {
   final Save save;
   final Save? reload;
   final Save? onDelete;
+  final int initialTab;
+  final bool openPlayersAndInvites;
   const LeaguePage(
       {super.key,
       required this.league,
       required this.save,
       this.reload,
-      this.onDelete});
+      this.onDelete,
+      this.initialTab = 0,
+      this.openPlayersAndInvites = false});
   @override
   State<LeaguePage> createState() => _LeaguePageState();
 }
@@ -42,8 +46,12 @@ class _LeaguePageState extends State<LeaguePage> {
   @override
   void initState() {
     super.initState();
+    tab = widget.initialTab;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.reload != null) unawaited(refreshInitialLeague());
+      if (mounted && widget.openPlayersAndInvites) {
+        unawaited(openLeagueSocial());
+      }
     });
     listClock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && l.matches.any((m) => m.status == 'live')) setState(() {});
@@ -53,19 +61,14 @@ class _LeaguePageState extends State<LeaguePage> {
       requestsClock = Timer.periodic(const Duration(seconds: 15),
           (_) => unawaited(refreshPendingRequests()));
     }
-    if (l.matches.any((m) => m.status == 'live')) {
-      matchStatus = 'live';
-    } else if (!l.matches.any((m) => m.status == 'scheduled') &&
-        l.matches.any((m) => m.status == 'finished')) {
-      matchStatus = 'finished';
-    }
+    matchStatus = initialMatchStatus(l);
   }
 
   Future<void> refreshInitialLeague() async {
     try {
       await widget.reload?.call();
       await refreshPendingRequests();
-      if (mounted) setState(() {});
+      if (mounted) setState(() => matchStatus = initialMatchStatus(l));
     } catch (_) {
       // L'apertura usa i dati locali e il prossimo aggiornamento ritenta.
     }
@@ -398,19 +401,28 @@ class _LeaguePageState extends State<LeaguePage> {
   Widget build(BuildContext context) => Theme(
       data: leagueTheme(context, l),
       child: Scaffold(
-          appBar: AppBar(toolbarHeight: 64, title: Text(l.name), actions: [
-            if (l.manage)
-              IconButton(
-                  tooltip: 'Impostazioni lega',
-                  onPressed: openLeagueSettings,
-                  icon: const Icon(Icons.tune)),
-            IconButton(
-                tooltip: 'Impostazioni app',
-                onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const SettingsPage())),
-                icon: const Icon(Icons.settings)),
-            const SizedBox(width: 8),
-          ]),
+          appBar: AppBar(
+              toolbarHeight: 64,
+              leading: IconButton(
+                  tooltip: 'Le tue leghe',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.home_outlined)),
+              title: Text(l.name),
+              actions: [
+                if (l.manage)
+                  IconButton(
+                      tooltip: 'Impostazioni lega',
+                      onPressed: openLeagueSettings,
+                      icon: const Icon(Icons.tune)),
+                IconButton(
+                    tooltip: 'Impostazioni app',
+                    onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SettingsPage())),
+                    icon: const Icon(Icons.settings)),
+                const SizedBox(width: 8),
+              ]),
           body: RefreshIndicator(
               onRefresh: reloadLeague,
               child: tab == 3 && l.type == 'competition'
@@ -487,6 +499,11 @@ class _LeaguePageState extends State<LeaguePage> {
                 ]),
           )));
 }
+
+String initialMatchStatus(League league) =>
+    league.matches.any((match) => match.status == 'live')
+        ? 'live'
+        : 'scheduled';
 
 class _MatchScoreCard extends StatelessWidget {
   const _MatchScoreCard(
