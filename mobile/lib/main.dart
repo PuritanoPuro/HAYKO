@@ -5,6 +5,7 @@ import 'package:flutter/services.dart'
 import 'package:flutter/material.dart';
 import 'package:calcetto_mvp/features/account/invite_links.dart';
 import 'package:calcetto_mvp/core/services/cloud.dart';
+import 'package:calcetto_mvp/core/services/push_notifications.dart';
 import 'dart:async';
 
 import 'package:calcetto_mvp/app.dart';
@@ -31,5 +32,6 @@ Future<void> main() async {
 
 Future<void> _initializeApplication() async {
   await Cloud.initialize();
+  await PushNotifications.instance.initialize();
   await InviteLinks.initialize();
 }

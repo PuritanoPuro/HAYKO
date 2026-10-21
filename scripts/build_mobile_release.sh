@@ -27,6 +27,21 @@ if not url.startswith("https://") or ".supabase.co" not in url or not key:
     raise SystemExit("Configurazione Supabase incompleta o non valida")
 if "INSERISCI" in url.upper() or "INSERISCI" in key.upper():
     raise SystemExit("La configurazione contiene ancora valori di esempio")
+
+firebase_keys = (
+    "FIREBASE_API_KEY",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_MESSAGING_SENDER_ID",
+    "FIREBASE_ANDROID_APP_ID",
+    "FIREBASE_IOS_APP_ID",
+)
+missing = [name for name in firebase_keys if not str(data.get(name, "")).strip()]
+if missing:
+    raise SystemExit(
+        "Configurazione Firebase incompleta: " + ", ".join(missing)
+    )
+if any("INSERISCI" in str(data[name]).upper() for name in firebase_keys):
+    raise SystemExit("La configurazione Firebase contiene ancora valori di esempio")
 PY
 
 cd "$mobile_dir"

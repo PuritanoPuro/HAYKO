@@ -69,7 +69,7 @@ La configurazione Supabase locale è in:
 mobile/cloud-config.local.json
 ```
 
-Il file è escluso da Git e contiene soltanto URL e chiave pubblica del client. Non inserire mai chiavi `service_role`, segreti SMTP o credenziali amministrative nell’app o nella documentazione.
+Il file è escluso da Git e contiene URL/chiave pubblica Supabase e parametri client Firebase. Non inserire mai chiavi `service_role`, account di servizio Firebase, segreti SMTP o credenziali amministrative nell'app o nella documentazione.
 
 Comando corretto:
 
@@ -312,6 +312,8 @@ supabase/migrations/20261017_short_invites.sql
 supabase/migrations/20261018_json_containment_precedence.sql
 supabase/migrations/20261019_invite_preview.sql
 supabase/migrations/20261020_allow_unused_player_removal.sql
+supabase/migrations/20261021_acknowledge_rejected_requests.sql
+supabase/migrations/20261022_push_notifications.sql
 ```
 
 La migrazione del 20 ottobre consente la rimozione di giocatori mai usati senza bloccare la sincronizzazione. È stata applicata al progetto Supabase corrente. Dopo la correzione, la coda locale è tornata a zero e la lega BFRC è stata verificata alla revisione 56.
@@ -322,7 +324,20 @@ Limiti ancora importanti:
 - un conflitto può bloccare anche operazioni successive;
 - non esiste ancora un’interfaccia guidata di risoluzione conflitti;
 - polling e refresh non equivalgono a realtime garantito;
-- email, deep link, notifiche e concorrenza multi-device richiedono test reali.
+- email, deep link e concorrenza multi-device richiedono test reali;
+- le notifiche push Android sono configurate lato Firebase/Supabase e richiedono la validazione finale su dispositivo;
+- le notifiche push iOS richiedono ancora il caricamento di una chiave APNs nel progetto Firebase.
+
+Architettura push corrente:
+
+- Firebase project `hayko-27fe9`, app Android e iOS registrate;
+- identificativo Firebase Installation salvato tramite RPC in `hayko_push_devices`;
+- trigger sulle richieste di accesso che scrive in `hayko_push_outbox`;
+- Database Webhook `hayko_push_outbox_insert` verso la Edge Function `push`;
+- invio FCM HTTP v1 con account di servizio conservato nei segreti Supabase;
+- apertura della notifica collegata al routing già usato da `RotationAlerts`.
+
+La funzione rifiuta richieste prive dell'intestazione privata del webhook. Il 22 ottobre 2026 sono stati verificati sia il rifiuto `403` sia il percorso autenticato `200` senza dispositivi destinatari.
 
 Non modificare o rieseguire migrazioni alla cieca. Il repository non distribuisce automaticamente SQL su Supabase.
 
@@ -364,7 +379,7 @@ cd "/Users/filippofuschini/APP CALCETTO/HAYKO"
 python3 -m unittest discover -s backend -p 'test_*.py'
 ```
 
-La suite Flutter contiene attualmente **93 test**. Prima di dichiarare conclusa una modifica funzionale, eseguire almeno `flutter analyze` e `flutter test`. Per asset o configurazioni native verificare anche la build della piattaforma interessata.
+La suite Flutter contiene attualmente **102 test**. Prima di dichiarare conclusa una modifica funzionale, eseguire almeno `flutter analyze` e `flutter test`. Per asset o configurazioni native verificare anche la build della piattaforma interessata.
 
 Verifiche recenti:
 

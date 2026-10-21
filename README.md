@@ -21,11 +21,13 @@ Versione verificata: Flutter **3.47.7**, Dart **3.13.5**. Il nome interno del pa
 cd mobile
 flutter pub get
 cp cloud-config.example.json cloud-config.local.json
-# Compilare cloud-config.local.json con URL e chiave pubblica del proprio progetto.
+# Compilare cloud-config.local.json con Supabase e i parametri client Firebase.
 flutter run --dart-define-from-file=cloud-config.local.json
 ```
 
-Usare soltanto la chiave Supabase publishable/anon sul client, mai `service_role` o chiavi segrete. La configurazione locale è esclusa da Git. La build senza configurazione mostra la schermata di connessione non disponibile.
+Usare soltanto la chiave Supabase publishable/anon e la configurazione client Firebase nell'app, mai `service_role`, account di servizio o altri segreti. La configurazione locale è esclusa da Git. La build senza configurazione mostra la schermata di connessione non disponibile e non registra il dispositivo per le notifiche push.
+
+Le notifiche in background usano Firebase Cloud Messaging, la tabella Supabase `hayko_push_outbox`, il Database Webhook `hayko_push_outbox_insert` e la Edge Function `push`. I segreti Firebase restano esclusivamente nelle variabili protette della funzione.
 
 Per predisporre il backend consultare [supabase/README.md](supabase/README.md).
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:calcetto_mvp/core/services/cloud.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
+import 'package:calcetto_mvp/core/services/push_notifications.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/features/account/profile_page.dart';
 import 'package:calcetto_mvp/features/account/profile_service.dart';
@@ -132,6 +133,7 @@ class _AccountGateState extends State<AccountGate> {
 }
 
 Future<void> signOutAccount() async {
+  await PushNotifications.instance.unregisterCurrentDevice();
   await Cloud.client.auth.signOut(scope: SignOutScope.local);
   passwordRecovery.value = false;
   RotationAlerts.instance.sources.clear();
