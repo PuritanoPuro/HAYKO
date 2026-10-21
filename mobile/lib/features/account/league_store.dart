@@ -86,11 +86,28 @@ class LeagueStore extends ChangeNotifier {
         final op = operations.first;
         // La rete non occupa il lock del salvataggio locale: si possono
         // registrare altri gol mentre questa richiesta attende la risposta.
-        final revision = await rpc('bc_save', {
-          'p_id': op['id'],
-          'p_revision': op['revision'],
-          'p_state': op['state'],
-        }).timeout(const Duration(seconds: 8));
+        dynamic revision;
+        try {
+          revision = await rpc('bc_save', {
+            'p_id': op['id'],
+            'p_revision': op['revision'],
+            'p_state': op['state'],
+          }).timeout(const Duration(seconds: 8));
+        } catch (error) {
+          if (!_isPermissionRejection(error)) rethrow;
+          // Un rifiuto esplicito del server non puo riuscire con un nuovo
+          // tentativo. Rimuoverlo evita che blocchi per sempre le modifiche
+          // valide accodate dopo, incluse quelle di altre leghe.
+          await locked(() async {
+            if (operations.isEmpty || !identical(operations.first, op)) return;
+            operations.removeAt(0);
+            await persist();
+            notifyListeners();
+          });
+          problem =
+              'Una modifica non consentita è stata annullata. Gli altri dati sono stati sincronizzati.';
+          continue;
+        }
         await locked(() async {
           final previous = jsonEncode({'rows': rows, 'operations': operations});
           operations.removeAt(0);
@@ -124,6 +141,14 @@ class LeagueStore extends ChangeNotifier {
       syncing = false;
       notifyListeners();
     }
+  }
+
+  bool _isPermissionRejection(Object error) {
+    final message = error.toString();
+    return message.contains('PRESIDENT_REQUIRED') ||
+        message.contains('ADMIN_REQUIRED') ||
+        message.contains('ONLY_EVENT_CREATOR') ||
+        message.contains('FORBIDDEN');
   }
 
   Future<List<Map<String, dynamic>>> list() async {
