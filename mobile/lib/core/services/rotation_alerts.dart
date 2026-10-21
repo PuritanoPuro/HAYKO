@@ -10,8 +10,10 @@ import 'package:calcetto_mvp/core/domain/domain.dart';
 class RotationNotice {
   final DateTime when;
   final String text;
+  final String? payload;
   final bool sound, vibration;
-  RotationNotice(this.when, this.text, this.sound, this.vibration);
+  RotationNotice(this.when, this.text, this.sound, this.vibration,
+      {this.payload});
 }
 
 // Tutte le leghe condividono il budget di notifiche iOS; massimo 60 imminenti.
@@ -31,7 +33,9 @@ List<RotationNotice> rotationNotices(List<League> leagues, DateTime now) {
               when,
               '${l.name} · ${m.names[t]}: ${l.playerName(k.at(start, when))} in porta',
               k.sound,
-              k.vibration));
+              k.vibration,
+              payload: jsonEncode(
+                  {'type': 'match', 'league': l.id, 'match': m.id})));
         }
       }
     }
@@ -42,7 +46,8 @@ List<RotationNotice> rotationNotices(List<League> leagues, DateTime now) {
     if (grouped.isNotEmpty && grouped.last.when == e.when) {
       final old = grouped.removeLast();
       grouped.add(RotationNotice(e.when, '${old.text}\n${e.text}',
-          old.sound || e.sound, old.vibration || e.vibration));
+          old.sound || e.sound, old.vibration || e.vibration,
+          payload: old.payload ?? e.payload));
     } else {
       grouped.add(e);
     }
@@ -150,7 +155,8 @@ class RotationAlerts {
       final events = settings.enabled
           ? rotationNotices(sources.values.toList(), DateTime.now().toUtc())
               .map((e) => RotationNotice(e.when, e.text,
-                  e.sound && settings.sound, e.vibration && settings.vibration))
+                  e.sound && settings.sound, e.vibration && settings.vibration,
+                  payload: e.payload))
               .toList()
           : <RotationNotice>[];
       final entries = events
@@ -183,6 +189,7 @@ class RotationAlerts {
                     presentAlert: true,
                     presentSound: e.sound || e.vibration,
                     presentBadge: false)),
+            payload: e.payload,
             androidScheduleMode: mode);
         try {
           await schedule(exactAllowed
@@ -219,7 +226,9 @@ class RotationAlerts {
   }
 
   Future<void> showSocialNotification(
-      {required String title, required String body}) async {
+      {required String title,
+      required String body,
+      required String payload}) async {
     await initialize();
     if (!ready) return;
     await plugin.show(
@@ -234,7 +243,8 @@ class RotationAlerts {
                 importance: Importance.high,
                 priority: Priority.high),
             iOS: DarwinNotificationDetails(
-                presentAlert: true, presentSound: true)));
+                presentAlert: true, presentSound: true)),
+        payload: payload);
   }
 
   Future<void> syncLiveNotifications() async {
