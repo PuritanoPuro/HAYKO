@@ -166,17 +166,17 @@ function goalButton(team, x, color) {
 }
 
 function playerRow(player, y, onTap, selected = false, note = '') {
-  button('', 16, y, 288, 48, onTap, {
+  button('', 16, y, 288, 52, onTap, {
     color: C.surface,
     border: selected ? C.lime : C.surface2,
     borderWidth: selected ? 3 : 1,
     radius: 16,
   })
-  rect(28, y + 9, 30, 30, player.color, 15)
-  label(player.name.split(' ').map((part) => part[0]).join('').slice(0, 2), 28, y + 9, 30, 30, 11, C.dark, true)
-  label(player.name, 70, y + 4, 190, 24, 16)
-  if (note) label(note, 70, y + 25, 190, 17, 10, C.lime)
-  label('›', 274, y + 5, 20, 38, 22, C.muted, true)
+  rect(28, y + 10, 32, 32, player.color, 16)
+  label(player.name.split(' ').map((part) => part[0]).join('').slice(0, 2), 28, y + 10, 32, 32, 11, C.dark, true)
+  label(player.name, 72, y + (note ? 1 : 4), 194, note ? 29 : 44, 21)
+  if (note) label(note, 72, y + 29, 194, 18, 11, C.lime)
+  label('›', 276, y + 7, 18, 38, 22, C.muted, true)
 }
 
 function selectionHeader(title, subtitle) {
@@ -209,16 +209,28 @@ function assistScreen() {
 function keeperScreen() {
   selectionHeader('Chi era in porta?', scoringTeam === 'A' ? match.teamB.name : match.teamA.name)
   const players = scoringTeam === 'A' ? match.playersB : match.playersA
-  players.slice(0, 3).forEach((player, index) => playerRow(player, 82 + index * 58, () => {
+  players.slice(0, 3).forEach((player, index) => playerRow(player, 82 + index * 62, () => {
     keeper = player
-    render()
-  }, keeper ? keeper.id === player.id : index === 0, index === 0 ? 'Previsto dal giro' : ''))
-  button('Conferma gol', 16, 302, 288, 54, confirmGoal, {
+    navigate('confirm')
+  }, index === 0, index === 0 ? 'Previsto dal giro' : ''))
+}
+
+function confirmScreen() {
+  header('Conferma gol')
+  label(scoringTeam === 'A' ? match.teamA.name : match.teamB.name, 18, 58, 284, 26, 15, C.lime, true)
+  rect(16, 94, 288, 170, C.surface, 20)
+  label('MARCATORE', 30, 106, 110, 22, 11, C.muted)
+  label(scorer ? scorer.name : '—', 30, 126, 244, 30, 21)
+  label('ASSIST', 30, 164, 110, 22, 11, C.muted)
+  label(assist ? assist.name : 'Nessun assist', 30, 184, 244, 30, 21)
+  label('PORTIERE', 30, 222, 110, 22, 11, C.muted)
+  label(keeper ? keeper.name : '—', 128, 218, 146, 30, 18, C.chalk, true)
+  button('Conferma gol', 16, 286, 288, 66, confirmGoal, {
     color: C.chalk,
     pressColor: C.muted,
     textColor: C.dark,
-    radius: 18,
-    size: 18,
+    radius: 20,
+    size: 20,
   })
 }
 
@@ -244,7 +256,8 @@ function render() {
   else if (screen === 'live') live()
   else if (screen === 'scorer') scorerScreen()
   else if (screen === 'assist') assistScreen()
-  else keeperScreen()
+  else if (screen === 'keeper') keeperScreen()
+  else confirmScreen()
 }
 
 Page({
