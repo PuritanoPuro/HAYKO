@@ -1,4 +1,43 @@
-# Tre piattaforme, un contratto
+# HAYKO Smartwatch
+
+La prima implementazione compilabile e' in `zeppos/` ed e' progettata per
+Amazfit Bip 5 (320 x 380, API_LEVEL 2.1). Riproduce il flusso approvato in Figma:
+
+1. partita programmata piu' vicina all'orario corrente;
+2. avvio manuale;
+3. punteggio, cronometro e turno portiere;
+4. squadra che segna, marcatore, assist e portiere;
+5. conferma del gol.
+
+I comandi sono creati con un identificatore stabile e inseriti nell'outbox prima
+di essere inviati. La UI usa ancora uno snapshot dimostrativo: il relay verso
+Supabase verra' collegato nel Side Service senza cambiare il flusso sul display.
+
+## Bip 5 / Zepp OS
+
+Il target usa esclusivamente API disponibili dal livello 2.1. Per compilarlo:
+
+```sh
+cd watch/zeppos
+zeus build
+```
+
+Per provarlo sul dispositivo, dopo il login Zepp:
+
+```sh
+zeus preview
+```
+
+Nella Zepp App deve essere attiva la modalita sviluppatore. Il target comprende
+entrambe le varianti Bip 5 (`8454400` e `8454401`).
+
+## Contratto multipiattaforma
+
+Il contratto in `zeppos/shared/protocol.js` e' indipendente dall'interfaccia e
+costituisce la base per i client watchOS e Wear OS. I tre pacchetti resteranno
+nativi per rispettare navigazione, connettivita e vincoli delle piattaforme.
+
+## Specifica precedente
 
 Questo percorso contiene la specifica smartwatch; non ci sono ancora app native
 compilabili o bridge integrati nel mobile. Lo sviluppo delle tre integrazioni

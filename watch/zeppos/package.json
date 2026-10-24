@@ -1,0 +1,16 @@
+{
+  "name": "hayko-zeppos",
+  "version": "0.1.0",
+  "private": true,
+  "_moduleAliases": {
+    "zeppos-app-utils": "node_modules/@zeppos/zeus-cli/private-modules/zeppos-app-utils"
+  },
+  "scripts": {
+    "build": "zeus build",
+    "dev": "zeus dev",
+    "preview": "zeus preview"
+  },
+  "devDependencies": {
+    "@zeppos/zeus-cli": "^1.9.3"
+  }
+}

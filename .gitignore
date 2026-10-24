@@ -35,6 +35,8 @@ supabase/.temp/
 
 # SQL test dependencies
 node_modules/
+watch/zeppos/dist/
+watch/zeppos/*.zab
 
 # Local versioned mobile test artifacts
 releases/**/*.apk
