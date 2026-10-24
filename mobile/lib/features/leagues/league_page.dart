@@ -39,9 +39,11 @@ class _LeaguePageState extends State<LeaguePage> {
   int tab = 0;
   String matchStatus = 'scheduled';
   Timer? listClock;
+  Timer? remoteClock;
   Timer? requestsClock;
   bool hasPendingRequests = false;
   bool checkingRequests = false;
+  bool refreshingLeague = false;
   League get l => widget.league;
   @override
   void initState() {
@@ -56,6 +58,10 @@ class _LeaguePageState extends State<LeaguePage> {
     listClock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && l.matches.any((m) => m.status == 'live')) setState(() {});
     });
+    if (widget.reload != null) {
+      remoteClock = Timer.periodic(
+          const Duration(seconds: 5), (_) => unawaited(refreshLeagueState()));
+    }
     if (l.shared && l.manage) {
       unawaited(refreshPendingRequests());
       requestsClock = Timer.periodic(const Duration(seconds: 15),
@@ -74,9 +80,36 @@ class _LeaguePageState extends State<LeaguePage> {
     }
   }
 
+  Future<void> refreshLeagueState() async {
+    if (refreshingLeague || widget.reload == null) return;
+    refreshingLeague = true;
+    final previous = {for (final match in l.matches) match.id: match.status};
+    try {
+      await widget.reload!.call();
+      if (!mounted) return;
+      final started = l.matches.any(
+          (match) => match.status == 'live' && previous[match.id] != 'live');
+      final finished = l.matches.any((match) =>
+          match.status == 'finished' && previous[match.id] == 'live');
+      setState(() {
+        if (started) {
+          matchStatus = 'live';
+        } else if (finished &&
+            !l.matches.any((match) => match.status == 'live')) {
+          matchStatus = 'finished';
+        }
+      });
+    } catch (_) {
+      // La pagina continua a mostrare l'ultimo stato disponibile e ritenta.
+    } finally {
+      refreshingLeague = false;
+    }
+  }
+
   @override
   void dispose() {
     listClock?.cancel();
+    remoteClock?.cancel();
     requestsClock?.cancel();
     super.dispose();
   }

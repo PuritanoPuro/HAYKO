@@ -1,4 +1,4 @@
-import { align, createWidget, deleteWidget, setStatusBarVisible, widget } from '@zos/ui'
+import { align, createWidget, deleteWidget, prop, setStatusBarVisible, widget } from '@zos/ui'
 import { setWakeUpRelaunch } from '@zos/display'
 import { localStorage } from '@zos/storage'
 import { acknowledgeCommands, createCommand, enqueueCommand, pendingCommands } from '../../shared/protocol'
@@ -24,6 +24,13 @@ let match = null
 let syncState = 'loading'
 let syncMessage = ''
 let syncing = false
+let syncAgain = false
+let syncAgainKeepScreen = false
+let liveTimer = null
+let elapsedWidget = null
+let keeperCountdownWidget = null
+let keeperAWidget = null
+let keeperBWidget = null
 try {
   const value = localStorage.getItem(SNAPSHOT_KEY)
   if (value) match = normalizeSnapshot(JSON.parse(value))
@@ -109,7 +116,11 @@ function applySnapshot(snapshot) {
 }
 
 function syncNow(keepScreen = false) {
-  if (syncing) return
+  if (syncing) {
+    syncAgain = true
+    syncAgainKeepScreen = syncAgainKeepScreen || keepScreen
+    return
+  }
   if (!messageBuilder) {
     syncState = match ? 'ready' : 'error'
     syncMessage = 'Telefono non raggiungibile.'
@@ -117,25 +128,33 @@ function syncNow(keepScreen = false) {
     return
   }
   syncing = true
-  messageBuilder.request({ method: 'SYNC', params: { commands: pendingCommands() } })
+  const sentCommands = pendingCommands()
+  messageBuilder.request({ method: 'SYNC', params: { commands: sentCommands } })
     .then((data) => {
       syncing = false
       const result = data.result || data
       acknowledgeCommands(result.ackIds || [])
+      const stillPending = pendingCommands().length > 0
       if (result.status === 'unpaired') {
         syncState = 'unpaired'
         match = null
         render()
       } else if (result.status === 'ready') {
-        if (keepScreen) {
+        if (keepScreen || stillPending) {
           syncState = 'ready'
-          return
+        } else {
+          applySnapshot(result.snapshot)
         }
-        applySnapshot(result.snapshot)
       } else {
         syncState = match ? 'ready' : 'error'
         syncMessage = 'Sincronizzazione non disponibile.'
         render()
+      }
+      if (syncAgain || stillPending) {
+        const nextKeepScreen = syncAgainKeepScreen
+        syncAgain = false
+        syncAgainKeepScreen = false
+        syncNow(nextKeepScreen)
       }
     })
     .catch(() => {
@@ -143,6 +162,12 @@ function syncNow(keepScreen = false) {
       syncState = match ? 'ready' : 'error'
       syncMessage = 'Avvicina telefono e orologio.'
       render()
+      if (syncAgain) {
+        const nextKeepScreen = syncAgainKeepScreen
+        syncAgain = false
+        syncAgainKeepScreen = false
+        syncNow(nextKeepScreen)
+      }
     })
 }
 
@@ -158,6 +183,10 @@ function add(type, props) {
 function clear() {
   widgets.forEach((value) => deleteWidget(value))
   widgets = []
+  elapsedWidget = null
+  keeperCountdownWidget = null
+  keeperAWidget = null
+  keeperBWidget = null
 }
 
 function rect(x, y, w, h, color, radius = 18) {
@@ -169,7 +198,7 @@ function stroke(x, y, w, h, color, lineWidth = 2, radius = 18) {
 }
 
 function label(value, x, y, w, h, size = 20, color = C.chalk, center = false) {
-  add(widget.TEXT, {
+  return add(widget.TEXT, {
     text: value,
     x,
     y,
@@ -343,7 +372,7 @@ function live() {
     size: 18,
   })
   rect(120, 54, 80, 30, C.surface2, 18)
-  label(elapsedText(), 120, 54, 80, 30, 16, C.lime, true)
+  elapsedWidget = label(elapsedText(), 120, 54, 80, 30, 16, C.lime, true)
   label(match.teamA.name, 20, 92, 120, 26, 16)
   label(match.teamB.name, 180, 92, 120, 26, 16, C.chalk, true)
   label(String(match.teamA.score), 32, 112, 90, 82, 64, C.chalk, true)
@@ -352,10 +381,18 @@ function live() {
   goalButton(0, 16, match.teamA.color)
   goalButton(1, 168, match.teamB.color)
   rect(16, 328, 288, 40, C.surface, 18)
-  label(playerName(0, predictedKeeper(0)), 28, 328, 86, 40, 14)
+  keeperAWidget = label(playerName(0, predictedKeeper(0)), 28, 328, 86, 40, 14)
   rect(119, 332, 82, 32, C.dark, 14)
-  label(keeperCountdown(), 119, 332, 82, 32, 18, C.lime, true)
-  label(playerName(1, predictedKeeper(1)), 208, 328, 82, 40, 14, C.chalk, true)
+  keeperCountdownWidget = label(keeperCountdown(), 119, 332, 82, 32, 18, C.lime, true)
+  keeperBWidget = label(playerName(1, predictedKeeper(1)), 208, 328, 82, 40, 14, C.chalk, true)
+}
+
+function refreshLiveTimers() {
+  if (screen !== 'live' || !match || !match.live) return
+  if (elapsedWidget) elapsedWidget.setProperty(prop.TEXT, elapsedText())
+  if (keeperCountdownWidget) keeperCountdownWidget.setProperty(prop.TEXT, keeperCountdown())
+  if (keeperAWidget) keeperAWidget.setProperty(prop.TEXT, playerName(0, predictedKeeper(0)))
+  if (keeperBWidget) keeperBWidget.setProperty(prop.TEXT, playerName(1, predictedKeeper(1)))
 }
 
 function goalButton(team, x, color) {
@@ -464,6 +501,7 @@ function finishScreen() {
 
 function endMatch() {
   match.live = false
+  match.status = 'finished'
   localStorage.removeItem(LIVE_STATE_KEY)
   setWakeUpRelaunch({ relaunch: false })
   enqueueCommand(createCommand('end_match', match.id))
@@ -476,7 +514,13 @@ function finishedScreen() {
   label(match.teamA.name, 20, 100, 110, 26, 16, C.chalk, true)
   label(match.teamB.name, 190, 100, 110, 26, 16, C.chalk, true)
   label(`${match.teamA.score} – ${match.teamB.score}`, 60, 132, 200, 82, 52, C.chalk, true)
-  button('Torna alle programmate', 16, 276, 288, 62, () => navigate('scheduled'), {
+  button('Torna alle programmate', 16, 276, 288, 62, () => {
+    match = null
+    syncState = 'loading'
+    screen = 'scheduled'
+    render()
+    syncNow()
+  }, {
     color: C.chalk,
     pressColor: C.muted,
     textColor: C.dark,
@@ -526,6 +570,7 @@ Page({
     syncState = match ? 'ready' : 'loading'
     setWakeUpRelaunch({ relaunch: Boolean(match && match.live) })
     render()
+    liveTimer = setInterval(refreshLiveTimers, 1000)
     syncNow()
   },
   onResume() {
@@ -535,5 +580,9 @@ Page({
     }
     syncNow()
   },
-  onDestroy() { clear() },
+  onDestroy() {
+    if (liveTimer) clearInterval(liveTimer)
+    liveTimer = null
+    clear()
+  },
 })
