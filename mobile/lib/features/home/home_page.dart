@@ -51,6 +51,7 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> with WidgetsBindingObserver {
   List<League> leagues = [];
   bool busy = true;
+  bool navigating = false;
   final navigationGate = HomeNavigationGate();
   String? error;
   Timer? syncTimer;
@@ -300,7 +301,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
 
   Future<void> openOnce(Future<void> Function() action) async {
-    await navigationGate.run(action);
+    await navigationGate.run(() async {
+      if (mounted) setState(() => navigating = true);
+      try {
+        await action();
+      } finally {
+        if (mounted) setState(() => navigating = false);
+      }
+    });
   }
 
   @override
@@ -312,6 +320,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                 : null,
             leagues: leagues,
             loading: busy,
+            actionLoading: navigating,
             error: error,
             onRetry: () {
               setState(() {

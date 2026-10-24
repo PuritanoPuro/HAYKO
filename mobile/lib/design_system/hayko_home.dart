@@ -10,6 +10,7 @@ class HaykoHome extends StatelessWidget {
     super.key,
     required this.leagues,
     required this.loading,
+    this.actionLoading = false,
     required this.error,
     required this.onRetry,
     required this.onOpenLeague,
@@ -23,6 +24,7 @@ class HaykoHome extends StatelessWidget {
 
   final List<League> leagues;
   final bool loading;
+  final bool actionLoading;
   final String? error;
   final VoidCallback onRetry;
   final ValueChanged<League> onOpenLeague;
@@ -86,102 +88,125 @@ class HaykoHome extends StatelessWidget {
           const SizedBox(width: 16),
         ],
       ),
-      body: RefreshIndicator(
-          onRefresh: onRefresh ?? () async {},
-          child: SafeArea(
-            top: false,
-            child: loading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                        semanticsLabel: 'Caricamento leghe'))
-                : error != null
-                    ? Center(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child:
-                              Column(mainAxisSize: MainAxisSize.min, children: [
-                            Text(error!, textAlign: TextAlign.center),
-                            const SizedBox(height: 12),
-                            TextButton(
-                                onPressed: onRetry,
-                                child: const Text('Riprova')),
-                          ]),
-                        ),
-                      )
-                    : CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                            const SliverPadding(
-                              padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
-                              sliver: SliverToBoxAdapter(
-                                  child: Text('Le tue leghe', style: _heading)),
-                            ),
-                            if (leagues.isEmpty)
+      body: Stack(children: [
+        RefreshIndicator(
+            onRefresh: onRefresh ?? () async {},
+            child: SafeArea(
+              top: false,
+              child: loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          semanticsLabel: 'Caricamento leghe'))
+                  : error != null
+                      ? Center(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(error!, textAlign: TextAlign.center),
+                                  const SizedBox(height: 12),
+                                  TextButton(
+                                      onPressed: onRetry,
+                                      child: const Text('Riprova')),
+                                ]),
+                          ),
+                        )
+                      : CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
                               const SliverPadding(
-                                padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                                padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
                                 sliver: SliverToBoxAdapter(
-                                  child: Text(
-                                      'Crea una lega, aggiungi i giocatori e organizza la prima partita.'),
-                                ),
+                                    child:
+                                        Text('Le tue leghe', style: _heading)),
                               ),
-                            SliverPadding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 24),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: _LeagueCard(
-                                      league: leagues[index],
-                                      onTap: () => onOpenLeague(leagues[index]),
-                                    ),
+                              if (leagues.isEmpty)
+                                const SliverPadding(
+                                  padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                                  sliver: SliverToBoxAdapter(
+                                    child: Text(
+                                        'Crea una lega, aggiungi i giocatori e organizza la prima partita.'),
                                   ),
-                                  childCount: leagues.length,
+                                ),
+                              SliverPadding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 24),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) => Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: _LeagueCard(
+                                        league: leagues[index],
+                                        onTap: () =>
+                                            onOpenLeague(leagues[index]),
+                                      ),
+                                    ),
+                                    childCount: leagues.length,
+                                  ),
                                 ),
                               ),
-                            ),
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                              sliver: SliverToBoxAdapter(
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      FilledButton(
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: HaykoColors.chalk,
-                                          foregroundColor:
-                                              HaykoColors.fieldBackground,
-                                          minimumSize: const Size(0, 52),
-                                          padding: const EdgeInsets.all(12),
-                                          textStyle: _button,
-                                          shape: shape,
+                              SliverPadding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                                sliver: SliverToBoxAdapter(
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        FilledButton(
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: HaykoColors.chalk,
+                                            foregroundColor:
+                                                HaykoColors.fieldBackground,
+                                            minimumSize: const Size(0, 52),
+                                            padding: const EdgeInsets.all(12),
+                                            textStyle: _button,
+                                            shape: shape,
+                                          ),
+                                          onPressed: onCreateLeague,
+                                          child: const Text('+ Nuova lega',
+                                              textAlign: TextAlign.center),
                                         ),
-                                        onPressed: onCreateLeague,
-                                        child: const Text('+ Nuova lega',
-                                            textAlign: TextAlign.center),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      OutlinedButton(
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: HaykoColors.chalk,
-                                          side: const BorderSide(
-                                              color: HaykoColors.mutedText),
-                                          minimumSize: const Size(0, 52),
-                                          padding: const EdgeInsets.all(12),
-                                          textStyle: _button,
-                                          shape: shape,
+                                        const SizedBox(height: 12),
+                                        OutlinedButton(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: HaykoColors.chalk,
+                                            side: const BorderSide(
+                                                color: HaykoColors.mutedText),
+                                            minimumSize: const Size(0, 52),
+                                            padding: const EdgeInsets.all(12),
+                                            textStyle: _button,
+                                            shape: shape,
+                                          ),
+                                          onPressed: onSharedLeagues,
+                                          child: const Text(
+                                              'Leghe condivise e inviti',
+                                              textAlign: TextAlign.center),
                                         ),
-                                        onPressed: onSharedLeagues,
-                                        child: const Text(
-                                            'Leghe condivise e inviti',
-                                            textAlign: TextAlign.center),
-                                      ),
-                                    ]),
+                                      ]),
+                                ),
                               ),
-                            ),
-                          ]),
-          )),
+                            ]),
+            )),
+        if (actionLoading)
+          const Positioned.fill(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ModalBarrier(
+                  dismissible: false,
+                  color: Color(0x730E2B22),
+                ),
+                CircularProgressIndicator(
+                  color: HaykoColors.chalk,
+                  semanticsLabel: 'Operazione in corso',
+                ),
+              ],
+            ),
+          ),
+      ]),
     );
   }
 }
