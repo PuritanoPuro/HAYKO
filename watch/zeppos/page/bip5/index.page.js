@@ -1,4 +1,6 @@
 import { align, createWidget, deleteWidget, setStatusBarVisible, widget } from '@zos/ui'
+import { setWakeUpRelaunch } from '@zos/display'
+import { localStorage } from '@zos/storage'
 import { createCommand, enqueueCommand } from '../../shared/protocol'
 
 const C = {
@@ -34,7 +36,21 @@ const match = {
   ],
 }
 
-let screen = 'scheduled'
+const LIVE_STATE_KEY = 'hayko-live-match'
+let storedLiveState = null
+try {
+  const value = localStorage.getItem(LIVE_STATE_KEY)
+  if (value) storedLiveState = JSON.parse(value)
+} catch (_) {
+  localStorage.removeItem(LIVE_STATE_KEY)
+}
+if (storedLiveState && storedLiveState.live) {
+  match.live = true
+  match.teamA.score = storedLiveState.scoreA || 0
+  match.teamB.score = storedLiveState.scoreB || 0
+}
+
+let screen = match.live ? 'live' : 'scheduled'
 let scoringTeam = 'A'
 let scorer = null
 let assist = null
@@ -126,6 +142,14 @@ function navigate(next) {
   render()
 }
 
+function persistLiveMatch() {
+  localStorage.setItem(LIVE_STATE_KEY, JSON.stringify({
+    live: true,
+    scoreA: match.teamA.score,
+    scoreB: match.teamB.score,
+  }))
+}
+
 function scheduled() {
   label('Programmate', 16, 12, 288, 36, 25)
   label(match.live ? 'PARTITA IN CORSO' : 'LA PROSSIMA PARTITA', 18, 58, 284, 22, 12, match.live ? C.lime : C.muted)
@@ -157,6 +181,8 @@ function detail() {
 
 function startMatch() {
   match.live = true
+  persistLiveMatch()
+  setWakeUpRelaunch({ relaunch: true })
   enqueueCommand(createCommand('start_match', match.id))
   navigate('live')
 }
@@ -289,6 +315,8 @@ function finishScreen() {
 
 function endMatch() {
   match.live = false
+  localStorage.removeItem(LIVE_STATE_KEY)
+  setWakeUpRelaunch({ relaunch: false })
   enqueueCommand(createCommand('end_match', match.id))
   navigate('finished')
 }
@@ -318,6 +346,7 @@ function confirmGoal() {
   }))
   if (scoringTeam === 'A') match.teamA.score += 1
   else match.teamB.score += 1
+  persistLiveMatch()
   navigate('live')
 }
 
@@ -338,7 +367,14 @@ function render() {
 Page({
   build() {
     setStatusBarVisible(false)
+    setWakeUpRelaunch({ relaunch: match.live })
     render()
+  },
+  onResume() {
+    if (match.live && screen !== 'live') {
+      screen = 'live'
+      render()
+    }
   },
   onDestroy() { clear() },
 })
