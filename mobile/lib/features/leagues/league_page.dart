@@ -35,7 +35,7 @@ class LeaguePage extends StatefulWidget {
   State<LeaguePage> createState() => _LeaguePageState();
 }
 
-class _LeaguePageState extends State<LeaguePage> {
+class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
   int tab = 0;
   String matchStatus = 'scheduled';
   Timer? listClock;
@@ -48,6 +48,7 @@ class _LeaguePageState extends State<LeaguePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     tab = widget.initialTab;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.reload != null) unawaited(refreshInitialLeague());
@@ -68,6 +69,13 @@ class _LeaguePageState extends State<LeaguePage> {
           (_) => unawaited(refreshPendingRequests()));
     }
     matchStatus = initialMatchStatus(l);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(refreshLeagueState());
+    }
   }
 
   Future<void> refreshInitialLeague() async {
@@ -108,6 +116,7 @@ class _LeaguePageState extends State<LeaguePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     listClock?.cancel();
     remoteClock?.cancel();
     requestsClock?.cancel();

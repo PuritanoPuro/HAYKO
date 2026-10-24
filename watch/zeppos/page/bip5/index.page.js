@@ -135,6 +135,11 @@ function syncNow(keepScreen = false) {
       const result = data.result || data
       acknowledgeCommands(result.ackIds || [])
       const stillPending = pendingCommands().length > 0
+      if ((result.errors || []).length) {
+        syncMessage = 'Comando non sincronizzato. Riprovo…'
+      } else {
+        syncMessage = ''
+      }
       if (result.status === 'unpaired') {
         syncState = 'unpaired'
         match = null
@@ -385,6 +390,7 @@ function live() {
   rect(119, 332, 82, 32, C.dark, 14)
   keeperCountdownWidget = label(keeperCountdown(), 119, 332, 82, 32, 18, C.lime, true)
   keeperBWidget = label(playerName(1, predictedKeeper(1)), 208, 328, 82, 40, 14, C.chalk, true)
+  if (syncMessage) label(syncMessage, 20, 304, 280, 20, 11, C.danger, true)
 }
 
 function refreshLiveTimers() {
