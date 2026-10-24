@@ -1,7 +1,7 @@
 import { align, createWidget, deleteWidget, setStatusBarVisible, widget } from '@zos/ui'
 import { setWakeUpRelaunch } from '@zos/display'
 import { localStorage } from '@zos/storage'
-import { createCommand, enqueueCommand } from '../../shared/protocol'
+import { acknowledgeCommands, createCommand, enqueueCommand, pendingCommands } from '../../shared/protocol'
 
 const C = {
   bg: 0x071f18,
@@ -17,45 +17,134 @@ const C = {
   dangerPressed: 0xb83d38,
 }
 
-const match = {
-  id: 'demo-match-1',
-  live: false,
-  date: 'OGGI · 20:00',
-  teamA: { name: 'FALCHI', color: C.lime, score: 0 },
-  teamB: { name: 'LEONI', color: C.mint, score: 0 },
-  playersA: [
-    { id: 'a1', name: 'Andrea Rossi', color: 0xf57a4b },
-    { id: 'a2', name: 'Matteo Bini', color: C.blue },
-    { id: 'a3', name: 'Davide Sala', color: C.lime },
-    { id: 'a4', name: 'Marco Riva', color: C.mint },
-  ],
-  playersB: [
-    { id: 'b1', name: 'Luca Ferri', color: 0xffa733 },
-    { id: 'b2', name: 'Paolo Neri', color: C.blue },
-    { id: 'b3', name: 'Giorgio Villa', color: C.lime },
-  ],
-}
-
 const LIVE_STATE_KEY = 'hayko-live-match'
-let storedLiveState = null
+const SNAPSHOT_KEY = 'hayko-watch-snapshot'
+const messageBuilder = getApp()._options.globalData.messageBuilder
+let match = null
+let syncState = 'loading'
+let syncMessage = ''
+let syncing = false
 try {
-  const value = localStorage.getItem(LIVE_STATE_KEY)
-  if (value) storedLiveState = JSON.parse(value)
+  const value = localStorage.getItem(SNAPSHOT_KEY)
+  if (value) match = normalizeSnapshot(JSON.parse(value))
+} catch (_) {
+  localStorage.removeItem(SNAPSHOT_KEY)
+}
+try {
+  const value = JSON.parse(localStorage.getItem(LIVE_STATE_KEY) || 'null')
+  if (match && value && value.live && value.matchId === match.id) {
+    match.live = true
+    match.status = 'live'
+    match.teamA.score = value.scoreA || 0
+    match.teamB.score = value.scoreB || 0
+  }
 } catch (_) {
   localStorage.removeItem(LIVE_STATE_KEY)
 }
-if (storedLiveState && storedLiveState.live) {
-  match.live = true
-  match.teamA.score = storedLiveState.scoreA || 0
-  match.teamB.score = storedLiveState.scoreB || 0
-}
 
-let screen = match.live ? 'live' : 'scheduled'
-let scoringTeam = 'A'
+let screen = match && match.live ? 'live' : 'scheduled'
+let scoringTeam = 0
 let scorer = null
 let assist = null
 let keeper = null
 let widgets = []
+
+function formatDate(value) {
+  if (!value) return 'Data e ora non indicate'
+  const date = new Date(value)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${day}/${month} · ${hour}:${minute}`
+}
+
+function normalizeSnapshot(snapshot) {
+  if (!snapshot || !snapshot.match) return null
+  const raw = snapshot.match
+  const players = snapshot.players || []
+  const playerMap = {}
+  players.forEach((player) => { playerMap[player.id] = player })
+  const toPlayer = (id) => {
+    const player = playerMap[id] || { id, name: 'Giocatore', color: C.muted }
+    return { id: player.id, name: player.name, color: Number(player.color || C.muted) & 0xffffff }
+  }
+  const goals = (raw.goals || []).filter((goal) => !goal.voided)
+  return {
+    id: raw.id,
+    live: raw.status === 'live',
+    status: raw.status,
+    date: formatDate(raw.scheduledAt),
+    format: raw.format || 5,
+    startedAt: raw.startedAt,
+    competitionRules: Boolean(raw.competitionRules),
+    keeperPlans: raw.keepers || [{ mode: 'manual' }, { mode: 'manual' }],
+    teamA: {
+      name: raw.names[0],
+      color: Number((raw.teamColors || [C.lime])[0]) & 0xffffff,
+      score: goals.filter((goal) => goal.team === 0).length,
+    },
+    teamB: {
+      name: raw.names[1],
+      color: Number((raw.teamColors || [C.lime, C.mint])[1]) & 0xffffff,
+      score: goals.filter((goal) => goal.team === 1).length,
+    },
+    playersA: (raw.teams[0] || []).map(toPlayer),
+    playersB: (raw.teams[1] || []).map(toPlayer),
+  }
+}
+
+function applySnapshot(snapshot) {
+  localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot))
+  match = normalizeSnapshot(snapshot)
+  syncState = match ? 'ready' : 'empty'
+  if (match && match.live) {
+    screen = 'live'
+    setWakeUpRelaunch({ relaunch: true })
+  } else {
+    screen = 'scheduled'
+    setWakeUpRelaunch({ relaunch: false })
+  }
+  render()
+}
+
+function syncNow(keepScreen = false) {
+  if (syncing) return
+  if (!messageBuilder) {
+    syncState = match ? 'ready' : 'error'
+    syncMessage = 'Telefono non raggiungibile.'
+    render()
+    return
+  }
+  syncing = true
+  messageBuilder.request({ method: 'SYNC', params: { commands: pendingCommands() } })
+    .then((data) => {
+      syncing = false
+      const result = data.result || data
+      acknowledgeCommands(result.ackIds || [])
+      if (result.status === 'unpaired') {
+        syncState = 'unpaired'
+        match = null
+        render()
+      } else if (result.status === 'ready') {
+        if (keepScreen) {
+          syncState = 'ready'
+          return
+        }
+        applySnapshot(result.snapshot)
+      } else {
+        syncState = match ? 'ready' : 'error'
+        syncMessage = 'Sincronizzazione non disponibile.'
+        render()
+      }
+    })
+    .catch(() => {
+      syncing = false
+      syncState = match ? 'ready' : 'error'
+      syncMessage = 'Avvicina telefono e orologio.'
+      render()
+    })
+}
 
 function add(type, props) {
   const value = createWidget(type, props)
@@ -145,9 +234,29 @@ function navigate(next) {
 function persistLiveMatch() {
   localStorage.setItem(LIVE_STATE_KEY, JSON.stringify({
     live: true,
+    matchId: match.id,
     scoreA: match.teamA.score,
     scoreB: match.teamB.score,
   }))
+}
+
+function connectionScreen(title, body, retry = false) {
+  label(title, 16, 34, 288, 42, 25, C.chalk, true)
+  rect(16, 104, 288, 144, C.surface, 20)
+  label(body, 34, 126, 252, 92, 17, C.muted, true)
+  if (retry) button('Riprova', 48, 280, 224, 58, () => {
+    syncState = 'loading'
+    render()
+    syncNow()
+  }, { color: C.chalk, pressColor: C.muted, textColor: C.dark, radius: 18 })
+}
+
+function unpairedScreen() {
+  connectionScreen('Collega HAYKO', 'Apri le impostazioni di HAYKO nella Zepp App e inserisci il codice generato dall’app mobile.', true)
+}
+
+function emptyScreen() {
+  connectionScreen('Nessuna partita', 'Non ci sono partite programmate o in corso create dal tuo account.', true)
 }
 
 function scheduled() {
@@ -165,7 +274,7 @@ function scheduled() {
   label('–', 152, 102, 16, 42, 20, C.muted, true)
   label(String(match.teamB.score), 168, 102, 40, 42, 28, C.chalk, true)
   label(match.date, 30, 166, 260, 26, 15, C.muted)
-  label('5 vs 5', 30, 194, 160, 22, 13, C.muted)
+  label(`${match.format} vs ${match.format}`, 30, 194, 160, 22, 13, C.muted)
   label('›', 266, 188, 22, 30, 26, C.chalk, true)
 }
 
@@ -181,10 +290,48 @@ function detail() {
 
 function startMatch() {
   match.live = true
+  match.status = 'live'
+  match.startedAt = new Date().toISOString()
   persistLiveMatch()
   setWakeUpRelaunch({ relaunch: true })
   enqueueCommand(createCommand('start_match', match.id))
   navigate('live')
+  syncNow()
+}
+
+function elapsedText() {
+  if (!match.startedAt) return '00:00'
+  const total = Math.max(0, Math.floor((Date.now() - new Date(match.startedAt).getTime()) / 1000))
+  const minutes = String(Math.floor(total / 60)).padStart(2, '0')
+  const seconds = String(total % 60).padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
+function playersForTeam(team) {
+  return team === 0 ? match.playersA : match.playersB
+}
+
+function predictedKeeper(team) {
+  const plan = match.keeperPlans[team] || { mode: 'manual' }
+  if (plan.mode === 'fixed') return plan.fixed
+  if (plan.mode !== 'rotation' || !(plan.order || []).length || !match.startedAt) return null
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(match.startedAt).getTime()) / 1000))
+  const turn = Math.floor(seconds / (Math.max(1, plan.minutes || 5) * 60))
+  return plan.order[turn % plan.order.length]
+}
+
+function playerName(team, id) {
+  const found = playersForTeam(team).find((player) => player.id === id)
+  return found ? found.name.split(' ')[0] : '—'
+}
+
+function keeperCountdown() {
+  const plans = match.keeperPlans.filter((plan) => plan && plan.mode === 'rotation')
+  if (!plans.length || !match.startedAt) return '--:--'
+  const duration = Math.max(1, plans[0].minutes || 5) * 60
+  const elapsed = Math.max(0, Math.floor((Date.now() - new Date(match.startedAt).getTime()) / 1000))
+  const remaining = duration - (elapsed % duration)
+  return `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`
 }
 
 function live() {
@@ -196,19 +343,19 @@ function live() {
     size: 18,
   })
   rect(120, 54, 80, 30, C.surface2, 18)
-  label('18:42', 120, 54, 80, 30, 16, C.lime, true)
+  label(elapsedText(), 120, 54, 80, 30, 16, C.lime, true)
   label(match.teamA.name, 20, 92, 120, 26, 16)
   label(match.teamB.name, 180, 92, 120, 26, 16, C.chalk, true)
   label(String(match.teamA.score), 32, 112, 90, 82, 64, C.chalk, true)
   label('—', 120, 112, 80, 82, 54, C.chalk, true)
   label(String(match.teamB.score), 198, 112, 90, 82, 64, C.chalk, true)
-  goalButton('A', 16, match.teamA.color)
-  goalButton('B', 168, match.teamB.color)
+  goalButton(0, 16, match.teamA.color)
+  goalButton(1, 168, match.teamB.color)
   rect(16, 328, 288, 40, C.surface, 18)
-  label('Marco', 28, 328, 86, 40, 14)
+  label(playerName(0, predictedKeeper(0)), 28, 328, 86, 40, 14)
   rect(119, 332, 82, 32, C.dark, 14)
-  label('02:18', 119, 332, 82, 32, 18, C.lime, true)
-  label('Luca', 208, 328, 82, 40, 14, C.chalk, true)
+  label(keeperCountdown(), 119, 332, 82, 32, 18, C.lime, true)
+  label(playerName(1, predictedKeeper(1)), 208, 328, 82, 40, 14, C.chalk, true)
 }
 
 function goalButton(team, x, color) {
@@ -242,8 +389,8 @@ function selectionHeader(title, subtitle) {
 }
 
 function scorerScreen() {
-  selectionHeader('Chi ha segnato?', scoringTeam === 'A' ? match.teamA.name : match.teamB.name)
-  const players = scoringTeam === 'A' ? match.playersA : match.playersB
+  selectionHeader('Chi ha segnato?', scoringTeam === 0 ? match.teamA.name : match.teamB.name)
+  const players = playersForTeam(scoringTeam)
   players.forEach((player, index) => playerRow(player, 88 + index * 56, () => {
     scorer = player
     navigate('assist')
@@ -252,29 +399,31 @@ function scorerScreen() {
 
 function assistScreen() {
   selectionHeader('Chi ha fatto assist?', scorer ? scorer.name : '')
-  const players = (scoringTeam === 'A' ? match.playersA : match.playersB).filter((player) => !scorer || player.id !== scorer.id)
+  const players = playersForTeam(scoringTeam).filter((player) => !scorer || player.id !== scorer.id)
   players.slice(0, 4).forEach((player, index) => playerRow(player, 82 + index * 56, () => {
     assist = player
-    navigate('keeper')
+    navigate(match.competitionRules ? 'confirm' : 'keeper')
   }))
   button('Nessun assist', 16, 316, 288, 48, () => {
     assist = null
-    navigate('keeper')
+    navigate(match.competitionRules ? 'confirm' : 'keeper')
   }, { color: C.surface, radius: 16, size: 16 })
 }
 
 function keeperScreen() {
-  selectionHeader('Chi era in porta?', scoringTeam === 'A' ? match.teamB.name : match.teamA.name)
-  const players = scoringTeam === 'A' ? match.playersB : match.playersA
-  players.slice(0, 3).forEach((player, index) => playerRow(player, 82 + index * 62, () => {
+  const defendingTeam = 1 - scoringTeam
+  selectionHeader('Chi era in porta?', defendingTeam === 0 ? match.teamA.name : match.teamB.name)
+  const expected = predictedKeeper(defendingTeam)
+  const players = [...playersForTeam(defendingTeam)].sort((a, b) => a.id === expected ? -1 : b.id === expected ? 1 : 0)
+  players.slice(0, 5).forEach((player, index) => playerRow(player, 82 + index * 56, () => {
     keeper = player
     navigate('confirm')
-  }, index === 0, index === 0 ? 'Previsto dal giro' : ''))
+  }, player.id === expected, player.id === expected ? 'Previsto dal giro' : ''))
 }
 
 function confirmScreen() {
   header('Conferma gol')
-  label(scoringTeam === 'A' ? match.teamA.name : match.teamB.name, 18, 58, 284, 26, 15, C.lime, true)
+  label(scoringTeam === 0 ? match.teamA.name : match.teamB.name, 18, 58, 284, 26, 15, C.lime, true)
   rect(16, 94, 288, 174, C.surface, 20)
   summaryRow('ball-small.png', scorer ? scorer.name : '—', 103)
   summaryRow('boot.png', assist ? assist.name : 'Nessun assist', 159)
@@ -319,6 +468,7 @@ function endMatch() {
   setWakeUpRelaunch({ relaunch: false })
   enqueueCommand(createCommand('end_match', match.id))
   navigate('finished')
+  syncNow(true)
 }
 
 function finishedScreen() {
@@ -336,24 +486,30 @@ function finishedScreen() {
 }
 
 function confirmGoal() {
-  const opponents = scoringTeam === 'A' ? match.playersB : match.playersA
+  const opponents = playersForTeam(1 - scoringTeam)
   const selectedKeeper = keeper || opponents[0]
   enqueueCommand(createCommand('add_goal', match.id, {
     team: scoringTeam,
     scorerId: scorer && scorer.id,
     assistId: assist && assist.id,
-    keeperId: selectedKeeper.id,
+    keeperId: match.competitionRules ? null : selectedKeeper.id,
   }))
-  if (scoringTeam === 'A') match.teamA.score += 1
+  if (scoringTeam === 0) match.teamA.score += 1
   else match.teamB.score += 1
   persistLiveMatch()
   navigate('live')
+  syncNow()
 }
 
 function render() {
   clear()
   rect(0, 0, 320, 380, C.bg, 0)
-  if (screen === 'scheduled') scheduled()
+  if (!match) {
+    if (syncState === 'unpaired') unpairedScreen()
+    else if (syncState === 'empty') emptyScreen()
+    else if (syncState === 'error') connectionScreen('Connessione', syncMessage || 'Sincronizzazione non disponibile.', true)
+    else connectionScreen('HAYKO', 'Sincronizzazione delle partite in corso…')
+  } else if (screen === 'scheduled') scheduled()
   else if (screen === 'detail') detail()
   else if (screen === 'live') live()
   else if (screen === 'scorer') scorerScreen()
@@ -367,14 +523,17 @@ function render() {
 Page({
   build() {
     setStatusBarVisible(false)
-    setWakeUpRelaunch({ relaunch: match.live })
+    syncState = match ? 'ready' : 'loading'
+    setWakeUpRelaunch({ relaunch: Boolean(match && match.live) })
     render()
+    syncNow()
   },
   onResume() {
-    if (match.live && screen !== 'live') {
+    if (match && match.live && screen !== 'live') {
       screen = 'live'
       render()
     }
+    syncNow()
   },
   onDestroy() { clear() },
 })

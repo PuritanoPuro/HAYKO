@@ -1,12 +1,16 @@
 {
   "configVersion": "v2",
-  "app": { "appId": 1132780, "appName": "HAYKO", "appType": "app", "version": { "code": 6, "name": "0.1.5" }, "icon": "icon.png", "vender": "HAYKO", "description": "Controllo partite HAYKO da smartwatch" },
+  "app": { "appId": 1132780, "appName": "HAYKO", "appType": "app", "version": { "code": 7, "name": "0.2.0" }, "icon": "icon.png", "vender": "HAYKO", "description": "Controllo partite HAYKO da smartwatch" },
   "permissions": ["device:os.local_storage"],
   "runtime": { "apiVersion": { "compatible": "2.1", "target": "2.1", "minVersion": "2.1" } },
   "debug": false,
   "targets": {
     "bip5": {
-      "module": { "page": { "pages": ["page/bip5/index.page"] } },
+      "module": {
+        "page": { "pages": ["page/bip5/index.page"] },
+        "app-side": { "path": "app-side/index" },
+        "setting": { "path": "setting/index" }
+      },
       "platforms": [
         { "name": "bip5-cn", "deviceSource": 8454400 },
         { "name": "bip5-global", "deviceSource": 8454401 }

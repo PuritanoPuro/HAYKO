@@ -9,9 +9,16 @@ Amazfit Bip 5 (320 x 380, API_LEVEL 2.1). Riproduce il flusso approvato in Figma
 4. squadra che segna, marcatore, assist e portiere;
 5. conferma del gol.
 
-I comandi sono creati con un identificatore stabile e inseriti nell'outbox prima
-di essere inviati. La UI usa ancora uno snapshot dimostrativo: il relay verso
-Supabase verra' collegato nel Side Service senza cambiare il flusso sul display.
+I comandi sono creati con un identificatore stabile e inseriti nell'outbox
+persistente prima di essere inviati. Device App, Settings App e Side Service
+sono collegati al gateway Supabase e gestiscono snapshot, ACK e ritrasmissione.
+
+L'orologio viene associato all'account HAYKO, non a una singola lega. Il codice
+monouso a sei cifre si genera da **Impostazioni > Collega smartwatch** nell'app
+mobile e si inserisce nelle impostazioni HAYKO della Zepp App. A ogni sync il
+server cerca in tutte le leghe amatoriali dell'account: restituisce prima una
+partita in corso, altrimenti quella programmata più vicina all'orario attuale.
+Ogni comando contiene il match ID, quindi viene applicato alla lega corretta.
 
 ## Bip 5 / Zepp OS
 
@@ -37,11 +44,11 @@ Il contratto in `zeppos/shared/protocol.js` e' indipendente dall'interfaccia e
 costituisce la base per i client watchOS e Wear OS. I tre pacchetti resteranno
 nativi per rispettare navigazione, connettivita e vincoli delle piattaforme.
 
-## Specifica precedente
+## Stato piattaforme
 
-Questo percorso contiene la specifica smartwatch; non ci sono ancora app native
-compilabili o bridge integrati nel mobile. Lo sviluppo delle tre integrazioni
-può iniziare in parallelo dopo il gateway autenticato.
+Il client Zepp OS per Amazfit Bip 5 e il relativo relay nella Zepp App sono
+compilabili e collegati al gateway autenticato. I client nativi watchOS e Wear
+OS restano descritti come evoluzioni future del progetto.
 
 ## UI comune
 Home: punteggio confermato, stato connessione, ultimo aggiornamento, GOL.
