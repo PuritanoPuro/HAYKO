@@ -8,6 +8,21 @@ import 'package:calcetto_mvp/features/competitions/competition_match_form.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 
+bool hasAmateurScheduleConflict(League league, DateTime scheduled) {
+  if (league.type != 'amateur') return false;
+  final target = scheduled.toUtc();
+  return league.matches.any((match) {
+    final value = match.scheduledAt;
+    if (value == null) return false;
+    final existing = DateTime.parse(value).toUtc();
+    return existing.year == target.year &&
+        existing.month == target.month &&
+        existing.day == target.day &&
+        existing.hour == target.hour &&
+        existing.minute == target.minute;
+  });
+}
+
 class NewMatchPage extends StatefulWidget {
   final League league;
   final Save? save;
@@ -287,6 +302,10 @@ class _NewMatchPageState extends State<NewMatchPage> {
 
   void createMatch() {
     try {
+      if (hasAmateurScheduleConflict(widget.league, scheduled)) {
+        throw StateError(
+            'Esiste già una partita programmata nello stesso giorno e orario.');
+      }
       final plans = [
         for (var n = 0; n < 2; n++)
           KeeperPlan(
@@ -504,6 +523,11 @@ class _NewMatchPageState extends State<NewMatchPage> {
   }
 
   void continueToFormation() {
+    if (hasAmateurScheduleConflict(widget.league, scheduled)) {
+      showError(context,
+          'Esiste già una partita programmata nello stesso giorno e orario.');
+      return;
+    }
     if (competition != null && presetIds.any((id) => id == null)) {
       showError(context, 'Seleziona entrambe le squadre della competizione.');
       return;

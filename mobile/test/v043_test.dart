@@ -14,8 +14,35 @@ import 'package:calcetto_mvp/features/statistics/statistics_page.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/design_system/hayko_theme.dart';
+import 'package:calcetto_mvp/features/matches/formation.dart';
 
 void main() {
+  test('le leghe amatoriali non accettano due partite nello stesso minuto', () {
+    final scheduled = DateTime(2026, 10, 24, 21, 30);
+    final existing = Match(
+        id: 'm',
+        format: 2,
+        names: const ['A', 'B'],
+        teams: const [
+          ['p1', 'p2'],
+          ['p3', 'p4']
+        ],
+        scheduledAt: scheduled.toUtc().toIso8601String());
+    final players = [
+      for (var i = 1; i <= 4; i++) Player('p$i', 'Giocatore $i')
+    ];
+    final amateur = League('a', 'Amatoriale', players, [existing]);
+    final competition =
+        League('c', 'Competizione', players, [existing], type: 'competition');
+
+    expect(hasAmateurScheduleConflict(amateur, scheduled), isTrue);
+    expect(
+        hasAmateurScheduleConflict(
+            amateur, scheduled.add(const Duration(minutes: 1))),
+        isFalse);
+    expect(hasAmateurScheduleConflict(competition, scheduled), isFalse);
+  });
+
   test('apertura lega preferisce partite live e altrimenti programmate', () {
     final league = League('l', 'L', [
       for (final id in ['a', 'b', 'c', 'd']) Player(id, id)
