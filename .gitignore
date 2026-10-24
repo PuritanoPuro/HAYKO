@@ -37,6 +37,7 @@ supabase/.temp/
 node_modules/
 watch/zeppos/dist/
 watch/zeppos/*.zab
+watch/zeppos/HAYKO_BIP5_PREVIEW_QR.png
 
 # Local versioned mobile test artifacts
 releases/**/*.apk

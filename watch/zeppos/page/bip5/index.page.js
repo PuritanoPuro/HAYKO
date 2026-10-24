@@ -1,4 +1,4 @@
-import { align, createWidget, deleteWidget, widget } from '@zos/ui'
+import { align, createWidget, deleteWidget, setStatusBarVisible, widget } from '@zos/ui'
 import { createCommand, enqueueCommand } from '../../shared/protocol'
 
 const C = {
@@ -16,8 +16,8 @@ const C = {
 const match = {
   id: 'demo-match-1',
   date: 'OGGI · 20:00',
-  teamA: { name: 'FALCHI', color: C.lime, score: 2 },
-  teamB: { name: 'LEONI', color: C.mint, score: 1 },
+  teamA: { name: 'FALCHI', color: C.lime, score: 0 },
+  teamB: { name: 'LEONI', color: C.mint, score: 0 },
   playersA: [
     { id: 'a1', name: 'Andrea Rossi', color: 0xf57a4b },
     { id: 'a2', name: 'Matteo Bini', color: C.blue },
@@ -40,6 +40,9 @@ let widgets = []
 
 function add(type, props) {
   const value = createWidget(type, props)
+  // Decorative widgets sit above the button backgrounds. Disabling their
+  // gesture handling lets the complete underlying container remain tappable.
+  if (type !== widget.BUTTON) value.setEnable(false)
   widgets.push(value)
   return value
 }
@@ -105,12 +108,15 @@ function navigate(next) {
 function scheduled() {
   label('Programmate', 16, 12, 288, 36, 25)
   label('LA PROSSIMA PARTITA', 18, 58, 284, 22, 12, C.muted)
-  rect(16, 88, 288, 128, C.surface, 20)
+  button('', 16, 88, 288, 128, () => navigate('detail'), {
+    color: C.surface,
+    radius: 20,
+  })
   stroke(16, 88, 288, 128, C.lime, 2, 20)
   label(match.date, 30, 101, 244, 22, 13, C.muted)
   label(match.teamA.name, 30, 132, 210, 28, 22)
   label(match.teamB.name, 30, 165, 210, 28, 22)
-  button('›', 254, 125, 34, 60, () => navigate('detail'), { size: 32 })
+  label('›', 254, 125, 34, 60, 32, C.chalk, true)
   label('Viene mostrata la partita prevista', 18, 238, 284, 22, 13, C.muted, true)
   label('per questo giorno e orario.', 18, 260, 284, 22, 13, C.muted, true)
 }
@@ -156,7 +162,7 @@ function goalButton(team, x, color) {
     keeper = null
     navigate('scorer')
   }, { color: C.surface, border: color, borderWidth: 3, radius: 20 })
-  add(widget.IMG, { x: x + 34, y: 224, w: 68, h: 68, src: 'ball.png' })
+  add(widget.IMG, { x: x + 30, y: 220, src: 'ball.png' })
 }
 
 function playerRow(player, y, onTap, selected = false, note = '') {
@@ -242,6 +248,9 @@ function render() {
 }
 
 Page({
-  build() { render() },
+  build() {
+    setStatusBarVisible(false)
+    render()
+  },
   onDestroy() { clear() },
 })
