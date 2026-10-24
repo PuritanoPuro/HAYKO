@@ -11,6 +11,8 @@ const C = {
   mint: 0x69d4a5,
   blue: 0x7fb6dd,
   dark: 0x0e2b22,
+  danger: 0xd94b45,
+  dangerPressed: 0xb83d38,
 }
 
 const match = {
@@ -108,17 +110,20 @@ function navigate(next) {
 function scheduled() {
   label('Programmate', 16, 12, 288, 36, 25)
   label('LA PROSSIMA PARTITA', 18, 58, 284, 22, 12, C.muted)
-  button('', 16, 88, 288, 128, () => navigate('detail'), {
+  button('', 16, 88, 288, 142, () => navigate('detail'), {
     color: C.surface,
-    radius: 20,
+    radius: 16,
   })
-  stroke(16, 88, 288, 128, C.lime, 2, 20)
-  label(match.date, 30, 101, 244, 22, 13, C.muted)
-  label(match.teamA.name, 30, 132, 210, 28, 22)
-  label(match.teamB.name, 30, 165, 210, 28, 22)
-  label('›', 254, 125, 34, 60, 32, C.chalk, true)
-  label('Viene mostrata la partita prevista', 18, 238, 284, 22, 13, C.muted, true)
-  label('per questo giorno e orario.', 18, 260, 284, 22, 13, C.muted, true)
+  label(match.teamA.name, 28, 104, 86, 30, 17, C.chalk, true)
+  label(match.teamB.name, 206, 104, 86, 30, 17, C.chalk, true)
+  rect(42, 140, 58, 6, match.teamA.color, 3)
+  rect(220, 140, 58, 6, match.teamB.color, 3)
+  label(String(match.teamA.score), 112, 102, 40, 42, 28, C.chalk, true)
+  label('–', 152, 102, 16, 42, 20, C.muted, true)
+  label(String(match.teamB.score), 168, 102, 40, 42, 28, C.chalk, true)
+  label(match.date, 30, 166, 260, 26, 15, C.muted)
+  label('5 vs 5', 30, 194, 160, 22, 13, C.muted)
+  label('›', 266, 188, 22, 30, 26, C.chalk, true)
 }
 
 function detail() {
@@ -137,7 +142,13 @@ function startMatch() {
 }
 
 function live() {
-  header('Partita', 'LIVE')
+  header('Partita')
+  button('■', 258, 14, 46, 38, () => navigate('finish'), {
+    color: C.danger,
+    pressColor: C.dangerPressed,
+    radius: 14,
+    size: 18,
+  })
   rect(120, 54, 80, 30, C.surface2, 18)
   label('18:42', 120, 54, 80, 30, 16, C.lime, true)
   label(match.teamA.name, 20, 92, 120, 26, 16)
@@ -218,19 +229,60 @@ function keeperScreen() {
 function confirmScreen() {
   header('Conferma gol')
   label(scoringTeam === 'A' ? match.teamA.name : match.teamB.name, 18, 58, 284, 26, 15, C.lime, true)
-  rect(16, 94, 288, 170, C.surface, 20)
-  label('MARCATORE', 30, 106, 110, 22, 11, C.muted)
-  label(scorer ? scorer.name : '—', 30, 126, 244, 30, 21)
-  label('ASSIST', 30, 164, 110, 22, 11, C.muted)
-  label(assist ? assist.name : 'Nessun assist', 30, 184, 244, 30, 21)
-  label('PORTIERE', 30, 222, 110, 22, 11, C.muted)
-  label(keeper ? keeper.name : '—', 128, 218, 146, 30, 18, C.chalk, true)
+  rect(16, 94, 288, 174, C.surface, 20)
+  summaryRow('ball-small.png', scorer ? scorer.name : '—', 103)
+  summaryRow('boot.png', assist ? assist.name : 'Nessun assist', 159)
+  summaryRow('glove.png', keeper ? keeper.name : '—', 215)
   button('Conferma gol', 16, 286, 288, 66, confirmGoal, {
     color: C.chalk,
     pressColor: C.muted,
     textColor: C.dark,
     radius: 20,
     size: 20,
+  })
+}
+
+function summaryRow(icon, value, y) {
+  add(widget.IMG, { x: 30, y, src: icon })
+  label(value, 82, y, 202, 40, 20)
+}
+
+function finishScreen() {
+  header('Termina partita')
+  label('Vuoi terminare la partita?', 20, 70, 280, 34, 20, C.chalk, true)
+  label(match.teamA.name, 20, 122, 110, 26, 16, C.chalk, true)
+  label(match.teamB.name, 190, 122, 110, 26, 16, C.chalk, true)
+  label(`${match.teamA.score} – ${match.teamB.score}`, 70, 150, 180, 64, 44, C.chalk, true)
+  button('Termina partita', 16, 238, 288, 58, endMatch, {
+    color: C.danger,
+    pressColor: C.dangerPressed,
+    radius: 18,
+    size: 19,
+  })
+  button('Annulla', 16, 308, 288, 52, () => navigate('live'), {
+    color: C.surface,
+    pressColor: C.surface2,
+    radius: 18,
+    size: 18,
+  })
+}
+
+function endMatch() {
+  enqueueCommand(createCommand('end_match', match.id))
+  navigate('finished')
+}
+
+function finishedScreen() {
+  label('Partita terminata', 16, 24, 288, 38, 25, C.chalk, true)
+  label(match.teamA.name, 20, 100, 110, 26, 16, C.chalk, true)
+  label(match.teamB.name, 190, 100, 110, 26, 16, C.chalk, true)
+  label(`${match.teamA.score} – ${match.teamB.score}`, 60, 132, 200, 82, 52, C.chalk, true)
+  button('Torna alle programmate', 16, 276, 288, 62, () => navigate('scheduled'), {
+    color: C.chalk,
+    pressColor: C.muted,
+    textColor: C.dark,
+    radius: 20,
+    size: 17,
   })
 }
 
@@ -257,7 +309,9 @@ function render() {
   else if (screen === 'scorer') scorerScreen()
   else if (screen === 'assist') assistScreen()
   else if (screen === 'keeper') keeperScreen()
-  else confirmScreen()
+  else if (screen === 'confirm') confirmScreen()
+  else if (screen === 'finish') finishScreen()
+  else finishedScreen()
 }
 
 Page({
