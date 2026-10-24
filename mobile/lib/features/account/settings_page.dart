@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:calcetto_mvp/features/account/app_preferences.dart';
 import 'package:calcetto_mvp/core/services/cloud.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
@@ -16,6 +17,10 @@ class SettingsPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                     builder: (_) => const NotificationSettingsPage()))),
+        AccountButton('Collega smartwatch',
+            outline: true,
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const WatchPairingPage()))),
         AccountButton('Privacy',
             outline: true,
             onPressed: () => Navigator.push(
@@ -40,6 +45,78 @@ class SettingsPage extends StatelessWidget {
             style: TextStyle(
                 fontSize: 14, height: 20 / 14, color: HaykoColors.mutedText)),
       ]);
+}
+
+class WatchPairingPage extends StatefulWidget {
+  const WatchPairingPage({super.key});
+
+  @override
+  State<WatchPairingPage> createState() => _WatchPairingPageState();
+}
+
+class _WatchPairingPageState extends State<WatchPairingPage> {
+  String? code;
+  bool busy = false;
+  String? error;
+
+  Future<void> generate() async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final value = await Cloud.client.rpc('hayko_watch_pairing_code');
+      if (mounted) setState(() => code = value as String);
+    } catch (_) {
+      if (mounted) {
+        setState(() => error =
+            'Impossibile creare il codice. Controlla la connessione e riprova.');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AccountScaffold(
+        title: 'Collega smartwatch',
+        children: [
+          const Text(
+              'Genera un codice e inseriscilo nelle impostazioni HAYKO della Zepp App. Il codice scade dopo 10 minuti e può essere usato una sola volta.'),
+          if (code != null)
+            Semantics(
+              label: 'Codice di collegamento $code',
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                decoration: BoxDecoration(
+                    color: HaykoColors.fieldSurface,
+                    borderRadius: BorderRadius.circular(20)),
+                child: Text(code!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: HaykoColors.chalk,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 8)),
+              ),
+            ),
+          AccountButton(code == null ? 'Genera codice' : 'Genera nuovo codice',
+              onPressed: busy ? null : generate),
+          if (code != null)
+            AccountButton('Copia codice', outline: true, onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: code!));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Codice copiato')));
+              }
+            }),
+          if (busy) const LinearProgressIndicator(),
+          if (error != null)
+            Text(error!, style: const TextStyle(color: Colors.redAccent)),
+        ],
+      );
 }
 
 class NotificationSettingsPage extends StatefulWidget {
