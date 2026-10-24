@@ -17,6 +17,7 @@ const C = {
 
 const match = {
   id: 'demo-match-1',
+  live: false,
   date: 'OGGI · 20:00',
   teamA: { name: 'FALCHI', color: C.lime, score: 0 },
   teamB: { name: 'LEONI', color: C.mint, score: 0 },
@@ -94,12 +95,30 @@ function button(value, x, y, w, h, onTap, options = {}) {
 }
 
 function header(title, badge) {
-  label('‹', 14, 10, 26, 40, 34)
-  label(title, 45, 12, 190, 36, 24)
+  button('‹', 8, 8, 52, 48, goBack, {
+    color: C.bg,
+    pressColor: C.surface2,
+    radius: 16,
+    size: 36,
+  })
+  label(title, 68, 12, 168, 36, 23)
   if (badge) {
     rect(244, 16, 60, 28, C.lime, 16)
     label(badge, 244, 16, 60, 28, 13, C.dark, true)
   }
+}
+
+function goBack() {
+  const previous = {
+    detail: 'scheduled',
+    live: 'scheduled',
+    scorer: 'live',
+    assist: 'scorer',
+    keeper: 'assist',
+    confirm: 'keeper',
+    finish: 'live',
+  }
+  navigate(previous[screen] || 'scheduled')
 }
 
 function navigate(next) {
@@ -109,8 +128,8 @@ function navigate(next) {
 
 function scheduled() {
   label('Programmate', 16, 12, 288, 36, 25)
-  label('LA PROSSIMA PARTITA', 18, 58, 284, 22, 12, C.muted)
-  button('', 16, 88, 288, 142, () => navigate('detail'), {
+  label(match.live ? 'PARTITA IN CORSO' : 'LA PROSSIMA PARTITA', 18, 58, 284, 22, 12, match.live ? C.lime : C.muted)
+  button('', 16, 88, 288, 142, () => navigate(match.live ? 'live' : 'detail'), {
     color: C.surface,
     radius: 16,
   })
@@ -137,6 +156,7 @@ function detail() {
 }
 
 function startMatch() {
+  match.live = true
   enqueueCommand(createCommand('start_match', match.id))
   navigate('live')
 }
@@ -268,6 +288,7 @@ function finishScreen() {
 }
 
 function endMatch() {
+  match.live = false
   enqueueCommand(createCommand('end_match', match.id))
   navigate('finished')
 }
