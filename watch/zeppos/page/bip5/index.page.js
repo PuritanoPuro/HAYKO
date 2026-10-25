@@ -134,9 +134,14 @@ function syncNow(keepScreen = false) {
       syncing = false
       const result = data.result || data
       acknowledgeCommands(result.ackIds || [])
-      const stillPending = pendingCommands().length > 0
+      const remaining = pendingCommands()
+      const sentIds = sentCommands.map((command) => command.id)
+      const newCommandsWaiting = remaining.some((command) => !sentIds.includes(command.id))
       if ((result.errors || []).length) {
-        syncMessage = 'Comando non sincronizzato. Riprovo…'
+        const detail = String(result.errors[0].message || 'Errore sconosciuto')
+          .replace('Error: ', '')
+          .slice(0, 42)
+        syncMessage = `Sync: ${detail}`
       } else {
         syncMessage = ''
       }
@@ -145,8 +150,9 @@ function syncNow(keepScreen = false) {
         match = null
         render()
       } else if (result.status === 'ready') {
-        if (keepScreen || stillPending) {
+        if (keepScreen || newCommandsWaiting || (result.errors || []).length) {
           syncState = 'ready'
+          render()
         } else {
           applySnapshot(result.snapshot)
         }
@@ -155,7 +161,7 @@ function syncNow(keepScreen = false) {
         syncMessage = 'Sincronizzazione non disponibile.'
         render()
       }
-      if (syncAgain || stillPending) {
+      if (syncAgain || newCommandsWaiting) {
         const nextKeepScreen = syncAgainKeepScreen
         syncAgain = false
         syncAgainKeepScreen = false
