@@ -408,13 +408,15 @@ function live() {
   label(String(match.teamA.score), 32, 112, 90, 82, 64, C.chalk, true)
   label('—', 120, 112, 80, 82, 54, C.chalk, true)
   label(String(match.teamB.score), 198, 112, 90, 82, 64, C.chalk, true)
-  goalButton(0, 16, match.teamA.color)
-  goalButton(1, 168, match.teamB.color)
-  rect(16, 328, 288, 40, C.surface, 18)
-  keeperAWidget = label(playerName(0, predictedKeeper(0)), 28, 328, 86, 40, 14)
-  rect(119, 332, 82, 32, C.dark, 14)
-  keeperCountdownWidget = label(keeperCountdown(), 119, 332, 82, 32, 18, C.lime, true)
-  keeperBWidget = label(playerName(1, predictedKeeper(1)), 208, 328, 82, 40, 14, C.chalk, true)
+  goalButton(0, match.teamA.color)
+  goalButton(1, match.teamB.color)
+  // The Bip 5 glass has heavily rounded lower corners. Keep this footer inside
+  // the measured 28 px horizontal / 18 px bottom hardware safe area.
+  rect(28, 326, 264, 36, C.surface, 18)
+  keeperAWidget = label(playerName(0, predictedKeeper(0)), 38, 326, 76, 36, 13)
+  rect(119, 329, 82, 30, C.dark, 14)
+  keeperCountdownWidget = label(keeperCountdown(), 119, 329, 82, 30, 17, C.lime, true)
+  keeperBWidget = label(playerName(1, predictedKeeper(1)), 206, 326, 76, 36, 13, C.chalk, true)
   if (syncMessage) label(syncMessage, 20, 304, 280, 20, 11, C.danger, true)
 }
 
@@ -426,16 +428,17 @@ function refreshLiveTimers() {
   if (keeperBWidget) keeperBWidget.setProperty(prop.TEXT, playerName(1, predictedKeeper(1)))
 }
 
-function goalButton(team, x, color) {
-  button('', x, 202, 136, 112, () => {
+function goalButton(team, color) {
+  const safeX = team === 0 ? 24 : 168
+  button('', safeX, 202, 128, 110, () => {
     scoringTeam = team
     scorer = null
     assist = null
     keeper = null
     ownGoal = false
     navigate('scorer')
-  }, { color: C.surface, border: color, borderWidth: 3, radius: 20 })
-  add(widget.IMG, { x: x + 24, y: 214, w: 88, h: 88, src: 'ball.png' })
+  }, { color: C.surface, border: color, borderWidth: 3, radius: 18 })
+  add(widget.IMG, { x: safeX + 28, y: 221, w: 72, h: 72, src: 'ball.png' })
 }
 
 function playerRow(player, y, onTap, selected = false, note = '') {
