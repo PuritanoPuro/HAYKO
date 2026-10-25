@@ -31,6 +31,11 @@ let elapsedWidget = null
 let keeperCountdownWidget = null
 let keeperAWidget = null
 let keeperBWidget = null
+let loadingArc = null
+let loadingTimer = null
+let loadingAngle = -90
+let pendingActionId = null
+let pendingActionLabel = ''
 try {
   const value = localStorage.getItem(SNAPSHOT_KEY)
   if (value) match = normalizeSnapshot(JSON.parse(value))
@@ -140,6 +145,11 @@ function syncNow(keepScreen = false) {
       syncing = false
       const result = data.result || data
       acknowledgeCommands(result.ackIds || [])
+      const pendingError = (result.errors || []).some((error) => error.id === pendingActionId)
+      if ((result.ackIds || []).includes(pendingActionId) || pendingError || result.status !== 'ready') {
+        pendingActionId = null
+        pendingActionLabel = ''
+      }
       const remaining = pendingCommands()
       const sentIds = sentCommands.map((command) => command.id)
       const newCommandsWaiting = remaining.some((command) => !sentIds.includes(command.id))
@@ -176,6 +186,8 @@ function syncNow(keepScreen = false) {
     })
     .catch(() => {
       syncing = false
+      pendingActionId = null
+      pendingActionLabel = ''
       syncState = match ? 'ready' : 'error'
       syncMessage = 'Apri Zepp sul telefono e riprova.'
       render()
@@ -204,6 +216,7 @@ function clear() {
   keeperCountdownWidget = null
   keeperAWidget = null
   keeperBWidget = null
+  loadingArc = null
 }
 
 function rect(x, y, w, h, color, radius = 18) {
@@ -302,6 +315,31 @@ function connectionScreen(title, body, retry = false) {
   }, { color: C.chalk, pressColor: C.muted, textColor: C.dark, radius: 18 })
 }
 
+function loadingScreen() {
+  label('HAYKO', 16, 54, 288, 38, 25, C.chalk, true)
+  rect(48, 116, 224, 150, C.surface, 22)
+  loadingArc = add(widget.ARC, {
+    x: 128,
+    y: 136,
+    w: 64,
+    h: 64,
+    start_angle: loadingAngle,
+    end_angle: loadingAngle + 250,
+    color: C.lime,
+    line_width: 7,
+  })
+  label(pendingActionLabel || 'Sincronizzazione…', 66, 212, 188, 32, 17, C.chalk, true)
+}
+
+function refreshLoadingArc() {
+  if (!loadingArc || !pendingActionId) return
+  loadingAngle = (loadingAngle + 30) % 360
+  loadingArc.setProperty(prop.MORE, {
+    start_angle: loadingAngle,
+    end_angle: loadingAngle + 250,
+  })
+}
+
 function unpairedScreen() {
   connectionScreen('Collega HAYKO', 'Apri le impostazioni di HAYKO nella Zepp App e inserisci il codice generato dall’app mobile.', true)
 }
@@ -340,7 +378,10 @@ function detail() {
 }
 
 function startMatch() {
-  enqueueCommand(createCommand('start_match', match.id))
+  if (pendingActionId) return
+  const command = enqueueCommand(createCommand('start_match', match.id))
+  pendingActionId = command.id
+  pendingActionLabel = 'Avvio partita…'
   syncMessage = ''
   navigate('starting')
   syncNow()
@@ -566,11 +607,14 @@ function finishScreen() {
 }
 
 function endMatch() {
+  if (pendingActionId) return
   match.live = false
   match.status = 'finished'
   localStorage.removeItem(LIVE_STATE_KEY)
   setWakeUpRelaunch({ relaunch: false })
-  enqueueCommand(createCommand('end_match', match.id))
+  const command = enqueueCommand(createCommand('end_match', match.id))
+  pendingActionId = command.id
+  pendingActionLabel = 'Chiusura partita…'
   navigate('finished')
   syncNow(true)
 }
@@ -596,15 +640,18 @@ function finishedScreen() {
 }
 
 function confirmGoal() {
+  if (pendingActionId) return
   const opponents = playersForTeam(1 - scoringTeam)
   const selectedKeeper = keeper || opponents[0]
-  enqueueCommand(createCommand('add_goal', match.id, {
+  const command = enqueueCommand(createCommand('add_goal', match.id, {
     team: scoringTeam,
     scorerId: scorer && scorer.id,
     assistId: ownGoal ? null : (assist && assist.id),
     keeperId: match.competitionRules ? null : selectedKeeper.id,
     ownGoal,
   }))
+  pendingActionId = command.id
+  pendingActionLabel = 'Salvataggio gol…'
   if (scoringTeam === 0) match.teamA.score += 1
   else match.teamB.score += 1
   persistLiveMatch()
@@ -615,7 +662,8 @@ function confirmGoal() {
 function render() {
   clear()
   rect(0, 0, 320, 380, C.bg, 0)
-  if (!match) {
+  if (pendingActionId) loadingScreen()
+  else if (!match) {
     if (syncState === 'unpaired') unpairedScreen()
     else if (syncState === 'empty') emptyScreen()
     else if (syncState === 'error') connectionScreen('Connessione', syncMessage || 'Sincronizzazione non disponibile.', true)
@@ -640,6 +688,7 @@ Page({
     setWakeUpRelaunch({ relaunch: Boolean(match && match.live) })
     render()
     liveTimer = setInterval(refreshLiveTimers, 1000)
+    loadingTimer = setInterval(refreshLoadingArc, 120)
     syncNow()
   },
   onResume() {
@@ -651,7 +700,9 @@ Page({
   },
   onDestroy() {
     if (liveTimer) clearInterval(liveTimer)
+    if (loadingTimer) clearInterval(loadingTimer)
     liveTimer = null
+    loadingTimer = null
     clear()
   },
 })
