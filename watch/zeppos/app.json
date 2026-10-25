@@ -1,6 +1,6 @@
 {
   "configVersion": "v2",
-  "app": { "appId": 1132780, "appName": "HAYKO", "appType": "app", "version": { "code": 10, "name": "0.2.3" }, "icon": "icon.png", "vender": "HAYKO", "description": "Controllo partite HAYKO da smartwatch" },
+  "app": { "appId": 1132780, "appName": "HAYKO", "appType": "app", "version": { "code": 11, "name": "0.2.4" }, "icon": "icon.png", "vender": "HAYKO", "description": "Controllo partite HAYKO da smartwatch" },
   "permissions": ["device:os.local_storage"],
   "runtime": { "apiVersion": { "compatible": "2.1", "target": "2.1", "minVersion": "2.1" } },
   "debug": false,

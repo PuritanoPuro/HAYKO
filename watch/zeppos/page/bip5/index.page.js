@@ -129,7 +129,14 @@ function syncNow(keepScreen = false) {
   }
   syncing = true
   const sentCommands = pendingCommands()
-  messageBuilder.request({ method: 'SYNC', params: { commands: sentCommands } })
+  const transport = messageBuilder.request(
+    { method: 'SYNC', params: { commands: sentCommands } },
+    { timeout: 10000 },
+  )
+  const deadline = new Promise((_, reject) => {
+    setTimeout(() => reject(Error('Bluetooth non disponibile')), 12000)
+  })
+  Promise.race([transport, deadline])
     .then((data) => {
       syncing = false
       const result = data.result || data
@@ -171,7 +178,7 @@ function syncNow(keepScreen = false) {
     .catch(() => {
       syncing = false
       syncState = match ? 'ready' : 'error'
-      syncMessage = 'Avvicina telefono e orologio.'
+      syncMessage = 'Apri Zepp sul telefono e riprova.'
       render()
       if (syncAgain) {
         const nextKeepScreen = syncAgainKeepScreen
