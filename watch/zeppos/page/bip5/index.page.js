@@ -39,9 +39,7 @@ try {
 }
 try {
   const value = JSON.parse(localStorage.getItem(LIVE_STATE_KEY) || 'null')
-  if (match && value && value.live && value.matchId === match.id) {
-    match.live = true
-    match.status = 'live'
+  if (match && match.live && value && value.live && value.matchId === match.id) {
     match.teamA.score = value.scoreA || 0
     match.teamB.score = value.scoreB || 0
   }
@@ -336,14 +334,22 @@ function detail() {
 }
 
 function startMatch() {
-  match.live = true
-  match.status = 'live'
-  match.startedAt = new Date().toISOString()
-  persistLiveMatch()
-  setWakeUpRelaunch({ relaunch: true })
   enqueueCommand(createCommand('start_match', match.id))
-  navigate('live')
+  syncMessage = ''
+  navigate('starting')
   syncNow()
+}
+
+function startingScreen() {
+  label('Avvio partita', 16, 38, 288, 38, 25, C.chalk, true)
+  rect(16, 100, 288, 130, C.surface, 20)
+  label(syncMessage || 'Attendo la conferma del server…', 34, 122, 252, 86, 17,
+    syncMessage ? C.danger : C.muted, true)
+  if (syncMessage) button('Riprova', 48, 276, 224, 58, () => {
+    syncMessage = ''
+    render()
+    syncNow()
+  }, { color: C.chalk, pressColor: C.muted, textColor: C.dark, radius: 18 })
 }
 
 function elapsedText() {
@@ -574,6 +580,7 @@ function render() {
     else connectionScreen('HAYKO', 'Sincronizzazione delle partite in corso…')
   } else if (screen === 'scheduled') scheduled()
   else if (screen === 'detail') detail()
+  else if (screen === 'starting') startingScreen()
   else if (screen === 'live') live()
   else if (screen === 'scorer') scorerScreen()
   else if (screen === 'assist') assistScreen()
