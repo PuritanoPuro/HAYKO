@@ -38,6 +38,8 @@ class LeaguePage extends StatefulWidget {
 class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
   int tab = 0;
   String matchStatus = 'scheduled';
+  String finishedPeriod = 'all';
+  int finishedVisible = 10;
   Timer? listClock;
   Timer? remoteClock;
   Timer? requestsClock;
@@ -147,8 +149,35 @@ class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
           : const Color(0xffbcb6c9);
   Widget matchesBody() {
     final color = statusColor(matchStatus);
-    final matches =
+    final statusMatches =
         l.matches.reversed.where((m) => m.status == matchStatus).toList();
+    final finishedYears = statusMatches
+        .map(_matchHistoryYear)
+        .whereType<int>()
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    final hasUndated =
+        statusMatches.any((match) => _matchHistoryYear(match) == null);
+    final validPeriods = <String>{
+      'all',
+      ...finishedYears.map((year) => '$year'),
+      if (hasUndated) 'undated',
+    };
+    final activePeriod =
+        validPeriods.contains(finishedPeriod) ? finishedPeriod : 'all';
+    final filteredMatches = matchStatus != 'finished' || activePeriod == 'all'
+        ? statusMatches
+        : statusMatches.where((match) {
+            final year = _matchHistoryYear(match);
+            return activePeriod == 'undated'
+                ? year == null
+                : year?.toString() == activePeriod;
+          }).toList();
+    final matches = matchStatus == 'finished'
+        ? filteredMatches.take(finishedVisible).toList()
+        : filteredMatches;
+    final hiddenFinished = filteredMatches.length - matches.length;
     return Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -162,7 +191,10 @@ class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
                 child: InkWell(
                   key: ValueKey('match-tab-$status'),
                   borderRadius: BorderRadius.circular(12),
-                  onTap: () => setState(() => matchStatus = status),
+                  onTap: () => setState(() {
+                    matchStatus = status;
+                    if (status == 'finished') finishedVisible = 10;
+                  }),
                   child: Container(
                     height: 44,
                     alignment: Alignment.center,
@@ -222,6 +254,54 @@ class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
                   color: color)),
         ),
       ),
+      if (matchStatus == 'finished')
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: HaykoColors.fieldSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: HaykoColors.fieldLine),
+            ),
+            child: Row(children: [
+              const Icon(Icons.calendar_month,
+                  size: 22, color: HaykoColors.mutedText),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Periodo',
+                    style: TextStyle(
+                        fontSize: 16,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600)),
+              ),
+              DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  key: const ValueKey('finished-period-filter'),
+                  value: activePeriod,
+                  borderRadius: BorderRadius.circular(12),
+                  icon: const Icon(Icons.keyboard_arrow_down),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('Tutte')),
+                    for (final year in finishedYears)
+                      DropdownMenuItem(value: '$year', child: Text('$year')),
+                    if (hasUndated)
+                      const DropdownMenuItem(
+                          value: 'undated', child: Text('Senza data')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      finishedPeriod = value;
+                      finishedVisible = 10;
+                    });
+                  },
+                ),
+              ),
+            ]),
+          ),
+        ),
       Expanded(
           child: ListView(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 88),
@@ -247,6 +327,23 @@ class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
                     if (mounted) setState(() => matchStatus = match.status);
                   }),
               const SizedBox(height: 12),
+            ],
+            if (hiddenFinished > 0) ...[
+              _LeagueOutlineButton(
+                label: 'Mostra altre (${hiddenFinished.clamp(0, 10)})',
+                onPressed: () => setState(() => finishedVisible += 10),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  '${matches.length} di ${filteredMatches.length} partite',
+                  style: const TextStyle(
+                      color: HaykoColors.mutedText,
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
             ],
           ])),
     ]);
@@ -808,4 +905,9 @@ String _friendlyDate(String? value) {
   final hour = date.hour.toString().padLeft(2, '0');
   final minute = date.minute.toString().padLeft(2, '0');
   return '${date.day} ${months[date.month - 1]} ${date.year} · $hour:$minute';
+}
+
+int? _matchHistoryYear(Match match) {
+  final value = match.finishedAt ?? match.scheduledAt ?? match.startedAt;
+  return value == null ? null : DateTime.tryParse(value)?.toLocal().year;
 }
