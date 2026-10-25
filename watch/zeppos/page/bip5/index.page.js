@@ -52,6 +52,7 @@ let scoringTeam = 0
 let scorer = null
 let assist = null
 let keeper = null
+let ownGoal = false
 let widgets = []
 
 function formatDate(value) {
@@ -245,13 +246,13 @@ function button(value, x, y, w, h, onTap, options = {}) {
 }
 
 function header(title, badge) {
-  button('‹', 8, 8, 52, 48, goBack, {
+  button('‹', 16, 10, 68, 48, goBack, {
     color: C.bg,
     pressColor: C.surface2,
     radius: 16,
-    size: 36,
+    size: 40,
   })
-  label(title, 68, 12, 168, 36, 23)
+  label(title, 92, 12, 138, 40, title.length > 16 ? 18 : 22)
   if (badge) {
     rect(244, 16, 60, 28, C.lime, 16)
     label(badge, 244, 16, 60, 28, 13, C.dark, true)
@@ -259,10 +260,15 @@ function header(title, badge) {
 }
 
 function goBack() {
+  if (screen === 'confirm' && ownGoal) {
+    navigate('ownScorer')
+    return
+  }
   const previous = {
     detail: 'scheduled',
     live: 'scheduled',
     scorer: 'live',
+    ownScorer: 'scorer',
     assist: 'scorer',
     keeper: 'assist',
     confirm: 'keeper',
@@ -389,11 +395,11 @@ function keeperCountdown() {
 
 function live() {
   header('Partita')
-  button('■', 258, 14, 46, 38, () => navigate('finish'), {
+  button('■', 236, 10, 68, 48, () => navigate('finish'), {
     color: C.danger,
     pressColor: C.dangerPressed,
-    radius: 14,
-    size: 18,
+    radius: 17,
+    size: 20,
   })
   rect(120, 54, 80, 30, C.surface2, 18)
   elapsedWidget = label(elapsedText(), 120, 54, 80, 30, 16, C.lime, true)
@@ -426,9 +432,10 @@ function goalButton(team, x, color) {
     scorer = null
     assist = null
     keeper = null
+    ownGoal = false
     navigate('scorer')
   }, { color: C.surface, border: color, borderWidth: 3, radius: 20 })
-  add(widget.IMG, { x: x + 30, y: 220, src: 'ball.png' })
+  add(widget.IMG, { x: x + 24, y: 214, w: 88, h: 88, src: 'ball.png' })
 }
 
 function playerRow(player, y, onTap, selected = false, note = '') {
@@ -447,22 +454,53 @@ function playerRow(player, y, onTap, selected = false, note = '') {
 
 function selectionHeader(title, subtitle) {
   header(title)
-  label(subtitle, 18, 52, 284, 28, 15, C.muted)
+  label(subtitle, 18, 58, 284, 26, 15, C.muted)
 }
 
 function scorerScreen() {
-  selectionHeader('Chi ha segnato?', scoringTeam === 0 ? match.teamA.name : match.teamB.name)
+  header('Marcatore')
+  label(scoringTeam === 0 ? match.teamA.name : match.teamB.name, 18, 58, 154, 26, 15, C.muted)
   const players = playersForTeam(scoringTeam)
-  players.forEach((player, index) => playerRow(player, 88 + index * 56, () => {
+  button('Autogol', 184, 54, 120, 36, () => {
+    ownGoal = true
+    scorer = null
+    assist = null
+    navigate('ownScorer')
+  }, {
+    color: C.surface2,
+    pressColor: C.surface,
+    border: C.mint,
+    borderWidth: 2,
+    radius: 14,
+    size: 15,
+  })
+  players.forEach((player, index) => playerRow(player, 96 + index * 56, () => {
+    ownGoal = false
     scorer = player
     navigate('assist')
+  }))
+}
+
+function ownScorerScreen() {
+  const defendingTeam = 1 - scoringTeam
+  const teamName = defendingTeam === 0 ? match.teamA.name : match.teamB.name
+  selectionHeader('Autogol', `Chi lo ha fatto? · ${teamName}`)
+  playersForTeam(defendingTeam).forEach((player, index) => playerRow(player, 88 + index * 56, () => {
+    scorer = player
+    assist = null
+    const plan = match.keeperPlans[defendingTeam] || { mode: 'manual' }
+    if (match.competitionRules) navigate('confirm')
+    else if (plan.mode === 'fixed' && plan.fixed) {
+      keeper = playersForTeam(defendingTeam).find((item) => item.id === plan.fixed) || null
+      navigate('confirm')
+    } else navigate('keeper')
   }))
 }
 
 function assistScreen() {
   selectionHeader('Chi ha fatto assist?', scorer ? scorer.name : '')
   const players = playersForTeam(scoringTeam).filter((player) => !scorer || player.id !== scorer.id)
-  players.slice(0, 4).forEach((player, index) => playerRow(player, 82 + index * 56, () => {
+  players.slice(0, 4).forEach((player, index) => playerRow(player, 88 + index * 56, () => {
     assist = player
     navigate(match.competitionRules ? 'confirm' : 'keeper')
   }))
@@ -477,20 +515,20 @@ function keeperScreen() {
   selectionHeader('Chi era in porta?', defendingTeam === 0 ? match.teamA.name : match.teamB.name)
   const expected = predictedKeeper(defendingTeam)
   const players = [...playersForTeam(defendingTeam)].sort((a, b) => a.id === expected ? -1 : b.id === expected ? 1 : 0)
-  players.slice(0, 5).forEach((player, index) => playerRow(player, 82 + index * 56, () => {
+  players.slice(0, 5).forEach((player, index) => playerRow(player, 88 + index * 56, () => {
     keeper = player
     navigate('confirm')
   }, player.id === expected, player.id === expected ? 'Previsto dal giro' : ''))
 }
 
 function confirmScreen() {
-  header('Conferma gol')
+  header(ownGoal ? 'Conferma autogol' : 'Conferma gol')
   label(scoringTeam === 0 ? match.teamA.name : match.teamB.name, 18, 58, 284, 26, 15, C.lime, true)
   rect(16, 94, 288, 174, C.surface, 20)
   summaryRow('ball-small.png', scorer ? scorer.name : '—', 103)
-  summaryRow('boot.png', assist ? assist.name : 'Nessun assist', 159)
+  summaryRow('boot.png', ownGoal ? 'Autogol' : (assist ? assist.name : 'Nessun assist'), 159)
   summaryRow('glove.png', keeper ? keeper.name : '—', 215)
-  button('Conferma gol', 16, 286, 288, 66, confirmGoal, {
+  button(ownGoal ? 'Conferma autogol' : 'Conferma gol', 16, 286, 288, 66, confirmGoal, {
     color: C.chalk,
     pressColor: C.muted,
     textColor: C.dark,
@@ -560,8 +598,9 @@ function confirmGoal() {
   enqueueCommand(createCommand('add_goal', match.id, {
     team: scoringTeam,
     scorerId: scorer && scorer.id,
-    assistId: assist && assist.id,
+    assistId: ownGoal ? null : (assist && assist.id),
     keeperId: match.competitionRules ? null : selectedKeeper.id,
+    ownGoal,
   }))
   if (scoringTeam === 0) match.teamA.score += 1
   else match.teamB.score += 1
@@ -583,6 +622,7 @@ function render() {
   else if (screen === 'starting') startingScreen()
   else if (screen === 'live') live()
   else if (screen === 'scorer') scorerScreen()
+  else if (screen === 'ownScorer') ownScorerScreen()
   else if (screen === 'assist') assistScreen()
   else if (screen === 'keeper') keeperScreen()
   else if (screen === 'confirm') confirmScreen()
