@@ -4,6 +4,7 @@ import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/shared/presentation.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/features/matches/goal_page.dart';
+import 'package:calcetto_mvp/features/matches/goal_edit_page.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
@@ -262,6 +263,20 @@ class _MatchPageState extends State<MatchPage> {
     }
   }
 
+  Future<void> editGoal(Goal goal) async {
+    final result = await Navigator.push<GoalEditResult>(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                GoalEditPage(league: widget.league, match: m, goal: goal)));
+    if (result == null) return;
+    if (result.deleted) {
+      await mutate(() => m.deleteGoal(goal.id));
+    } else if (result.goal != null) {
+      await mutate(() => m.editGoal(result.goal!));
+    }
+  }
+
   String get scheduledDetails {
     if (m.scheduledAt == null) {
       return 'Data e ora non indicate\n${statusName(m.status)}';
@@ -459,20 +474,24 @@ class _MatchPageState extends State<MatchPage> {
         const Text('Registro gol',
             style: TextStyle(
                 fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
-        if (m.goals.isEmpty) ...[
+        if (m.goals.where((goal) => !goal.voided).isEmpty) ...[
           const SizedBox(height: 12),
           const Text('Nessun gol registrato.',
               style: TextStyle(
                   color: HaykoColors.mutedText, fontSize: 16, height: 1.5)),
         ],
-        for (final g in m.goals.reversed) ...[
+        for (final g
+            in m.goals.where((goal) => !goal.voided).toList().reversed) ...[
           const SizedBox(height: 12),
           _LiveGoalRow(
               league: widget.league,
               match: m,
               goal: g,
               enabled: false,
-              onUndo: () {}),
+              onUndo: () {},
+              onEdit: widget.league.canRecord(m) && !saving && !refreshing
+                  ? () => editGoal(g)
+                  : null),
         ],
       ],
     );
@@ -773,13 +792,15 @@ class _LiveGoalRow extends StatelessWidget {
       required this.match,
       required this.goal,
       required this.enabled,
-      required this.onUndo});
+      required this.onUndo,
+      this.onEdit});
 
   final League league;
   final Match match;
   final Goal goal;
   final bool enabled;
   final VoidCallback onUndo;
+  final VoidCallback? onEdit;
 
   Widget detail(Widget icon, String label, String value, {Key? key}) => Row(
         key: key,
@@ -850,7 +871,16 @@ class _LiveGoalRow extends StatelessWidget {
                       key: const ValueKey('goal-keeper-detail')),
                 ],
               ])),
-          if (enabled)
+          if (onEdit != null)
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                  tooltip: 'Modifica gol',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined)),
+            )
+          else if (enabled)
             SizedBox(
               width: 48,
               height: 48,

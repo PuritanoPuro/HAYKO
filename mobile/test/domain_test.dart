@@ -74,6 +74,28 @@ void main() {
     expect(stats(l, null)['c']!.conceded, 0);
     expect(pairs(l, null), isEmpty);
   });
+  test('modifica e cancellazione gol concluso ricalcolano le statistiche', () {
+    final m = match()..start();
+    m.add(goal());
+    m.finish();
+    final l = league(m);
+    m.editGoal(goal(scorer: 'c', assist: null, own: true));
+    expect(m.score(0), 1);
+    expect(stats(l, null)['a']!.goals, 0);
+    expect(stats(l, null)['b']!.assists, 0);
+    expect(stats(l, null)['c']!.ownGoals, 1);
+    m.deleteGoal('g');
+    expect(m.score(0), 0);
+    expect(stats(l, null)['c']!.ownGoals, 0);
+  });
+  test('gol non modificabile prima della conclusione o dopo eliminazione', () {
+    final m = match()..start();
+    m.add(goal());
+    expect(() => m.editGoal(goal(scorer: 'b', assist: null)), throwsStateError);
+    m.finish();
+    m.deleteGoal('g');
+    expect(() => m.editGoal(goal(scorer: 'b', assist: null)), throwsStateError);
+  });
   test('un giocatore semplice non controlla neppure una partita creata prima',
       () {
     final m = match()..creatorId = 'user';

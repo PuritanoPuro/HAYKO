@@ -177,6 +177,11 @@ class Match {
     if (status != 'live') {
       throw StateError('Avvia la partita prima di registrare.');
     }
+    _validateGoal(g);
+    goals.add(g);
+  }
+
+  void _validateGoal(Goal g) {
     if (g.team != 0 && g.team != 1) throw ArgumentError('Squadra non valida.');
     final attack = teams[g.team], defence = teams[1 - g.team];
     if (g.scorer != null &&
@@ -199,7 +204,38 @@ class Match {
       throw ArgumentError('Il portiere deve corrispondere a quello fisso.');
     }
     if (g.voided) throw ArgumentError('Un nuovo gol non può essere annullato.');
-    goals.add(g);
+  }
+
+  void editGoal(Goal updated) {
+    if (status != 'finished') {
+      throw StateError('I gol sono modificabili a partita terminata.');
+    }
+    final index = goals.indexWhere((goal) => goal.id == updated.id);
+    if (index < 0) throw StateError('Gol non trovato.');
+    final current = goals[index];
+    if (current.voided) throw StateError('Il gol è stato eliminato.');
+    if (updated.team != current.team || updated.time != current.time) {
+      throw ArgumentError('Squadra e minuto del gol non sono modificabili.');
+    }
+    _validateGoal(updated);
+    goals[index] = updated;
+    _refreshQualifiedTeamAfterGoalChange();
+  }
+
+  void deleteGoal(String id) {
+    if (status != 'finished') {
+      throw StateError('I gol sono eliminabili a partita terminata.');
+    }
+    final goal = goals.firstWhere((goal) => goal.id == id);
+    if (goal.voided) return;
+    goal.voided = true;
+    _refreshQualifiedTeamAfterGoalChange();
+  }
+
+  void _refreshQualifiedTeamAfterGoalChange() {
+    if (knockoutRound == null || status != 'finished') return;
+    final first = score(0), second = score(1);
+    if (first != second) qualifiedTeamId = presetIds[first > second ? 0 : 1];
   }
 
   void undo(String id) {
