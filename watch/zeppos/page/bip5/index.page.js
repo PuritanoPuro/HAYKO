@@ -34,6 +34,9 @@ let keeperBWidget = null
 let loadingArc = null
 let loadingTimer = null
 let loadingAngle = -90
+let pageDestroyed = false
+let syncGeneration = 0
+let syncDeadlineTimer = null
 let pendingActionId = null
 let pendingActionLabel = ''
 try {
@@ -58,6 +61,7 @@ let scorer = null
 let assist = null
 let keeper = null
 let ownGoal = false
+let playerPage = 0
 let widgets = []
 
 function formatDate(value) {
@@ -120,6 +124,7 @@ function applySnapshot(snapshot) {
 }
 
 function syncNow(keepScreen = false) {
+  if (pageDestroyed) return
   if (syncing) {
     syncAgain = true
     syncAgainKeepScreen = syncAgainKeepScreen || keepScreen
@@ -132,16 +137,22 @@ function syncNow(keepScreen = false) {
     return
   }
   syncing = true
+  const generation = ++syncGeneration
   const sentCommands = pendingCommands()
   const transport = messageBuilder.request(
     { method: 'SYNC', params: { commands: sentCommands } },
     { timeout: 10000 },
   )
+  let deadlineTimer = null
   const deadline = new Promise((_, reject) => {
-    setTimeout(() => reject(Error('Bluetooth non disponibile')), 12000)
+    deadlineTimer = setTimeout(() => reject(Error('Bluetooth non disponibile')), 12000)
+    syncDeadlineTimer = deadlineTimer
   })
   Promise.race([transport, deadline])
     .then((data) => {
+      if (deadlineTimer) clearTimeout(deadlineTimer)
+      if (syncDeadlineTimer === deadlineTimer) syncDeadlineTimer = null
+      if (pageDestroyed || generation !== syncGeneration) return
       syncing = false
       const result = data.result || data
       acknowledgeCommands(result.ackIds || [])
@@ -185,6 +196,9 @@ function syncNow(keepScreen = false) {
       }
     })
     .catch(() => {
+      if (deadlineTimer) clearTimeout(deadlineTimer)
+      if (syncDeadlineTimer === deadlineTimer) syncDeadlineTimer = null
+      if (pageDestroyed || generation !== syncGeneration) return
       syncing = false
       pendingActionId = null
       pendingActionLabel = ''
@@ -293,6 +307,22 @@ function goBack() {
 function navigate(next) {
   screen = next
   render()
+}
+
+function reconcileTimers() {
+  const needsLiveTimer = screen === 'live' && Boolean(match && match.live) && !pendingActionId
+  if (needsLiveTimer && !liveTimer) liveTimer = setInterval(refreshLiveTimers, 1000)
+  else if (!needsLiveTimer && liveTimer) {
+    clearInterval(liveTimer)
+    liveTimer = null
+  }
+
+  const needsLoadingTimer = Boolean(pendingActionId && loadingArc)
+  if (needsLoadingTimer && !loadingTimer) loadingTimer = setInterval(refreshLoadingArc, 240)
+  else if (!needsLoadingTimer && loadingTimer) {
+    clearInterval(loadingTimer)
+    loadingTimer = null
+  }
 }
 
 function persistLiveMatch() {
@@ -477,6 +507,7 @@ function goalButton(team, color) {
     assist = null
     keeper = null
     ownGoal = false
+    playerPage = 0
     navigate('scorer')
   }, { color: C.surface, border: color, borderWidth: 3, radius: 18 })
   add(widget.IMG, { x: safeX + 28, y: 221, w: 72, h: 72, src: 'ball.png' })
@@ -501,6 +532,29 @@ function selectionHeader(title, subtitle) {
   label(subtitle, 18, 58, 284, 26, 15, C.muted)
 }
 
+function pagedPlayers(players, startY, onTap, noteForPlayer = () => '') {
+  const pageSize = 4
+  const pageCount = Math.max(1, Math.ceil(players.length / pageSize))
+  playerPage = Math.min(Math.max(0, playerPage), pageCount - 1)
+  const visible = players.slice(playerPage * pageSize, (playerPage + 1) * pageSize)
+  visible.forEach((player, index) => {
+    const note = noteForPlayer(player)
+    playerRow(player, startY + index * 56, () => onTap(player), Boolean(note), note)
+  })
+  if (pageCount <= 1) return
+  button('‹', 16, 324, 56, 40, () => {
+    if (playerPage <= 0) return
+    playerPage -= 1
+    render()
+  }, { color: C.surface2, radius: 14, size: 24 })
+  label(`${playerPage + 1}/${pageCount}`, 120, 326, 80, 36, 14, C.muted, true)
+  button('›', 248, 324, 56, 40, () => {
+    if (playerPage >= pageCount - 1) return
+    playerPage += 1
+    render()
+  }, { color: C.surface2, radius: 14, size: 24 })
+}
+
 function scorerScreen() {
   header('Marcatore')
   label(scoringTeam === 0 ? match.teamA.name : match.teamB.name, 18, 58, 154, 26, 15, C.muted)
@@ -518,27 +572,29 @@ function scorerScreen() {
     radius: 14,
     size: 15,
   })
-  players.forEach((player, index) => playerRow(player, 96 + index * 56, () => {
+  pagedPlayers(players, 96, (player) => {
     ownGoal = false
     scorer = player
+    playerPage = 0
     navigate('assist')
-  }))
+  })
 }
 
 function ownScorerScreen() {
   const defendingTeam = 1 - scoringTeam
   const teamName = defendingTeam === 0 ? match.teamA.name : match.teamB.name
   selectionHeader('Autogol', `Chi lo ha fatto? · ${teamName}`)
-  playersForTeam(defendingTeam).forEach((player, index) => playerRow(player, 88 + index * 56, () => {
+  pagedPlayers(playersForTeam(defendingTeam), 88, (player) => {
     scorer = player
     assist = null
+    playerPage = 0
     const plan = match.keeperPlans[defendingTeam] || { mode: 'manual' }
     if (match.competitionRules) navigate('confirm')
     else if (plan.mode === 'fixed' && plan.fixed) {
       keeper = playersForTeam(defendingTeam).find((item) => item.id === plan.fixed) || null
       navigate('confirm')
     } else navigate('keeper')
-  }))
+  })
 }
 
 function assistScreen() {
@@ -643,6 +699,11 @@ function confirmGoal() {
   if (pendingActionId) return
   const opponents = playersForTeam(1 - scoringTeam)
   const selectedKeeper = keeper || opponents[0]
+  if (!match.competitionRules && !selectedKeeper) {
+    syncMessage = 'Portiere non disponibile.'
+    navigate('keeper')
+    return
+  }
   const command = enqueueCommand(createCommand('add_goal', match.id, {
     team: scoringTeam,
     scorerId: scorer && scorer.id,
@@ -679,16 +740,16 @@ function render() {
   else if (screen === 'confirm') confirmScreen()
   else if (screen === 'finish') finishScreen()
   else finishedScreen()
+  reconcileTimers()
 }
 
 Page({
   build() {
+    pageDestroyed = false
     setStatusBarVisible(false)
     syncState = match ? 'ready' : 'loading'
     setWakeUpRelaunch({ relaunch: Boolean(match && match.live) })
     render()
-    liveTimer = setInterval(refreshLiveTimers, 1000)
-    loadingTimer = setInterval(refreshLoadingArc, 120)
     syncNow()
   },
   onResume() {
@@ -699,6 +760,11 @@ Page({
     syncNow()
   },
   onDestroy() {
+    pageDestroyed = true
+    syncGeneration += 1
+    syncing = false
+    if (syncDeadlineTimer) clearTimeout(syncDeadlineTimer)
+    syncDeadlineTimer = null
     if (liveTimer) clearInterval(liveTimer)
     if (loadingTimer) clearInterval(loadingTimer)
     liveTimer = null
