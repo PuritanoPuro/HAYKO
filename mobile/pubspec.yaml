@@ -1,7 +1,7 @@
 name: calcetto_mvp
 description: MVP locale per statistiche di calcetto
 publish_to: none
-version: 0.2.0+10
+version: 0.2.0+11
 environment:
   sdk: '>=3.4.0 <4.0.0'
 dependencies:
