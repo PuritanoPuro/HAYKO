@@ -47,6 +47,7 @@ void main() {
     expect(find.byKey(const ValueKey('americano-calendar')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('americano-confirm-calendar')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('americano-scheduled')), findsOneWidget);
     expect(saves, 2);
     expect(competition.americanoPlayerIds,
         ['player-0', 'player-1', 'player-2', 'player-3']);

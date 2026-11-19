@@ -39,6 +39,8 @@ class Competition {
   final bool americanoRotatingPairs;
   final List<String> americanoPlayerIds;
   final List<List<List<String>>> americanoSchedule;
+  int americanoCurrentRound;
+  String americanoTurnStatus;
   Competition(this.id, this.name, this.kind, this.format, this.teamIds,
       {this.doubleLeg = false,
       this.americanoPlayerCount = 8,
@@ -48,6 +50,8 @@ class Competition {
       this.americanoRotatingPairs = true,
       List<String>? americanoPlayerIds,
       List<List<List<String>>>? americanoSchedule,
+      this.americanoCurrentRound = 0,
+      this.americanoTurnStatus = 'scheduled',
       bool allowDraft = false})
       : americanoPlayerIds = americanoPlayerIds ?? [],
         americanoSchedule = americanoSchedule ?? [] {
@@ -69,7 +73,11 @@ class Competition {
                 americanoTargetPoints < 8 ||
                 this.americanoPlayerIds.length > americanoPlayerCount ||
                 this.americanoPlayerIds.toSet().length !=
-                    this.americanoPlayerIds.length))) {
+                    this.americanoPlayerIds.length ||
+                americanoCurrentRound < 0 ||
+                americanoCurrentRound >= americanoRounds ||
+                !['scheduled', 'live', 'finished']
+                    .contains(americanoTurnStatus)))) {
       throw ArgumentError(
           'Servono almeno due squadre; per eliminazione 2, 4, 8 o 16.');
     }
@@ -94,6 +102,8 @@ class Competition {
           'americanoRotatingPairs': americanoRotatingPairs,
           'americanoPlayerIds': americanoPlayerIds,
           'americanoSchedule': americanoSchedule,
+          'americanoCurrentRound': americanoCurrentRound,
+          'americanoTurnStatus': americanoTurnStatus,
         }
       };
   factory Competition.fromJson(Map<String, dynamic> j) => Competition(j['id'],
@@ -111,6 +121,8 @@ class Competition {
               .map((match) => List<String>.from(match as List))
               .toList())
           .toList(),
+      americanoCurrentRound: j['americanoCurrentRound'] ?? 0,
+      americanoTurnStatus: j['americanoTurnStatus'] ?? 'scheduled',
       allowDraft: true);
 }
 

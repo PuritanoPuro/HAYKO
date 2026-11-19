@@ -163,7 +163,7 @@ class _PadelAmericanoCalendarPageState
             ),
             const SizedBox(height: 10),
             for (var index = 0; index < fixtures.length; index++) ...[
-              _AmericanoCourtCard(
+              AmericanoCourtCard(
                 key: ValueKey('americano-court-${index + 1}'),
                 court: index + 1,
                 targetPoints: widget.competition.americanoTargetPoints,
@@ -203,8 +203,8 @@ class _PadelAmericanoCalendarPageState
   }
 }
 
-class _AmericanoCourtCard extends StatelessWidget {
-  const _AmericanoCourtCard({
+class AmericanoCourtCard extends StatelessWidget {
+  const AmericanoCourtCard({
     super.key,
     required this.court,
     required this.targetPoints,

@@ -12,6 +12,7 @@ import 'package:calcetto_mvp/features/leagues/league_settings.dart';
 import 'package:calcetto_mvp/features/matches/match_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_couples_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_players_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_scheduled_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_live_match_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_match_stats_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_match_creation_page.dart';
@@ -48,9 +49,13 @@ class _PadelLeaguePageState extends State<PadelLeaguePage> {
   @override
   void initState() {
     super.initState();
-    matchStatus = widget.league.matches.any((match) => match.status == 'live')
-        ? 'live'
-        : 'scheduled';
+    matchStatus =
+        widget.league.matches.any((match) => match.status == 'live') ||
+                widget.league.competitions.any((competition) =>
+                    competition.kind == 'americano' &&
+                    competition.americanoTurnStatus == 'live')
+            ? 'live'
+            : 'scheduled';
     listClock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted &&
           widget.league.matches.any((match) => match.status == 'live')) {
@@ -339,7 +344,17 @@ class _PadelMatchesSection extends StatelessWidget {
     final matches = league.matches.reversed
         .where((match) => match.status == status)
         .toList();
-    final hasLiveMatch = league.matches.any((match) => match.status == 'live');
+    final hasLiveMatch =
+        league.matches.any((match) => match.status == 'live') ||
+            league.competitions.any((competition) =>
+                competition.kind == 'americano' &&
+                competition.americanoTurnStatus == 'live');
+    final americanos = league.competitions
+        .where((competition) =>
+            competition.kind == 'americano' &&
+            competition.americanoSchedule.isNotEmpty &&
+            competition.americanoTurnStatus == status)
+        .toList();
     final color = statusColor(status);
     return Column(children: [
       Padding(
@@ -413,11 +428,54 @@ class _PadelMatchesSection extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 92),
           children: [
-            if (matches.isEmpty)
+            if (matches.isEmpty && americanos.isEmpty)
               Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
                       'Nessuna partita ${status == 'scheduled' ? 'programmata' : status == 'live' ? 'in corso' : 'terminata'}.')),
+            for (final competition in americanos) ...[
+              InkWell(
+                key: ValueKey('americano-open-${competition.id}'),
+                borderRadius: BorderRadius.circular(12),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PadelAmericanoScheduledPage(
+                        league: league,
+                        competition: competition,
+                        save: save,
+                      ),
+                    ),
+                  );
+                  onStatusChanged(competition.americanoTurnStatus);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: HaykoColors.fieldSurface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withValues(alpha: .5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(competition.name,
+                          style: const TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(
+                          'Americano · Turno ${competition.americanoCurrentRound + 1} '
+                          'di ${competition.americanoRounds}',
+                          style: const TextStyle(
+                              color: HaykoColors.mutedText, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             for (final match in matches) ...[
               _PadelMatchCard(
                   league: league,

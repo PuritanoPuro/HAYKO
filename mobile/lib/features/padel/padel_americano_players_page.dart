@@ -5,6 +5,7 @@ import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/features/leagues/player_edit_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_calendar_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_scheduled_page.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 
@@ -88,12 +89,16 @@ class _PadelAmericanoPlayersPageState extends State<PadelAmericanoPlayersPage> {
           for (final fixture in round) [...fixture]
         ],
     ];
+    final previousRound = widget.competition.americanoCurrentRound;
+    final previousStatus = widget.competition.americanoTurnStatus;
     widget.competition.americanoPlayerIds
       ..clear()
       ..addAll(selected);
     if (previous.toSet().difference(selected).isNotEmpty ||
         selected.difference(previous.toSet()).isNotEmpty) {
       widget.competition.americanoSchedule.clear();
+      widget.competition.americanoCurrentRound = 0;
+      widget.competition.americanoTurnStatus = 'scheduled';
     }
     setState(() => saving = true);
     try {
@@ -109,7 +114,19 @@ class _PadelAmericanoPlayersPageState extends State<PadelAmericanoPlayersPage> {
           ),
         ),
       );
-      if (mounted && confirmed == true) Navigator.pop(context, true);
+      if (mounted && confirmed == true) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PadelAmericanoScheduledPage(
+              league: widget.league,
+              competition: widget.competition,
+              save: widget.save,
+            ),
+          ),
+        );
+        if (mounted) Navigator.pop(context, true);
+      }
     } catch (error) {
       widget.competition.americanoPlayerIds
         ..clear()
@@ -117,6 +134,8 @@ class _PadelAmericanoPlayersPageState extends State<PadelAmericanoPlayersPage> {
       widget.competition.americanoSchedule
         ..clear()
         ..addAll(previousSchedule);
+      widget.competition.americanoCurrentRound = previousRound;
+      widget.competition.americanoTurnStatus = previousStatus;
       if (mounted) showError(context, error);
     } finally {
       if (mounted) setState(() => saving = false);
