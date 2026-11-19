@@ -98,12 +98,14 @@ class AccountField extends StatefulWidget {
       required this.controller,
       this.password = false,
       this.readOnly = false,
+      this.borderColor,
       this.keyboard,
       this.validator,
       this.autofillHints});
   final String label;
   final TextEditingController controller;
   final bool password, readOnly;
+  final Color? borderColor;
   final TextInputType? keyboard;
   final FormFieldValidator<String>? validator;
   final Iterable<String>? autofillHints;
@@ -129,7 +131,8 @@ class _AccountFieldState extends State<AccountField> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
               color: HaykoColors.fieldSurface,
-              border: Border.all(color: HaykoColors.fieldLine),
+              border: Border.all(
+                  color: widget.borderColor ?? HaykoColors.fieldLine),
               borderRadius: BorderRadius.circular(12)),
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

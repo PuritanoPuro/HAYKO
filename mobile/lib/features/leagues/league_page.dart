@@ -21,6 +21,7 @@ class LeaguePage extends StatefulWidget {
   final Save save;
   final Save? reload;
   final Save? onDelete;
+  final Future<void> Function(String name, int color)? updateOwnPlayer;
   final int initialTab;
   final bool openPlayersAndInvites;
   const LeaguePage(
@@ -29,6 +30,7 @@ class LeaguePage extends StatefulWidget {
       required this.save,
       this.reload,
       this.onDelete,
+      this.updateOwnPlayer,
       this.initialTab = 0,
       this.openPlayersAndInvites = false});
   @override
@@ -413,7 +415,11 @@ class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
     p.name = change.name;
     p.color = change.color;
     try {
-      await widget.save();
+      if (l.shared && l.myPlayer == p.id && widget.updateOwnPlayer != null) {
+        await widget.updateOwnPlayer!(change.name, change.color);
+      } else {
+        await widget.save();
+      }
     } catch (e) {
       p.name = name;
       p.color = color;

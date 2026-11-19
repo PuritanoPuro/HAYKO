@@ -53,10 +53,18 @@ class LeagueStore extends ChangeNotifier {
         await initialize();
         final copy = Map<String, dynamic>.from(jsonDecode(jsonEncode(row)));
         final id = copy['state']['id'];
+        final previous = rows.where((r) => r['state']['id'] == id);
+        final baseState = previous.isEmpty
+            ? null
+            : jsonDecode(jsonEncode(previous.first['state']));
         final oldRows = [...rows];
         rows = [...rows.where((r) => r['state']['id'] != id), copy];
-        operations.add(
-            {'id': id, 'revision': row['revision'], 'state': copy['state']});
+        operations.add({
+          'id': id,
+          'revision': row['revision'],
+          'state': copy['state'],
+          if (baseState != null) 'base_state': baseState,
+        });
         try {
           await persist();
         } catch (_) {
@@ -94,6 +102,9 @@ class LeagueStore extends ChangeNotifier {
             'p_state': op['state'],
           }).timeout(const Duration(seconds: 8));
         } catch (error) {
+          if (_isRevisionConflict(error) && await _rebaseConflict(op)) {
+            continue;
+          }
           if (!_isPermissionRejection(error)) rethrow;
           // Un rifiuto esplicito del server non puo riuscire con un nuovo
           // tentativo. Rimuoverlo evita che blocchi per sempre le modifiche
@@ -150,6 +161,92 @@ class LeagueStore extends ChangeNotifier {
         message.contains('ONLY_EVENT_CREATOR') ||
         message.contains('FORBIDDEN');
   }
+
+  bool _isRevisionConflict(Object error) =>
+      error.toString().contains('REVISION_CONFLICT');
+
+  /// Replays the local changes over the latest server document only when the
+  /// two devices changed different top-level areas. A real overlap remains a
+  /// conflict instead of silently discarding either version.
+  Future<bool> _rebaseConflict(Map<String, dynamic> failed) async {
+    final remoteRaw = await rpc('bc_get', {'p_id': failed['id']})
+        .timeout(const Duration(seconds: 8));
+    final remote = Map<String, dynamic>.from(remoteRaw as Map);
+    final remoteState = _copyMap(remote['state']);
+    final remoteRevision = remote['revision'] as int;
+    var resolved = false;
+
+    await locked(() async {
+      if (operations.isEmpty || !identical(operations.first, failed)) return;
+      var rebasedState = remoteState;
+      final leagueOperations =
+          operations.where((op) => op['id'] == failed['id']).toList();
+      final updates = <Map<String, dynamic>>[];
+
+      for (final operation in leagueOperations) {
+        final baseRaw = operation['base_state'];
+        if (baseRaw is! Map) return;
+        final merged = _mergeTopLevel(
+            _copyMap(baseRaw), _copyMap(operation['state']), rebasedState);
+        if (merged == null) return;
+        updates.add({
+          'operation': operation,
+          'base': _copyMap(rebasedState),
+          'state': merged,
+        });
+        rebasedState = merged;
+      }
+
+      for (final update in updates) {
+        final operation = update['operation'] as Map<String, dynamic>;
+        operation['revision'] = remoteRevision;
+        operation['base_state'] = update['base'];
+        operation['state'] = update['state'];
+      }
+      for (final row in rows.where((r) => r['state']['id'] == failed['id'])) {
+        row['revision'] = remoteRevision;
+        row['state'] = _copyMap(rebasedState);
+      }
+      await persist();
+      notifyListeners();
+      resolved = true;
+    });
+    return resolved;
+  }
+
+  static Map<String, dynamic> _copyMap(dynamic value) =>
+      Map<String, dynamic>.from(jsonDecode(jsonEncode(value)) as Map);
+
+  static Map<String, dynamic>? _mergeTopLevel(Map<String, dynamic> base,
+      Map<String, dynamic> local, Map<String, dynamic> remote) {
+    final merged = <String, dynamic>{};
+    for (final key in {...base.keys, ...local.keys, ...remote.keys}) {
+      final baseHas = base.containsKey(key);
+      final localHas = local.containsKey(key);
+      final remoteHas = remote.containsKey(key);
+      final baseValue = base[key];
+      final localValue = local[key];
+      final remoteValue = remote[key];
+      final localChanged =
+          localHas != baseHas || !_sameJson(localValue, baseValue);
+      final remoteChanged =
+          remoteHas != baseHas || !_sameJson(remoteValue, baseValue);
+
+      if (localChanged &&
+          remoteChanged &&
+          (localHas != remoteHas || !_sameJson(localValue, remoteValue))) {
+        return null;
+      }
+      if (localChanged) {
+        if (localHas) merged[key] = jsonDecode(jsonEncode(localValue));
+      } else if (remoteHas) {
+        merged[key] = jsonDecode(jsonEncode(remoteValue));
+      }
+    }
+    return merged;
+  }
+
+  static bool _sameJson(dynamic a, dynamic b) => jsonEncode(a) == jsonEncode(b);
 
   Future<List<Map<String, dynamic>>> list() async {
     await initialize();

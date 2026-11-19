@@ -8,6 +8,18 @@ String newId() {
       16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
 }
 
+abstract final class LeagueSport {
+  static const football = 'football';
+  static const padel = 'padel';
+
+  static const values = {football, padel};
+
+  static String normalize(Object? value) {
+    final sport = value?.toString() ?? football;
+    return values.contains(sport) ? sport : football;
+  }
+}
+
 class Player {
   final String id;
   String name;
@@ -73,6 +85,14 @@ class Match {
   final int? knockoutRound;
   String? qualifiedTeamId;
   final bool competitionRules;
+  final int padelBestOf;
+  final String padelGameRule;
+  final String padelDecidingSet;
+  final List<List<int>> padelSetScores;
+  final List<String> padelPoints;
+  final List<int> padelPointTotals;
+  final List<int> padelSetDurationsSeconds;
+  String? padelSetStartedAt;
   Match(
       {required this.id,
       required this.format,
@@ -91,11 +111,23 @@ class Match {
       this.competitionId,
       this.knockoutRound,
       this.qualifiedTeamId,
-      this.competitionRules = false})
+      this.competitionRules = false,
+      this.padelBestOf = 3,
+      this.padelGameRule = 'golden_point',
+      this.padelDecidingSet = 'super_tiebreak_10',
+      List<List<int>>? padelSetScores,
+      List<String>? padelPoints,
+      List<int>? padelPointTotals,
+      List<int>? padelSetDurationsSeconds,
+      this.padelSetStartedAt})
       : goals = goals ?? [],
         keepers = keepers ?? [KeeperPlan.manual(), KeeperPlan.manual()],
         teamColors = teamColors ?? [0xff8ebcff, 0xffffab64],
-        presetIds = presetIds ?? [null, null] {
+        presetIds = presetIds ?? [null, null],
+        padelSetScores = padelSetScores ?? [],
+        padelPoints = padelPoints ?? ['0', '0'],
+        padelPointTotals = padelPointTotals ?? [0, 0],
+        padelSetDurationsSeconds = padelSetDurationsSeconds ?? [] {
     if (format < 2 ||
         format > 11 ||
         teams.length != 2 ||
@@ -114,6 +146,20 @@ class Match {
     }
     if (this.keepers.length != 2) {
       throw ArgumentError('Configurazione portieri non valida.');
+    }
+    if (![3, 5].contains(padelBestOf)) {
+      throw ArgumentError('Formula Padel non valida.');
+    }
+    if (this
+            .padelSetScores
+            .any((set) => set.length != 2 || set.any((games) => games < 0)) ||
+        this.padelSetScores.length > padelBestOf ||
+        this.padelPoints.length != 2 ||
+        this.padelPointTotals.length != 2 ||
+        this.padelPointTotals.any((points) => points < 0) ||
+        this.padelSetDurationsSeconds.length > this.padelSetScores.length ||
+        this.padelSetDurationsSeconds.any((seconds) => seconds < 0)) {
+      throw ArgumentError('Punteggio Padel non valido.');
     }
     if (competitionRules) {
       this.keepers
@@ -261,7 +307,15 @@ class Match {
         'competitionId': competitionId,
         'knockoutRound': knockoutRound,
         'qualifiedTeamId': qualifiedTeamId,
-        'competitionRules': competitionRules
+        'competitionRules': competitionRules,
+        'padelBestOf': padelBestOf,
+        'padelGameRule': padelGameRule,
+        'padelDecidingSet': padelDecidingSet,
+        'padelSetScores': padelSetScores,
+        'padelPoints': padelPoints,
+        'padelPointTotals': padelPointTotals,
+        'padelSetDurationsSeconds': padelSetDurationsSeconds,
+        'padelSetStartedAt': padelSetStartedAt
       };
   factory Match.fromJson(Map<String, dynamic> j) => Match(
       id: j['id'],
@@ -285,6 +339,17 @@ class Match {
       knockoutRound: j['knockoutRound'],
       qualifiedTeamId: j['qualifiedTeamId'],
       competitionRules: j['competitionRules'] ?? false,
+      padelBestOf: j['padelBestOf'] ?? 3,
+      padelGameRule: j['padelGameRule'] ?? 'golden_point',
+      padelDecidingSet: j['padelDecidingSet'] ?? 'super_tiebreak_10',
+      padelSetScores: (j['padelSetScores'] as List? ?? [])
+          .map((set) => List<int>.from(set))
+          .toList(),
+      padelPoints: List<String>.from(j['padelPoints'] ?? const ['0', '0']),
+      padelPointTotals: List<int>.from(j['padelPointTotals'] ?? const [0, 0]),
+      padelSetDurationsSeconds:
+          List<int>.from(j['padelSetDurationsSeconds'] ?? const []),
+      padelSetStartedAt: j['padelSetStartedAt'],
       keepers: (j['keepers'] as List?)
           ?.map((k) => KeeperPlan.fromJson(Map<String, dynamic>.from(k)))
           .toList());
@@ -371,6 +436,7 @@ class League {
   String name;
   int primaryColor, secondaryColor;
   String type;
+  final String sport;
   final List<TeamPreset> presets;
   final List<Competition> competitions;
   final List<Player> players;
@@ -383,6 +449,7 @@ class League {
       {this.primaryColor = 0xffbbf568,
       this.secondaryColor = 0xff8ebcff,
       this.type = 'amateur',
+      this.sport = LeagueSport.football,
       List<TeamPreset>? presets,
       List<Competition>? competitions})
       : presets = presets ?? [],
@@ -399,6 +466,7 @@ class League {
         'primaryColor': primaryColor,
         'secondaryColor': secondaryColor,
         'type': type,
+        'sport': sport,
         'presets': presets.map((p) => p.toJson()).toList(),
         'competitions': competitions.map((c) => c.toJson()).toList(),
         'players': players.map((p) => p.toJson()).toList(),
@@ -427,6 +495,7 @@ class League {
           ((j['competitions'] as List? ?? []).isEmpty
               ? 'amateur'
               : 'competition'),
+      sport: LeagueSport.normalize(j['sport']),
       presets: (j['presets'] as List? ?? [])
           .map((p) => TeamPreset.fromJson(Map<String, dynamic>.from(p)))
           .toList(),

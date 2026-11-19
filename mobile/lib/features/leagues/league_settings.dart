@@ -16,6 +16,7 @@ class LeagueSettingsPage extends StatefulWidget {
 
 class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
   League get l => widget.league;
+  bool get padel => l.sport == LeagueSport.padel;
   late final TextEditingController name;
   bool busy = false;
 
@@ -92,7 +93,7 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
       child: Scaffold(
           appBar: AppBar(
             toolbarHeight: 64,
-            centerTitle: true,
+            centerTitle: !padel,
             leadingWidth: 52,
             leading: IconButton(
                 tooltip: 'Indietro',
@@ -108,14 +109,15 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
           body: SafeArea(
               top: false,
               child: ListView(padding: const EdgeInsets.all(24), children: [
-                _LeagueNameField(controller: name),
+                _LeagueNameField(controller: name, padel: padel),
                 const SizedBox(height: 12),
                 _PrimaryButton(
                     label: 'Salva nome', onPressed: busy ? null : saveName),
                 const SizedBox(height: 12),
                 _ColorField(
-                    label: 'Colore lega',
+                    label: padel ? 'Colore primario' : 'Colore lega',
                     color: l.primaryColor,
+                    padel: padel,
                     onTap: busy ? null : changeColor),
                 const SizedBox(height: 12),
                 if (widget.delete != null && l.president)
@@ -125,8 +127,9 @@ class _LeagueSettingsPageState extends State<LeagueSettingsPage> {
 }
 
 class _LeagueNameField extends StatelessWidget {
-  const _LeagueNameField({required this.controller});
+  const _LeagueNameField({required this.controller, this.padel = false});
   final TextEditingController controller;
+  final bool padel;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -134,7 +137,10 @@ class _LeagueNameField extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
             color: HaykoColors.fieldSurface,
-            border: Border.all(color: HaykoColors.fieldLine),
+            border: Border.all(
+                color: padel
+                    ? HaykoColors.padelAccent.withValues(alpha: .45)
+                    : HaykoColors.fieldLine),
             borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Nome lega',
@@ -164,10 +170,14 @@ class _LeagueNameField extends StatelessWidget {
 
 class _ColorField extends StatelessWidget {
   const _ColorField(
-      {required this.label, required this.color, required this.onTap});
+      {required this.label,
+      required this.color,
+      required this.onTap,
+      this.padel = false});
   final String label;
   final int color;
   final VoidCallback? onTap;
+  final bool padel;
 
   String get hex =>
       '#${color.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
@@ -175,7 +185,12 @@ class _ColorField extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
         color: HaykoColors.fieldSurface,
-        borderRadius: BorderRadius.circular(12),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+                color: padel
+                    ? HaykoColors.padelAccent.withValues(alpha: .28)
+                    : Colors.transparent)),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),

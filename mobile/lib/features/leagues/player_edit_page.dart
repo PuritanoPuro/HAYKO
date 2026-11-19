@@ -22,12 +22,14 @@ class PlayerEditPage extends StatefulWidget {
       required this.name,
       required this.color,
       this.creating = false,
+      this.padel = false,
       this.unavailableNames = const [],
       this.deletionBlockedReason});
 
   final String name;
   final int color;
   final bool creating;
+  final bool padel;
   final List<String> unavailableNames;
   final String? deletionBlockedReason;
 
@@ -106,6 +108,7 @@ class _PlayerEditPageState extends State<PlayerEditPage> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
             toolbarHeight: 64,
+            centerTitle: !widget.padel,
             title: Text(
                 widget.creating ? 'Nuovo giocatore' : 'Modifica giocatore',
                 style: const TextStyle(
@@ -121,7 +124,10 @@ class _PlayerEditPageState extends State<PlayerEditPage> {
                 decoration: BoxDecoration(
                     color: HaykoColors.fieldSurface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: HaykoColors.fieldLine)),
+                    border: Border.all(
+                        color: widget.padel
+                            ? HaykoColors.padelAccent.withValues(alpha: .38)
+                            : HaykoColors.fieldLine)),
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -151,7 +157,12 @@ class _PlayerEditPageState extends State<PlayerEditPage> {
               const SizedBox(height: 12),
               Material(
                 color: HaykoColors.fieldSurface,
-                borderRadius: BorderRadius.circular(12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                        color: widget.padel
+                            ? HaykoColors.padelAccent.withValues(alpha: .38)
+                            : Colors.transparent)),
                 child: InkWell(
                   key: const ValueKey('player-color-field'),
                   borderRadius: BorderRadius.circular(12),

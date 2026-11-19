@@ -14,6 +14,7 @@ import 'package:calcetto_mvp/features/leagues/league_creation.dart';
 import 'dart:async';
 
 import 'package:calcetto_mvp/features/leagues/league_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_league_page.dart';
 
 Set<String> newPendingRequests(Set<String>? previous, Set<String> current) =>
     previous == null ? <String>{} : current.difference(previous);
@@ -189,13 +190,23 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         await Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => LeaguePage(
-                    league: l,
-                    save: () => Cloud.save(l),
-                    reload: () => Cloud.refresh(l),
-                    initialTab: data['type'] == 'join_request' ? 1 : 0,
-                    openPlayersAndInvites: data['type'] == 'join_request',
-                    onDelete: () => deleteLeague(l))));
+                builder: (_) => l.sport == LeagueSport.padel
+                    ? PadelLeaguePage(
+                        league: l,
+                        save: () => Cloud.save(l),
+                        reload: () => Cloud.refresh(l),
+                        updateOwnPlayer: (name, color) =>
+                            Cloud.updateOwnPlayer(l, name, color),
+                        onDelete: () => deleteLeague(l))
+                    : LeaguePage(
+                        league: l,
+                        save: () => Cloud.save(l),
+                        reload: () => Cloud.refresh(l),
+                        updateOwnPlayer: (name, color) =>
+                            Cloud.updateOwnPlayer(l, name, color),
+                        initialTab: data['type'] == 'join_request' ? 1 : 0,
+                        openPlayersAndInvites: data['type'] == 'join_request',
+                        onDelete: () => deleteLeague(l))));
         await load();
         return;
       }
@@ -213,10 +224,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> createLeague() async {
+  Future<void> createLeague([String sport = LeagueSport.football]) async {
     await openOnce(() async {
       final l = await Navigator.push<League>(
-          context, MaterialPageRoute(builder: (_) => const LeagueCreation()));
+          context,
+          MaterialPageRoute(
+              builder: (_) => LeagueCreation(initialSport: sport)));
       if (l == null) return;
       try {
         await Cloud.client.rpc('bc_create', params: {'p_state': l.toJson()});
@@ -250,11 +263,21 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         await Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => LeaguePage(
-                    league: l,
-                    save: () => Cloud.save(l),
-                    reload: () => Cloud.refresh(l),
-                    onDelete: () => deleteLeague(l))));
+                builder: (_) => l.sport == LeagueSport.padel
+                    ? PadelLeaguePage(
+                        league: l,
+                        save: () => Cloud.save(l),
+                        reload: () => Cloud.refresh(l),
+                        updateOwnPlayer: (name, color) =>
+                            Cloud.updateOwnPlayer(l, name, color),
+                        onDelete: () => deleteLeague(l))
+                    : LeaguePage(
+                        league: l,
+                        save: () => Cloud.save(l),
+                        reload: () => Cloud.refresh(l),
+                        updateOwnPlayer: (name, color) =>
+                            Cloud.updateOwnPlayer(l, name, color),
+                        onDelete: () => deleteLeague(l))));
         await load();
       } catch (e) {
         if (mounted) showError(context, e);

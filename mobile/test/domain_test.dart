@@ -2,6 +2,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 
 void main() {
+  test('sport della lega è retrocompatibile e persiste nel JSON', () {
+    final legacy = League.fromJson({
+      'id': 'legacy',
+      'name': 'Calcio storico',
+      'players': <dynamic>[],
+      'matches': <dynamic>[],
+    });
+    expect(legacy.sport, LeagueSport.football);
+
+    final padel =
+        League('padel', 'Padel del giovedì', [], [], sport: LeagueSport.padel);
+    expect(League.fromJson(padel.toJson()).sport, LeagueSport.padel);
+  });
+
+  test('valori sport sconosciuti non rompono le leghe sincronizzate', () {
+    final league = League.fromJson({
+      'id': 'future',
+      'name': 'Sport futuro',
+      'sport': 'unknown',
+      'players': <dynamic>[],
+      'matches': <dynamic>[],
+    });
+    expect(league.sport, LeagueSport.football);
+  });
+
   Match match() => Match(id: 'm', format: 2, names: [
         'A',
         'B'

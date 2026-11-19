@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/main.dart';
 import 'package:calcetto_mvp/features/leagues/league_creation.dart';
+import 'package:calcetto_mvp/features/leagues/league_settings.dart';
 import 'package:calcetto_mvp/features/competitions/competition_hub.dart';
 import 'package:calcetto_mvp/features/matches/team_editor.dart';
+import 'package:calcetto_mvp/features/padel/padel_league_page.dart';
 
 League league({bool doubleLeg = false}) {
   final l = League('l', 'Coppa',
@@ -137,6 +139,192 @@ void main() {
     expect(find.text('Campionato'), findsOneWidget);
     expect(find.text('Andata e ritorno'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('creazione Padel mostra formati e Americano', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: LeagueCreation()));
+    await tester.tap(find.text('Padel'));
+    await tester.tap(find.text('Competizione'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nuova competizione'), findsOneWidget);
+    expect(find.text('Crea competizione'), findsOneWidget);
+    expect(find.text('Campionato a coppie fisse'), findsOneWidget);
+    expect(find.text('Formato partita'), findsOneWidget);
+    expect(find.text('Meglio di 3 set'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    expect(
+        find.text(
+            'Dopo la creazione aggiungi le coppie e i giocatori nella sezione Coppie.'),
+        findsOneWidget);
+    await tester.tap(find.text('Campionato a coppie fisse'));
+    await tester.pumpAndSettle();
+    expect(find.text('Americano'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets(
+      'nuova lega Padel replica la schermata 02 senza riselezionare lo sport',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+        home: LeagueCreation(initialSport: LeagueSport.padel)));
+
+    expect(find.text('Nuova lega'), findsOneWidget);
+    expect(find.text('Sport'), findsNothing);
+    expect(find.text('Calcio'), findsNothing);
+    expect(find.text('Padel'), findsNothing);
+    expect(find.text('Amatoriale'), findsOneWidget);
+    expect(find.text('Competizione'), findsOneWidget);
+    expect(
+        find.text(
+            'Partite tra amici, coppie flessibili e statistiche individuali.'),
+        findsOneWidget);
+    expect(find.text('Crea lega'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('creazione lega Padel restituisce un payload salvabile',
+      (tester) async {
+    League? created;
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => TextButton(
+                onPressed: () async => created = await Navigator.push<League>(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const LeagueCreation(
+                            initialSport: LeagueSport.padel))),
+                child: const Text('Apri')))));
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Padel Test');
+    await tester.tap(find.text('Crea lega'));
+    await tester.pumpAndSettle();
+
+    expect(created, isNotNull);
+    expect(created!.sport, LeagueSport.padel);
+    expect(created!.type, 'amateur');
+    expect(created!.primaryColor, 0xff63c7f2);
+    expect(created!.competitions, isEmpty);
+    expect(created!.toJson()['sport'], LeagueSport.padel);
+  });
+  testWidgets(
+      'creazione competizione Padel restituisce configurazione completa',
+      (tester) async {
+    League? created;
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => TextButton(
+                onPressed: () async => created = await Navigator.push<League>(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const LeagueCreation(
+                            initialSport: LeagueSport.padel))),
+                child: const Text('Apri')))));
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Campionato Padel');
+    await tester.tap(find.text('Competizione'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Crea competizione'));
+    await tester.pumpAndSettle();
+
+    expect(created, isNotNull);
+    expect(created!.sport, LeagueSport.padel);
+    expect(created!.type, 'competition');
+    expect(created!.competitions.single.kind, 'league');
+    expect(created!.competitions.single.format, 3);
+    expect(created!.competitions.single.doubleLeg, isTrue);
+  });
+  testWidgets('contenitore Padel è separato dalle schermate calcio',
+      (tester) async {
+    final padel =
+        League('p', 'Padel del giovedì', [], [], sport: LeagueSport.padel);
+    await tester.pumpWidget(
+        MaterialApp(home: PadelLeaguePage(league: padel, save: () async {})));
+
+    expect(find.text('Partite programmate'), findsOneWidget);
+    expect(find.text('Nessuna partita programmata.'), findsOneWidget);
+    expect(find.text('Partite'), findsOneWidget);
+    expect(find.text('Giocatori'), findsOneWidget);
+    expect(find.text('Statistiche'), findsOneWidget);
+    expect(find.text('Squadre'), findsNothing);
+    expect(find.byTooltip('Le tue leghe'), findsOneWidget);
+    expect(find.byTooltip('Impostazioni lega'), findsOneWidget);
+    expect(find.byTooltip('Impostazioni app'), findsOneWidget);
+    expect(find.byIcon(Icons.tune), findsOneWidget);
+    expect(find.byIcon(Icons.settings), findsOneWidget);
+    expect(find.text('+ Partita'), findsOneWidget);
+    expect(tester.getSize(find.byType(FloatingActionButton)).height, 48);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('schermate Padel 06 07 e 08 filtrano le partite per stato',
+      (tester) async {
+    final players = [
+      Player('a', 'Filippo'),
+      Player('b', 'Andrea'),
+      Player('c', 'Luca'),
+      Player('d', 'Marco')
+    ];
+    Match match(String id, String status, {List<Goal>? goals}) => Match(
+        id: id,
+        format: 2,
+        names: const ['Filippo / Andrea', 'Luca / Marco'],
+        teams: const [
+          ['a', 'b'],
+          ['c', 'd']
+        ],
+        status: status,
+        startedAt: status == 'scheduled' ? null : '2026-11-09T20:00:00Z',
+        finishedAt: status == 'finished' ? '2026-11-09T21:00:00Z' : null,
+        scheduledAt: '2026-11-09T20:00:00Z',
+        venue: 'Campo 2',
+        teamColors: const [0xff63c7f2, 0xfff29c52],
+        goals: goals);
+    final padel = League(
+        'p',
+        'Padel del giovedì',
+        players,
+        [
+          match('scheduled', 'scheduled'),
+          match('live', 'live', goals: [
+            Goal(id: 'g1', team: 0, scorer: 'a', time: '2026-11-09T20:10:00Z')
+          ]),
+          match('finished', 'finished', goals: [
+            Goal(id: 'g2', team: 0, scorer: 'a', time: '2026-11-09T20:10:00Z'),
+            Goal(id: 'g3', team: 0, scorer: 'b', time: '2026-11-09T20:20:00Z'),
+            Goal(id: 'g4', team: 1, scorer: 'c', time: '2026-11-09T20:30:00Z')
+          ])
+        ],
+        sport: LeagueSport.padel);
+    await tester.pumpWidget(
+        MaterialApp(home: PadelLeaguePage(league: padel, save: () async {})));
+
+    expect(find.text('Partite in corso'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('padel-match-tab-scheduled')));
+    await tester.pump();
+    expect(find.text('Partite programmate'), findsOneWidget);
+    expect(find.textContaining('Campo 2'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('padel-match-tab-finished')));
+    await tester.pump();
+    expect(find.text('Partite terminate'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('Filippo / Andrea'), findsOneWidget);
+    expect(find.text('Luca / Marco'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('impostazioni Padel seguono la schermata 04', (tester) async {
+    final padel = League('p', 'Padel del giovedì', [], [],
+        sport: LeagueSport.padel, primaryColor: 0xff63c7f2);
+    await tester.pumpWidget(MaterialApp(
+        home: LeagueSettingsPage(
+            league: padel, save: () async {}, delete: () async {})));
+
+    expect(find.text('Impostazioni lega'), findsOneWidget);
+    expect(find.text('Nome lega'), findsOneWidget);
+    expect(find.text('Salva nome'), findsOneWidget);
+    expect(find.text('Colore primario'), findsOneWidget);
+    expect(find.text('#63C7F2'), findsOneWidget);
+    expect(find.text('Colore secondario'), findsNothing);
+    expect(find.text('Elimina lega'), findsOneWidget);
   });
   testWidgets('squadra partecipante apre direttamente la modifica',
       (tester) async {

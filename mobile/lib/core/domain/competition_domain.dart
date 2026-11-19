@@ -32,35 +32,86 @@ class Competition {
   final int format;
   final List<String> teamIds;
   final bool doubleLeg;
+  final int americanoPlayerCount;
+  final int americanoCourts;
+  final int americanoRounds;
+  final int americanoTargetPoints;
+  final bool americanoRotatingPairs;
+  final List<String> americanoPlayerIds;
+  final List<List<List<String>>> americanoSchedule;
   Competition(this.id, this.name, this.kind, this.format, this.teamIds,
-      {this.doubleLeg = false, bool allowDraft = false}) {
+      {this.doubleLeg = false,
+      this.americanoPlayerCount = 8,
+      this.americanoCourts = 2,
+      this.americanoRounds = 7,
+      this.americanoTargetPoints = 24,
+      this.americanoRotatingPairs = true,
+      List<String>? americanoPlayerIds,
+      List<List<List<String>>>? americanoSchedule,
+      bool allowDraft = false})
+      : americanoPlayerIds = americanoPlayerIds ?? [],
+        americanoSchedule = americanoSchedule ?? [] {
     if (name.trim().isEmpty ||
-        !['league', 'knockout'].contains(kind) ||
+        !['league', 'knockout', 'americano'].contains(kind) ||
         format < 2 ||
         format > 11 ||
-        (!allowDraft && teamIds.length < 2) ||
+        (!allowDraft && kind != 'americano' && teamIds.length < 2) ||
         teamIds.toSet().length != teamIds.length ||
         (!allowDraft &&
             kind == 'knockout' &&
-            ![2, 4, 8, 16].contains(teamIds.length))) {
+            ![2, 4, 8, 16].contains(teamIds.length)) ||
+        (kind == 'americano' &&
+            (americanoPlayerCount < 4 ||
+                americanoPlayerCount.isOdd ||
+                americanoCourts < 1 ||
+                americanoCourts > americanoPlayerCount ~/ 4 ||
+                americanoRounds < 1 ||
+                americanoTargetPoints < 8 ||
+                this.americanoPlayerIds.length > americanoPlayerCount ||
+                this.americanoPlayerIds.toSet().length !=
+                    this.americanoPlayerIds.length))) {
       throw ArgumentError(
           'Servono almeno due squadre; per eliminazione 2, 4, 8 o 16.');
     }
   }
-  bool get ready => kind == 'knockout'
-      ? [2, 4, 8, 16].contains(teamIds.length)
-      : teamIds.length >= 2;
+  bool get ready => switch (kind) {
+        'knockout' => [2, 4, 8, 16].contains(teamIds.length),
+        'americano' => americanoPlayerIds.length == americanoPlayerCount,
+        _ => teamIds.length >= 2,
+      };
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
         'kind': kind,
         'format': format,
         'teamIds': teamIds,
-        'doubleLeg': doubleLeg
+        'doubleLeg': doubleLeg,
+        if (kind == 'americano') ...{
+          'americanoPlayerCount': americanoPlayerCount,
+          'americanoCourts': americanoCourts,
+          'americanoRounds': americanoRounds,
+          'americanoTargetPoints': americanoTargetPoints,
+          'americanoRotatingPairs': americanoRotatingPairs,
+          'americanoPlayerIds': americanoPlayerIds,
+          'americanoSchedule': americanoSchedule,
+        }
       };
   factory Competition.fromJson(Map<String, dynamic> j) => Competition(j['id'],
       j['name'], j['kind'], j['format'], List<String>.from(j['teamIds']),
-      doubleLeg: j['doubleLeg'] ?? false, allowDraft: true);
+      doubleLeg: j['doubleLeg'] ?? false,
+      americanoPlayerCount: j['americanoPlayerCount'] ?? 8,
+      americanoCourts: j['americanoCourts'] ?? 2,
+      americanoRounds: j['americanoRounds'] ?? 7,
+      americanoTargetPoints: j['americanoTargetPoints'] ?? 24,
+      americanoRotatingPairs: j['americanoRotatingPairs'] ?? true,
+      americanoPlayerIds:
+          List<String>.from(j['americanoPlayerIds'] ?? const []),
+      americanoSchedule: (j['americanoSchedule'] as List? ?? const [])
+          .map((round) => (round as List)
+              .map((match) => List<String>.from(match as List))
+              .toList())
+          .toList(),
+      allowDraft: true);
 }
 
 class TournamentTie {
@@ -267,7 +318,12 @@ League competitionPlayers(League l, Competition c) {
     ...matches.expand((m) => m.teams.expand((t) => t)),
   };
   return League(l.id, l.name,
-      l.players.where((p) => ids.contains(p.id)).toList(), matches)
+      l.players.where((p) => ids.contains(p.id)).toList(), matches,
+      primaryColor: l.primaryColor,
+      secondaryColor: l.secondaryColor,
+      type: l.type,
+      sport: l.sport)
+    ..roles = Map<String, String>.from(l.roles)
     ..currentUser = l.currentUser
     ..myPlayer = l.myPlayer
     ..myRole = l.myRole

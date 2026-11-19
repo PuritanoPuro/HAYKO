@@ -161,6 +161,78 @@ void main() {
     await flushing;
     expect(store.pending, 0);
   });
+  test('un conflitto unisce modifiche locali e remote non sovrapposte',
+      () async {
+    final initial = row('scheduled');
+    initial['state']['name'] = 'Lega iniziale';
+    initial['state']['primaryColor'] = 1;
+    initial['revision'] = 1;
+    var saveAttempts = 0;
+    Map<String, dynamic>? savedState;
+    final store = LeagueStore('userA', (name, params) async {
+      if (name == 'bc_list') return [initial];
+      if (name == 'bc_get') {
+        final remote = row('scheduled');
+        remote['state']['name'] = 'Nome dal secondo dispositivo';
+        remote['state']['primaryColor'] = 1;
+        remote['revision'] = 2;
+        return remote;
+      }
+      if (name == 'bc_save') {
+        saveAttempts++;
+        if (saveAttempts == 1) throw StateError('REVISION_CONFLICT');
+        expect(params['p_revision'], 2);
+        savedState = Map<String, dynamic>.from(params['p_state'] as Map);
+        return 3;
+      }
+      throw StateError('RPC inattesa: $name');
+    });
+
+    await store.list();
+    final local = row('scheduled');
+    local['state']['name'] = 'Lega iniziale';
+    local['state']['primaryColor'] = 42;
+    local['revision'] = 1;
+    await store.queue(local);
+    await store.flush();
+
+    expect(store.pending, 0);
+    expect(savedState!['name'], 'Nome dal secondo dispositivo');
+    expect(savedState!['primaryColor'], 42);
+    expect(store.problem, isNull);
+  });
+
+  test('un conflitto sullo stesso dato non sovrascrive il server', () async {
+    final initial = row('scheduled');
+    initial['state']['name'] = 'Lega iniziale';
+    initial['revision'] = 1;
+    var saveAttempts = 0;
+    final store = LeagueStore('userA', (name, params) async {
+      if (name == 'bc_list') return [initial];
+      if (name == 'bc_get') {
+        final remote = row('scheduled');
+        remote['state']['name'] = 'Nome remoto';
+        remote['revision'] = 2;
+        return remote;
+      }
+      if (name == 'bc_save') {
+        saveAttempts++;
+        throw StateError('REVISION_CONFLICT');
+      }
+      throw StateError('RPC inattesa: $name');
+    });
+
+    await store.list();
+    final local = row('scheduled');
+    local['state']['name'] = 'Nome locale';
+    local['revision'] = 1;
+    await store.queue(local);
+    await store.flush();
+
+    expect(saveAttempts, 1);
+    expect(store.pending, 1);
+    expect(store.problem, contains('altro dispositivo'));
+  });
   test('piu richieste di sincronizzazione attendono lo stesso invio', () async {
     final response = Completer<int>();
     final store = LeagueStore('userA', (name, params) async => response.future);

@@ -96,6 +96,19 @@ class Cloud {
         m.teamColors
           ..clear()
           ..addAll(updated.teamColors);
+        m.padelSetScores
+          ..clear()
+          ..addAll(updated.padelSetScores.map((set) => [...set]));
+        m.padelPoints
+          ..clear()
+          ..addAll(updated.padelPoints);
+        m.padelPointTotals
+          ..clear()
+          ..addAll(updated.padelPointTotals);
+        m.padelSetDurationsSeconds
+          ..clear()
+          ..addAll(updated.padelSetDurationsSeconds);
+        m.padelSetStartedAt = updated.padelSetStartedAt;
         if (updated.status == 'scheduled') {
           m.teams[0] = [...updated.teams[0]];
           m.teams[1] = [...updated.teams[1]];
@@ -135,6 +148,22 @@ class Cloud {
     });
     unawaited(cache.flush());
     await RotationAlerts.instance.sync([l]);
+  }
+
+  static Future<void> updateOwnPlayer(
+      League league, String name, int color) async {
+    final cache = store;
+    await cache.flush();
+    if (cache.pending > 0) {
+      throw StateError(
+          'Completa prima la sincronizzazione delle modifiche della lega.');
+    }
+    await client.rpc('bc_update_my_player', params: {
+      'p_id': league.id,
+      'p_name': name,
+      'p_color': color,
+    });
+    await refresh(league);
   }
 
   static Future<void> identify(BuildContext context, League l) async {
@@ -293,6 +322,8 @@ class _CloudHomeState extends State<CloudHome> {
                 league: l,
                 save: () => Cloud.save(l),
                 reload: () => Cloud.refresh(l),
+                updateOwnPlayer: (name, color) =>
+                    Cloud.updateOwnPlayer(l, name, color),
                 onDelete: () async {
                   await Cloud.store.flush();
                   if (Cloud.store.pending > 0) {

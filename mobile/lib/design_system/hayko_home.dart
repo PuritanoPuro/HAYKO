@@ -5,7 +5,7 @@ import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 
 /// Home HAYKO: presenta i dati e delega tutte le azioni alla home esistente.
-class HaykoHome extends StatelessWidget {
+class HaykoHome extends StatefulWidget {
   const HaykoHome({
     super.key,
     required this.leagues,
@@ -28,12 +28,20 @@ class HaykoHome extends StatelessWidget {
   final String? error;
   final VoidCallback onRetry;
   final ValueChanged<League> onOpenLeague;
-  final VoidCallback onCreateLeague;
+  final ValueChanged<String> onCreateLeague;
   final VoidCallback onSharedLeagues;
   final VoidCallback onAccount;
   final VoidCallback onSettings;
   final Future<void> Function()? onRefresh;
   final Widget? notice;
+
+  @override
+  State<HaykoHome> createState() => _HaykoHomeState();
+}
+
+class _HaykoHomeState extends State<HaykoHome> {
+  static const tennis = 'tennis';
+  String sport = LeagueSport.football;
 
   static const _heading = TextStyle(
     fontSize: 30,
@@ -51,146 +59,171 @@ class HaykoHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final leagues =
+        widget.leagues.where((league) => league.sport == sport).toList();
     final shape =
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
     return Scaffold(
-      bottomNavigationBar: notice,
+      bottomNavigationBar: widget.notice,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: false,
         scrolledUnderElevation: 0,
         toolbarHeight: 64,
-        titleSpacing: 16,
-        title: SizedBox(
-          width: 72,
-          height: 32.488,
-          child: Center(
-            child: SvgPicture.asset(
-              'assets/brand/hayko_falcon_app_v2.svg',
-              width: 72,
-              height: 32.239,
-              semanticsLabel: 'HAYKO',
-            ),
-          ),
-        ),
+        titleSpacing: 24,
+        title: const Text('HAYKO',
+            style: TextStyle(
+                fontSize: 24, height: 30 / 24, fontWeight: FontWeight.w800)),
         actions: [
           HaykoIconAction(
             tooltip: 'Profilo e account',
             icon: Icons.person,
-            onPressed: onAccount,
+            onPressed: widget.onAccount,
           ),
           const SizedBox(width: 12),
           HaykoIconAction(
             tooltip: 'Impostazioni',
             icon: Icons.settings,
-            onPressed: onSettings,
+            onPressed: widget.onSettings,
           ),
           const SizedBox(width: 16),
         ],
       ),
       body: Stack(children: [
         RefreshIndicator(
-            onRefresh: onRefresh ?? () async {},
+            onRefresh: widget.onRefresh ?? () async {},
             child: SafeArea(
               top: false,
-              child: loading
+              child: widget.loading
                   ? const Center(
                       child: CircularProgressIndicator(
                           semanticsLabel: 'Caricamento leghe'))
-                  : error != null
+                  : widget.error != null
                       ? Center(
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.all(24),
                             child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(error!, textAlign: TextAlign.center),
+                                  Text(widget.error!,
+                                      textAlign: TextAlign.center),
                                   const SizedBox(height: 12),
                                   TextButton(
-                                      onPressed: onRetry,
+                                      onPressed: widget.onRetry,
                                       child: const Text('Riprova')),
                                 ]),
                           ),
                         )
-                      : CustomScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          slivers: [
-                              const SliverPadding(
-                                padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
-                                sliver: SliverToBoxAdapter(
-                                    child:
-                                        Text('Le tue leghe', style: _heading)),
-                              ),
-                              if (leagues.isEmpty)
-                                const SliverPadding(
-                                  padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                                  sliver: SliverToBoxAdapter(
-                                    child: Text(
-                                        'Crea una lega, aggiungi i giocatori e organizza la prima partita.'),
-                                  ),
-                                ),
-                              SliverPadding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 24),
-                                sliver: SliverList(
-                                  delegate: SliverChildBuilderDelegate(
-                                    (context, index) => Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 12),
-                                      child: _LeagueCard(
-                                        league: leagues[index],
-                                        onTap: () =>
-                                            onOpenLeague(leagues[index]),
-                                      ),
+                      : LayoutBuilder(
+                          builder: (context, constraints) =>
+                              SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                      minHeight: constraints.maxHeight),
+                                  child: IntrinsicHeight(
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          24, 20, 24, 24),
+                                      child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            const Text('Le tue leghe',
+                                                style: _heading),
+                                            const SizedBox(height: 12),
+                                            _SportSwitcher(
+                                              sport: sport,
+                                              onChanged: (value) =>
+                                                  setState(() => sport = value),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text('LEGHE RECENTI',
+                                                style: TextStyle(
+                                                    color: sport ==
+                                                            LeagueSport.padel
+                                                        ? HaykoColors
+                                                            .padelAccent
+                                                        : HaykoColors.mutedText,
+                                                    fontSize: 12,
+                                                    height: 16 / 12,
+                                                    fontWeight:
+                                                        FontWeight.w600)),
+                                            const SizedBox(height: 12),
+                                            if (leagues.isEmpty)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                    bottom: 12),
+                                                child: Text(sport ==
+                                                        LeagueSport.padel
+                                                    ? 'Nessuna lega Padel. Crea la prima lega per iniziare.'
+                                                    : 'Crea una lega, aggiungi i giocatori e organizza la prima partita.'),
+                                              ),
+                                            for (var index = 0;
+                                                index < leagues.length;
+                                                index++) ...[
+                                              _LeagueCard(
+                                                  league: leagues[index],
+                                                  onTap: () =>
+                                                      widget.onOpenLeague(
+                                                          leagues[index])),
+                                              if (index != leagues.length - 1)
+                                                const SizedBox(height: 12),
+                                            ],
+                                            const Spacer(),
+                                            const SizedBox(height: 24),
+                                            FilledButton(
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor:
+                                                    HaykoColors.chalk,
+                                                foregroundColor:
+                                                    HaykoColors.fieldBackground,
+                                                minimumSize: const Size(0, 52),
+                                                padding:
+                                                    const EdgeInsets.all(12),
+                                                textStyle: _button,
+                                                shape: shape,
+                                              ),
+                                              onPressed: () {
+                                                if (sport == tennis) {
+                                                  ScaffoldMessenger.of(context)
+                                                    ..hideCurrentSnackBar()
+                                                    ..showSnackBar(const SnackBar(
+                                                        content: Text(
+                                                            'Le leghe Tennis saranno disponibili prossimamente.')));
+                                                  return;
+                                                }
+                                                widget.onCreateLeague(sport);
+                                              },
+                                              child: const Text('+ NUOVA LEGA'),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            OutlinedButton(
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor:
+                                                    HaykoColors.chalk,
+                                                backgroundColor:
+                                                    HaykoColors.fieldSurface,
+                                                side: const BorderSide(
+                                                    color:
+                                                        HaykoColors.fieldLine),
+                                                minimumSize: const Size(0, 52),
+                                                padding:
+                                                    const EdgeInsets.all(12),
+                                                textStyle: _button,
+                                                shape: shape,
+                                              ),
+                                              onPressed: widget.onSharedLeagues,
+                                              child: const Text(
+                                                  'ACCEDI CON CODICE'),
+                                            ),
+                                          ]),
                                     ),
-                                    childCount: leagues.length,
                                   ),
                                 ),
-                              ),
-                              SliverPadding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                                sliver: SliverToBoxAdapter(
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        FilledButton(
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: HaykoColors.chalk,
-                                            foregroundColor:
-                                                HaykoColors.fieldBackground,
-                                            minimumSize: const Size(0, 52),
-                                            padding: const EdgeInsets.all(12),
-                                            textStyle: _button,
-                                            shape: shape,
-                                          ),
-                                          onPressed: onCreateLeague,
-                                          child: const Text('+ Nuova lega',
-                                              textAlign: TextAlign.center),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        OutlinedButton(
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: HaykoColors.chalk,
-                                            side: const BorderSide(
-                                                color: HaykoColors.mutedText),
-                                            minimumSize: const Size(0, 52),
-                                            padding: const EdgeInsets.all(12),
-                                            textStyle: _button,
-                                            shape: shape,
-                                          ),
-                                          onPressed: onSharedLeagues,
-                                          child: const Text(
-                                              'Leghe condivise e inviti',
-                                              textAlign: TextAlign.center),
-                                        ),
-                                      ]),
-                                ),
-                              ),
-                            ]),
+                              )),
             )),
-        if (actionLoading)
+        if (widget.actionLoading)
           const Positioned.fill(
             child: Stack(
               alignment: Alignment.center,
@@ -211,7 +244,144 @@ class HaykoHome extends StatelessWidget {
   }
 }
 
-/// Bersaglio da 48 px come il componente IconAction in Figma.
+class _SportSwitcher extends StatelessWidget {
+  const _SportSwitcher({required this.sport, required this.onChanged});
+
+  final String sport;
+  final ValueChanged<String> onChanged;
+
+  int get index => switch (sport) {
+        LeagueSport.padel => 1,
+        _HaykoHomeState.tennis => 2,
+        _ => 0,
+      };
+
+  Color get accent => switch (sport) {
+        LeagueSport.padel => HaykoColors.padelAccent,
+        _HaykoHomeState.tennis => const Color(0xffd97757),
+        _ => const Color(0xffbbf568),
+      };
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const ValueKey('sport-switcher'),
+        height: 56,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+            color: HaykoColors.fieldSurface,
+            border: Border.all(color: HaykoColors.fieldLine),
+            borderRadius: BorderRadius.circular(16)),
+        child: LayoutBuilder(builder: (context, constraints) {
+          final width = (constraints.maxWidth - 12) / 3;
+          return Stack(children: [
+            AnimatedPositioned(
+              key: const ValueKey('sport-selection-pill'),
+              duration: const Duration(milliseconds: 340),
+              curve: Curves.easeInOutCubic,
+              left: index * (width + 6),
+              top: 1,
+              bottom: 1,
+              width: width,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOutCubic,
+                decoration: BoxDecoration(
+                    color: accent, borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _SportTab(
+                  label: 'CALCIO',
+                  asset: 'assets/icons/sport_football.svg',
+                  selected: sport == LeagueSport.football,
+                  onTap: () => onChanged(LeagueSport.football)),
+              const SizedBox(width: 6),
+              _SportTab(
+                  label: 'PADEL',
+                  asset: 'assets/icons/sport_padel.svg',
+                  selected: sport == LeagueSport.padel,
+                  onTap: () => onChanged(LeagueSport.padel)),
+              const SizedBox(width: 6),
+              _SportTab(
+                  label: 'TENNIS',
+                  asset: 'assets/icons/sport_tennis.svg',
+                  selected: sport == _HaykoHomeState.tennis,
+                  onTap: () => onChanged(_HaykoHomeState.tennis)),
+            ]),
+          ]);
+        }),
+      );
+}
+
+class _SportTab extends StatelessWidget {
+  const _SportTab(
+      {required this.label,
+      required this.asset,
+      required this.selected,
+      this.onTap});
+
+  final String label;
+  final String asset;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Semantics(
+          selected: selected,
+          button: true,
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: onTap,
+              child: SizedBox.expand(
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      TweenAnimationBuilder<Color?>(
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeInOut,
+                        tween: ColorTween(
+                            end: selected
+                                ? const Color(0xff081a15)
+                                : HaykoColors.chalk),
+                        builder: (context, color, child) => SvgPicture.asset(
+                            asset,
+                            width: 20,
+                            height: 20,
+                            colorFilter: ColorFilter.mode(
+                                color ?? HaykoColors.chalk, BlendMode.srcIn)),
+                      ),
+                      const SizedBox(width: 6),
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeInOut,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: selected
+                                ? const Color(0xff081a15)
+                                : HaykoColors.chalk,
+                            fontFamily: 'BricolageGrotesque',
+                            fontSize: 11,
+                            height: 14 / 11,
+                            fontWeight: FontWeight.w700),
+                        child: Text(label,
+                            maxLines: 1, textAlign: TextAlign.center),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+/// Geometria 42×42 della schermata Home multisport in Figma.
 class HaykoIconAction extends StatelessWidget {
   const HaykoIconAction({
     super.key,
@@ -232,7 +402,7 @@ class HaykoIconAction extends StatelessWidget {
         style: IconButton.styleFrom(
           backgroundColor: HaykoColors.fieldSurface,
           foregroundColor: HaykoColors.chalk,
-          fixedSize: const Size(48, 48),
+          fixedSize: const Size(42, 42),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
@@ -260,6 +430,7 @@ class _LeagueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final competition = league.type == 'competition';
+    final padel = league.sport == LeagueSport.padel;
     return Material(
       color: HaykoColors.fieldSurface,
       borderRadius: BorderRadius.circular(12),
@@ -267,65 +438,123 @@ class _LeagueCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 72),
+          constraints: const BoxConstraints(minHeight: 82),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             child: Row(children: [
+              if (padel) ...[
+                Container(
+                    width: 4,
+                    height: 44,
+                    decoration: BoxDecoration(
+                        color: HaykoColors.padelAccent,
+                        borderRadius: BorderRadius.circular(2))),
+                const SizedBox(width: 10),
+              ],
               Container(
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                    color: Color(league.primaryColor), shape: BoxShape.circle),
-                child: Icon(
-                  competition ? Icons.emoji_events : Icons.groups,
-                  size: 24,
-                  color: _iconColor(Color(league.primaryColor)),
-                ),
+                    color: padel
+                        ? HaykoColors.padelAccent
+                        : Color(league.primaryColor),
+                    shape: BoxShape.circle),
+                alignment: Alignment.center,
+                child: padel
+                    ? Text(_initials(league.name),
+                        style: const TextStyle(
+                            color: Color(0xff081a15),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800))
+                    : Icon(competition ? Icons.emoji_events : Icons.groups,
+                        size: 24,
+                        color: _iconColor(Color(league.primaryColor))),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(league.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 16,
-                            height: 1.5,
-                            fontWeight: FontWeight.w400,
+                            height: 22 / 16,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0,
                           )),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          competition
-                              ? 'Competizione · ${league.presets.where((team) => !team.archived).length} squadre · ${league.matches.length} partite'
-                              : 'Amatoriale · ${league.players.length} giocatori · ${league.matches.length} partite',
+                      Text(
+                          padel
+                              ? _padelSubtitle(league)
+                              : competition
+                                  ? 'Competizione · ${league.presets.where((team) => !team.archived).length} squadre · ${league.matches.length} partite'
+                                  : 'Amatoriale · ${league.players.length} giocatori · ${league.matches.length} partite',
                           maxLines: 1,
-                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 12,
-                            height: 16 / 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            height: 18 / 13,
+                            fontWeight: FontWeight.w400,
                             color: HaykoColors.mutedText,
                             letterSpacing: 0,
-                          ),
-                        ),
-                      ),
+                          )),
                     ]),
               ),
               const SizedBox(width: 8),
-              const SizedBox(
+              SizedBox(
                 width: 64,
                 height: 24,
                 child: Align(
                     alignment: Alignment.centerRight,
-                    child: Icon(Icons.chevron_right, size: 16)),
+                    child: Icon(Icons.chevron_right,
+                        size: 22,
+                        color: padel
+                            ? HaykoColors.padelAccent
+                            : HaykoColors.chalk)),
               ),
             ]),
           ),
         ),
       ),
     );
+  }
+
+  String _initials(String name) => name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .take(2)
+      .map((word) => word[0])
+      .join()
+      .toUpperCase();
+
+  String _padelSubtitle(League league) {
+    final scheduled = league.matches
+        .where(
+            (match) => match.status == 'scheduled' && match.scheduledAt != null)
+        .toList()
+      ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
+    if (scheduled.isNotEmpty) {
+      final value = DateTime.tryParse(scheduled.first.scheduledAt!);
+      if (value != null) {
+        final now = DateTime.now();
+        final day = DateTime(value.year, value.month, value.day);
+        final today = DateTime(now.year, now.month, now.day);
+        final label = day == today
+            ? 'Oggi'
+            : day == today.add(const Duration(days: 1))
+                ? 'Domani'
+                : '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}';
+        return 'Prossima partita · $label, ${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+      }
+    }
+    final couples = league.presets
+        .where((couple) => !couple.archived && couple.players.length == 2)
+        .length;
+    return league.type == 'competition'
+        ? '$couples coppie · ${league.matches.length} partite'
+        : '${league.players.length} giocatori · $couples coppie';
   }
 }

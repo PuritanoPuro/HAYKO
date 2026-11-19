@@ -1,7 +1,7 @@
 name: calcetto_mvp
 description: MVP locale per statistiche di calcetto
 publish_to: none
-version: 0.2.0+11
+version: 0.2.0+12
 environment:
   sdk: '>=3.4.0 <4.0.0'
 dependencies:
@@ -26,6 +26,9 @@ flutter:
     - assets/brand/hayko_falcon_app_v2.svg
     - assets/brand/hayko_wordmark_clean.svg
     - assets/icons/football_boot.png
+    - assets/icons/sport_football.svg
+    - assets/icons/sport_padel.svg
+    - assets/icons/sport_tennis.svg
     - assets/fonts/OFL.txt
   fonts:
     - family: BricolageGrotesque

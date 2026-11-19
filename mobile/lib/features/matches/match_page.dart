@@ -5,6 +5,7 @@ import 'package:calcetto_mvp/shared/presentation.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 import 'package:calcetto_mvp/features/matches/goal_page.dart';
 import 'package:calcetto_mvp/features/matches/goal_edit_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_live_match_page.dart';
 import 'package:calcetto_mvp/core/services/rotation_alerts.dart';
 import 'package:calcetto_mvp/shared/customization.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
@@ -112,6 +113,18 @@ class _MatchPageState extends State<MatchPage> {
     } else {
       await mutate(m.start);
     }
+    if (mounted &&
+        widget.league.sport == LeagueSport.padel &&
+        m.status == 'live') {
+      await Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (_) => PadelLiveMatchPage(
+                  league: widget.league,
+                  match: m,
+                  save: widget.save,
+                  reload: widget.reload)));
+    }
   }
 
   Future<void> editEvent() async {
@@ -144,6 +157,27 @@ class _MatchPageState extends State<MatchPage> {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     location.dispose();
     if (ok == true && mounted) await mutate(() => m.editDetails(date, value));
+  }
+
+  Future<void> deleteScheduledMatch() async {
+    if (m.status != 'scheduled' || !widget.league.canRecord(m)) return;
+    final accepted = await confirm(context, 'Eliminare la partita?',
+        'La partita programmata verrà rimossa definitivamente.');
+    if (!accepted || !mounted) return;
+    final index = widget.league.matches.indexOf(m);
+    if (index < 0) return;
+    widget.league.matches.removeAt(index);
+    setState(() => saving = true);
+    try {
+      await widget.save();
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      widget.league.matches.insert(index, m);
+      if (mounted) {
+        setState(() => saving = false);
+        showError(context, error);
+      }
+    }
   }
 
   Future<void> finishMatch() async {
@@ -312,6 +346,25 @@ class _MatchPageState extends State<MatchPage> {
         padding: const EdgeInsets.all(24),
         children: [
           _MatchScorePanel(match: m, details: scheduledDetails),
+          if (widget.league.canRecord(m)) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 52,
+              child: OutlinedButton.icon(
+                key: const ValueKey('delete-scheduled-match'),
+                onPressed: saving ? null : deleteScheduledMatch,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Elimina partita'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xffffb4ab),
+                  backgroundColor: HaykoColors.fieldSurface,
+                  side: const BorderSide(color: Color(0xffffb4ab)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Text(
               'Tempo partita · ${clockText(matchElapsed(m, DateTime.now().toUtc()))}',
@@ -471,27 +524,29 @@ class _MatchPageState extends State<MatchPage> {
               style: const TextStyle(fontSize: 16, height: 1.5)),
           const SizedBox(height: 12),
         ],
-        const Text('Registro gol',
-            style: TextStyle(
-                fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
-        if (m.goals.where((goal) => !goal.voided).isEmpty) ...[
-          const SizedBox(height: 12),
-          const Text('Nessun gol registrato.',
+        if (widget.league.sport != LeagueSport.padel) ...[
+          const Text('Registro gol',
               style: TextStyle(
-                  color: HaykoColors.mutedText, fontSize: 16, height: 1.5)),
-        ],
-        for (final g
-            in m.goals.where((goal) => !goal.voided).toList().reversed) ...[
-          const SizedBox(height: 12),
-          _LiveGoalRow(
-              league: widget.league,
-              match: m,
-              goal: g,
-              enabled: false,
-              onUndo: () {},
-              onEdit: widget.league.canRecord(m) && !saving && !refreshing
-                  ? () => editGoal(g)
-                  : null),
+                  fontSize: 24, height: 1.25, fontWeight: FontWeight.w800)),
+          if (m.goals.where((goal) => !goal.voided).isEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Nessun gol registrato.',
+                style: TextStyle(
+                    color: HaykoColors.mutedText, fontSize: 16, height: 1.5)),
+          ],
+          for (final g
+              in m.goals.where((goal) => !goal.voided).toList().reversed) ...[
+            const SizedBox(height: 12),
+            _LiveGoalRow(
+                league: widget.league,
+                match: m,
+                goal: g,
+                enabled: false,
+                onUndo: () {},
+                onEdit: widget.league.canRecord(m) && !saving && !refreshing
+                    ? () => editGoal(g)
+                    : null),
+          ],
         ],
       ],
     );

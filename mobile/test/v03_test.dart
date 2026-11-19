@@ -184,6 +184,34 @@ void main() {
     expect(find.text('Termina partita'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets('una partita programmata può essere eliminata', (tester) async {
+    final l = base();
+    final m = Match(id: 'delete-me', format: 2, names: [
+      'A',
+      'B'
+    ], teams: [
+      ['a', 'b'],
+      ['c', 'd']
+    ]);
+    l.matches.add(m);
+    var saves = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: MatchPage(
+            league: l,
+            match: m,
+            save: () async {
+              saves++;
+            })));
+    await tester
+        .ensureVisible(find.byKey(const ValueKey('delete-scheduled-match')));
+    await tester.tap(find.byKey(const ValueKey('delete-scheduled-match')));
+    await tester.pumpAndSettle();
+    expect(find.text('Eliminare la partita?'), findsOneWidget);
+    await tester.tap(find.text('Conferma'));
+    await tester.pumpAndSettle();
+    expect(l.matches, isEmpty);
+    expect(saves, 1);
+  });
   testWidgets('cancellazione lega richiede conferma', (tester) async {
     var removed = 0;
     final l = base();

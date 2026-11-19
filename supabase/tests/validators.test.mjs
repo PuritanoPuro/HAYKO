@@ -8,6 +8,9 @@ const bootstrap = await read('20261016_account_v1.sql');
 const invites = await read('20261017_short_invites.sql');
 const patch = await read('20261018_json_containment_precedence.sql');
 const invitePreview = await read('20261019_invite_preview.sql');
+const padelLeagueValidation = await read('2026110901_padel_league_validation.sql');
+const padelMatchValidation = await read('2026111201_padel_match_validation.sql');
+const padelLiveScoreUpdates = await read('2026111202_padel_live_score_updates.sql');
 const db = new PGlite();
 const user = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
@@ -71,7 +74,54 @@ try {
   const fixed = (await definition('public.bc_validate(jsonb)')).rows;
   await db.exec(patch);
   assert.deepEqual((await definition('public.bc_validate(jsonb)')).rows,fixed,'manual/already applied patch is idempotent');
+  await db.exec(padelLeagueValidation);
+  await db.exec(padelMatchValidation);
+  await db.exec(padelLiveScoreUpdates);
   for (const state of [rotation,teams,competition]) await validate(state);
+  const padel = clone(rotation);
+  padel.sport = 'padel';
+  Object.assign(padel.matches[0], {
+    padelBestOf: 3,
+    padelGameRule: 'golden_point',
+    padelDecidingSet: 'super_tiebreak_10',
+    padelSetScores: [[6,4],[0,0]],
+    padelPoints: ['30','15'],
+    padelPointTotals: [42,35],
+    padelSetDurationsSeconds: [1320],
+    padelSetStartedAt: '2026-11-12T18:00:00Z',
+  });
+  await validate(padel);
+  const footballWithDefaults = clone(rotation);
+  Object.assign(footballWithDefaults.matches[0], {
+    padelBestOf: 3, padelGameRule: 'golden_point',
+    padelDecidingSet: 'super_tiebreak_10', padelSetScores: [],
+    padelPoints: ['0','0'], padelPointTotals: [0,0],
+    padelSetDurationsSeconds: [], padelSetStartedAt: null,
+  });
+  await validate(footballWithDefaults);
+  const badPadel = clone(padel);badPadel.matches[0].padelSetScores=[[6,-1]];
+  await assert.rejects(validate(badPadel),/INVALID_PADEL_SCORE/);
+  const padelLive = clone(padel);
+  padelLive.id = 'padel-live-sync';
+  padelLive.matches[0].id = 'padel-live-match';
+  padelLive.matches[0].padelSetScores = [];
+  padelLive.matches[0].padelPoints = ['0','0'];
+  padelLive.matches[0].padelPointTotals = [0,0];
+  padelLive.matches[0].padelSetDurationsSeconds = [];
+  padelLive.matches[0].padelSetStartedAt = null;
+  const emptyPadelLive = clone(padelLive);
+  emptyPadelLive.matches = [];
+  await db.query('select public.bc_create($1::jsonb)',[JSON.stringify(emptyPadelLive)]);
+  let padelRevision = (await save(padelLive,0)).rows[0].revision;
+  padelLive.matches[0].status = 'live';
+  padelLive.matches[0].startedAt = '2026-11-12T18:00:00Z';
+  padelRevision = (await save(padelLive,padelRevision)).rows[0].revision;
+  padelLive.matches[0].padelSetScores = [[0,0]];
+  padelLive.matches[0].padelPoints = ['15','0'];
+  padelLive.matches[0].padelPointTotals = [1,0];
+  padelLive.matches[0].padelSetStartedAt = '2026-11-12T18:00:00Z';
+  padelRevision = (await save(padelLive,padelRevision)).rows[0].revision;
+  assert.equal(padelRevision,3,'live Padel score fields synchronize');
   const badRotation=clone(rotation);badRotation.matches[0].keepers[0].order=['a','c'];
   await assert.rejects(validate(badRotation), /INVALID_ROTATION/);
   const badPreset=clone(teams);badPreset.presets[0].players=['missing'];badPreset.presets[0].numbers={};

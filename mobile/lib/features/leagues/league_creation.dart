@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_configuration_page.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 
 class LeagueCreation extends StatefulWidget {
-  const LeagueCreation({super.key, this.initialType = 'amateur'});
+  const LeagueCreation(
+      {super.key,
+      this.initialType = 'amateur',
+      this.initialSport = LeagueSport.football});
 
   final String initialType;
+  final String initialSport;
 
   @override
   State<LeagueCreation> createState() => _LeagueCreationState();
@@ -15,6 +20,7 @@ class LeagueCreation extends StatefulWidget {
 class _LeagueCreationState extends State<LeagueCreation> {
   final name = TextEditingController();
   late String type;
+  late String sport;
   String kind = 'league';
   int format = 5;
   bool doubleLeg = false;
@@ -23,6 +29,11 @@ class _LeagueCreationState extends State<LeagueCreation> {
   void initState() {
     super.initState();
     type = widget.initialType;
+    sport = LeagueSport.normalize(widget.initialSport);
+    if (sport == LeagueSport.padel && type == 'competition') {
+      doubleLeg = true;
+      format = 3;
+    }
   }
 
   @override
@@ -31,12 +42,31 @@ class _LeagueCreationState extends State<LeagueCreation> {
     super.dispose();
   }
 
-  void submit() {
+  Future<void> submit() async {
     if (name.text.trim().isEmpty) {
       showError(context, 'Inserisci il nome della lega.');
       return;
     }
-    final l = League(newId(), name.text.trim(), [], [], type: type);
+    if (sport == LeagueSport.padel &&
+        type == 'competition' &&
+        kind == 'americano') {
+      final league = await Navigator.push<League>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PadelAmericanoConfigurationPage(
+            initialName: name.text.trim(),
+          ),
+        ),
+      );
+      if (mounted && league != null) Navigator.pop(context, league);
+      return;
+    }
+    final l = League(newId(), name.text.trim(), [], [],
+        type: type,
+        sport: sport,
+        primaryColor: sport == LeagueSport.padel
+            ? HaykoColors.padelAccent.toARGB32()
+            : 0xffbbf568);
     if (type == 'competition') {
       l.competitions.add(Competition(
           newId(), name.text.trim(), kind, format, [],
@@ -49,14 +79,17 @@ class _LeagueCreationState extends State<LeagueCreation> {
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         toolbarHeight: 64,
-        centerTitle: true,
+        centerTitle: sport != LeagueSport.padel,
         leadingWidth: 52,
         leading: IconButton(
             tooltip: 'Indietro',
             icon: const Icon(Icons.arrow_back, size: 24),
             onPressed: () => Navigator.maybePop(context)),
-        title: const Text('Nuova lega',
-            style: TextStyle(
+        title: Text(
+            sport == LeagueSport.padel && type == 'competition'
+                ? 'Nuova competizione'
+                : 'Nuova lega',
+            style: const TextStyle(
                 fontFamily: 'BricolageGrotesque',
                 fontSize: 20,
                 height: 26 / 20,
@@ -67,26 +100,71 @@ class _LeagueCreationState extends State<LeagueCreation> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            _LeagueNameField(controller: name),
+            if (sport != LeagueSport.padel) ...[
+              const Text('Sport',
+                  style: TextStyle(
+                      fontFamily: 'BricolageGrotesque',
+                      fontSize: 20,
+                      height: 1.3,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                    child: _TypeChip(
+                        label: 'Calcio',
+                        selected: sport == LeagueSport.football,
+                        onTap: () => setState(() {
+                              sport = LeagueSport.football;
+                              if (kind == 'americano') kind = 'league';
+                              format = 5;
+                            }))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: _TypeChip(
+                        label: 'Padel',
+                        selected: sport == LeagueSport.padel,
+                        onTap: () => setState(() {
+                              sport = LeagueSport.padel;
+                              format = 3;
+                            }))),
+              ]),
+              const SizedBox(height: 20),
+            ],
+            _LeagueNameField(
+                controller: name, padel: sport == LeagueSport.padel),
             const SizedBox(height: 12),
             Row(children: [
               Expanded(
                   child: _TypeChip(
                       label: 'Amatoriale',
                       selected: type == 'amateur',
+                      accent: sport == LeagueSport.padel
+                          ? HaykoColors.padelAccent
+                          : null,
                       onTap: () => setState(() => type = 'amateur'))),
               const SizedBox(width: 8),
               Expanded(
                   child: _TypeChip(
                       label: 'Competizione',
                       selected: type == 'competition',
-                      onTap: () => setState(() => type = 'competition'))),
+                      accent: sport == LeagueSport.padel
+                          ? HaykoColors.padelAccent
+                          : null,
+                      onTap: () => setState(() {
+                            type = 'competition';
+                            if (sport == LeagueSport.padel) {
+                              doubleLeg = true;
+                              format = 3;
+                            }
+                          }))),
             ]),
             const SizedBox(height: 12),
             if (type == 'amateur')
-              const Text(
-                  'Un gruppo di amici: partite, giocatori e statistiche.',
-                  style: TextStyle(
+              Text(
+                  sport == LeagueSport.padel
+                      ? 'Partite tra amici, coppie flessibili e statistiche individuali.'
+                      : 'Un gruppo di amici: partite, giocatori e statistiche.',
+                  style: const TextStyle(
                       fontFamily: 'BricolageGrotesque',
                       fontSize: 16,
                       height: 1.5,
@@ -95,31 +173,58 @@ class _LeagueCreationState extends State<LeagueCreation> {
               _DropdownField<String>(
                   label: 'Tipologia competizione',
                   value: kind,
-                  items: const [
+                  accent: sport == LeagueSport.padel
+                      ? HaykoColors.padelAccent
+                      : null,
+                  items: [
                     DropdownMenuItem(
-                        value: 'league', child: Text('Campionato')),
-                    DropdownMenuItem(
-                        value: 'knockout', child: Text('Torneo a eliminazione'))
+                        value: 'league',
+                        child: Text(sport == LeagueSport.padel
+                            ? 'Campionato a coppie fisse'
+                            : 'Campionato')),
+                    const DropdownMenuItem(
+                        value: 'knockout',
+                        child: Text('Torneo a eliminazione')),
+                    if (sport == LeagueSport.padel)
+                      const DropdownMenuItem(
+                          value: 'americano', child: Text('Americano')),
                   ],
                   onChanged: (v) => setState(() => kind = v!)),
               const SizedBox(height: 12),
               if (kind == 'league')
                 _DoubleLegField(
                     value: doubleLeg,
+                    accent: sport == LeagueSport.padel
+                        ? HaykoColors.padelAccent
+                        : null,
                     onChanged: (v) => setState(() => doubleLeg = v)),
               if (kind == 'league') const SizedBox(height: 12),
               _DropdownField<int>(
-                  label: 'Tipologia partita',
+                  label: sport == LeagueSport.padel
+                      ? 'Formato partita'
+                      : 'Tipologia partita',
                   value: format,
-                  items: [
-                    for (var n = 2; n <= 11; n++)
-                      DropdownMenuItem(value: n, child: Text('${n}v$n'))
-                  ],
+                  accent: sport == LeagueSport.padel
+                      ? HaykoColors.padelAccent
+                      : null,
+                  items: sport == LeagueSport.padel
+                      ? const [
+                          DropdownMenuItem(
+                              value: 3, child: Text('Meglio di 3 set')),
+                          DropdownMenuItem(
+                              value: 5, child: Text('Meglio di 5 set')),
+                        ]
+                      : [
+                          for (var n = 2; n <= 11; n++)
+                            DropdownMenuItem(value: n, child: Text('${n}v$n'))
+                        ],
                   onChanged: (v) => setState(() => format = v!)),
               const SizedBox(height: 12),
-              const Text(
-                  'Dopo la creazione aggiungi le squadre, i giocatori e i numeri di maglia nella sezione Squadre.',
-                  style: TextStyle(
+              Text(
+                  sport == LeagueSport.padel
+                      ? 'Dopo la creazione aggiungi le coppie e i giocatori nella sezione Coppie.'
+                      : 'Dopo la creazione aggiungi le squadre, i giocatori e i numeri di maglia nella sezione Squadre.',
+                  style: const TextStyle(
                       fontFamily: 'BricolageGrotesque',
                       fontSize: 14,
                       height: 20 / 14,
@@ -140,16 +245,21 @@ class _LeagueCreationState extends State<LeagueCreation> {
                         height: 1.5,
                         fontWeight: FontWeight.w700)),
                 onPressed: submit,
-                child: const Text('Crea lega')),
+                child: Text(sport == LeagueSport.padel && type == 'competition'
+                    ? kind == 'americano'
+                        ? 'Configura Americano'
+                        : 'Crea competizione'
+                    : 'Crea lega')),
           ],
         ),
       ));
 }
 
 class _LeagueNameField extends StatelessWidget {
-  const _LeagueNameField({required this.controller});
+  const _LeagueNameField({required this.controller, this.padel = false});
 
   final TextEditingController controller;
+  final bool padel;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -157,7 +267,10 @@ class _LeagueNameField extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
             color: HaykoColors.fieldSurface,
-            border: Border.all(color: HaykoColors.fieldLine),
+            border: Border.all(
+                color: padel
+                    ? HaykoColors.padelAccent.withValues(alpha: .55)
+                    : HaykoColors.fieldLine),
             borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Nome lega',
@@ -189,11 +302,15 @@ class _LeagueNameField extends StatelessWidget {
 
 class _TypeChip extends StatelessWidget {
   const _TypeChip(
-      {required this.label, required this.selected, required this.onTap});
+      {required this.label,
+      required this.selected,
+      required this.onTap,
+      this.accent});
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -203,7 +320,11 @@ class _TypeChip extends StatelessWidget {
         color: selected ? HaykoColors.fieldLine : HaykoColors.fieldBackground,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: HaykoColors.fieldLine)),
+            side: BorderSide(
+                color: selected && accent != null
+                    ? accent!
+                    : HaykoColors.fieldLine,
+                width: selected && accent != null ? 2 : 1)),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
@@ -226,12 +347,14 @@ class _DropdownField<T> extends StatelessWidget {
       {required this.label,
       required this.value,
       required this.items,
-      required this.onChanged});
+      required this.onChanged,
+      this.accent});
 
   final String label;
   final T value;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -239,7 +362,8 @@ class _DropdownField<T> extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
             color: HaykoColors.fieldSurface,
-            border: Border.all(color: HaykoColors.fieldLine),
+            border: Border.all(
+                color: accent?.withValues(alpha: .42) ?? HaykoColors.fieldLine),
             borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label,
@@ -273,10 +397,12 @@ class _DropdownField<T> extends StatelessWidget {
 }
 
 class _DoubleLegField extends StatelessWidget {
-  const _DoubleLegField({required this.value, required this.onChanged});
+  const _DoubleLegField(
+      {required this.value, required this.onChanged, this.accent});
 
   final bool value;
   final ValueChanged<bool> onChanged;
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -284,6 +410,8 @@ class _DoubleLegField extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
             color: HaykoColors.fieldSurface,
+            border: Border.all(
+                color: accent?.withValues(alpha: .3) ?? Colors.transparent),
             borderRadius: BorderRadius.circular(12)),
         child: Row(children: [
           Expanded(
@@ -311,7 +439,11 @@ class _DoubleLegField extends StatelessWidget {
               height: 32,
               child: Transform.scale(
                   scale: .72,
-                  child: Switch(value: value, onChanged: onChanged))),
+                  child: Switch(
+                      value: value,
+                      activeTrackColor: HaykoColors.chalk,
+                      activeThumbColor: HaykoColors.fieldLine,
+                      onChanged: onChanged))),
         ]),
       );
 }
