@@ -76,9 +76,18 @@ class _PadelAmericanoCalendarPageState
   Future<void> confirm() async {
     if (saving) return;
     final previous = _copy(widget.competition.americanoSchedule);
+    final previousRound = widget.competition.americanoCurrentRound;
+    final previousStatus = widget.competition.americanoTurnStatus;
+    final previousResults = [
+      for (final round in widget.competition.americanoResults)
+        [for (final result in round) result.copy()],
+    ];
     widget.competition.americanoSchedule
       ..clear()
       ..addAll(_copy(schedule));
+    widget.competition.americanoResults.clear();
+    widget.competition.americanoCurrentRound = 0;
+    widget.competition.americanoTurnStatus = 'scheduled';
     setState(() => saving = true);
     try {
       await widget.save();
@@ -87,6 +96,11 @@ class _PadelAmericanoCalendarPageState
       widget.competition.americanoSchedule
         ..clear()
         ..addAll(previous);
+      widget.competition.americanoResults
+        ..clear()
+        ..addAll(previousResults);
+      widget.competition.americanoCurrentRound = previousRound;
+      widget.competition.americanoTurnStatus = previousStatus;
       if (mounted) showError(context, error);
     } finally {
       if (mounted) setState(() => saving = false);

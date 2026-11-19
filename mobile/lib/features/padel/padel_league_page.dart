@@ -13,6 +13,8 @@ import 'package:calcetto_mvp/features/matches/match_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_couples_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_players_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_scheduled_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_live_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_round_complete_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_live_match_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_match_stats_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_match_creation_page.dart';
@@ -49,13 +51,13 @@ class _PadelLeaguePageState extends State<PadelLeaguePage> {
   @override
   void initState() {
     super.initState();
-    matchStatus =
-        widget.league.matches.any((match) => match.status == 'live') ||
-                widget.league.competitions.any((competition) =>
-                    competition.kind == 'americano' &&
-                    competition.americanoTurnStatus == 'live')
-            ? 'live'
-            : 'scheduled';
+    matchStatus = widget.league.matches
+                .any((match) => match.status == 'live') ||
+            widget.league.competitions.any((competition) =>
+                competition.kind == 'americano' &&
+                ['live', 'paused'].contains(competition.americanoTurnStatus))
+        ? 'live'
+        : 'scheduled';
     listClock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted &&
           widget.league.matches.any((match) => match.status == 'live')) {
@@ -348,12 +350,16 @@ class _PadelMatchesSection extends StatelessWidget {
         league.matches.any((match) => match.status == 'live') ||
             league.competitions.any((competition) =>
                 competition.kind == 'americano' &&
-                competition.americanoTurnStatus == 'live');
+                ['live', 'paused'].contains(competition.americanoTurnStatus));
     final americanos = league.competitions
         .where((competition) =>
             competition.kind == 'americano' &&
             competition.americanoSchedule.isNotEmpty &&
-            competition.americanoTurnStatus == status)
+            (competition.americanoTurnStatus == status ||
+                (status == 'live' &&
+                    competition.americanoTurnStatus == 'paused') ||
+                (status == 'scheduled' &&
+                    competition.americanoTurnStatus == 'completed')))
         .toList();
     final color = statusColor(status);
     return Column(children: [
@@ -441,14 +447,32 @@ class _PadelMatchesSection extends StatelessWidget {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => PadelAmericanoScheduledPage(
-                        league: league,
-                        competition: competition,
-                        save: save,
-                      ),
+                      builder: (_) => switch (competition.americanoTurnStatus) {
+                        'live' || 'paused' => PadelAmericanoLivePage(
+                            league: league,
+                            competition: competition,
+                            save: save,
+                          ),
+                        'completed' ||
+                        'finished' =>
+                          PadelAmericanoRoundCompletePage(
+                            league: league,
+                            competition: competition,
+                            save: save,
+                          ),
+                        _ => PadelAmericanoScheduledPage(
+                            league: league,
+                            competition: competition,
+                            save: save,
+                          ),
+                      },
                     ),
                   );
-                  onStatusChanged(competition.americanoTurnStatus);
+                  onStatusChanged(switch (competition.americanoTurnStatus) {
+                    'live' || 'paused' => 'live',
+                    'completed' => 'scheduled',
+                    _ => competition.americanoTurnStatus,
+                  });
                 },
                 child: Container(
                   width: double.infinity,
@@ -783,7 +807,18 @@ class _PlayersSection extends StatelessWidget {
           AccountButton('Giocatori Americano',
               key: const ValueKey('open-americano-players'),
               outline: true,
-              onPressed: league.manage ? openAmericanoPlayers : null),
+              onPressed: league.manage &&
+                      league.competitions
+                          .where((c) => c.kind == 'americano')
+                          .every((c) =>
+                              c.americanoTurnStatus == 'scheduled' &&
+                              c.americanoCurrentRound == 0 &&
+                              !c.americanoResults.any((round) => round.any(
+                                  (result) =>
+                                      result.points.isNotEmpty ||
+                                      result.finished)))
+                  ? openAmericanoPlayers
+                  : null),
           const SizedBox(height: 8),
         ],
         _PadelOutlineButton(label: 'Coppie salvate', onPressed: openCouples),

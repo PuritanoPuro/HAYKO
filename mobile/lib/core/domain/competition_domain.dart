@@ -1,4 +1,5 @@
 import 'package:calcetto_mvp/core/domain/domain.dart';
+import 'package:calcetto_mvp/core/domain/americano_result.dart';
 
 class TeamPreset {
   final String id;
@@ -39,6 +40,7 @@ class Competition {
   final bool americanoRotatingPairs;
   final List<String> americanoPlayerIds;
   final List<List<List<String>>> americanoSchedule;
+  final List<List<AmericanoCourtResult>> americanoResults;
   int americanoCurrentRound;
   String americanoTurnStatus;
   Competition(this.id, this.name, this.kind, this.format, this.teamIds,
@@ -50,11 +52,13 @@ class Competition {
       this.americanoRotatingPairs = true,
       List<String>? americanoPlayerIds,
       List<List<List<String>>>? americanoSchedule,
+      List<List<AmericanoCourtResult>>? americanoResults,
       this.americanoCurrentRound = 0,
       this.americanoTurnStatus = 'scheduled',
       bool allowDraft = false})
       : americanoPlayerIds = americanoPlayerIds ?? [],
-        americanoSchedule = americanoSchedule ?? [] {
+        americanoSchedule = americanoSchedule ?? [],
+        americanoResults = americanoResults ?? [] {
     if (name.trim().isEmpty ||
         !['league', 'knockout', 'americano'].contains(kind) ||
         format < 2 ||
@@ -76,7 +80,7 @@ class Competition {
                     this.americanoPlayerIds.length ||
                 americanoCurrentRound < 0 ||
                 americanoCurrentRound >= americanoRounds ||
-                !['scheduled', 'live', 'finished']
+                !['scheduled', 'live', 'paused', 'completed', 'finished']
                     .contains(americanoTurnStatus)))) {
       throw ArgumentError(
           'Servono almeno due squadre; per eliminazione 2, 4, 8 o 16.');
@@ -102,6 +106,10 @@ class Competition {
           'americanoRotatingPairs': americanoRotatingPairs,
           'americanoPlayerIds': americanoPlayerIds,
           'americanoSchedule': americanoSchedule,
+          'americanoResults': [
+            for (final round in americanoResults)
+              [for (final result in round) result.toJson()]
+          ],
           'americanoCurrentRound': americanoCurrentRound,
           'americanoTurnStatus': americanoTurnStatus,
         }
@@ -119,6 +127,12 @@ class Competition {
       americanoSchedule: (j['americanoSchedule'] as List? ?? const [])
           .map((round) => (round as List)
               .map((match) => List<String>.from(match as List))
+              .toList())
+          .toList(),
+      americanoResults: (j['americanoResults'] as List? ?? const [])
+          .map((round) => (round as List)
+              .map((result) => AmericanoCourtResult.fromJson(
+                  Map<String, dynamic>.from(result as Map)))
               .toList())
           .toList(),
       americanoCurrentRound: j['americanoCurrentRound'] ?? 0,

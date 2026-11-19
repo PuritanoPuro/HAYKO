@@ -55,6 +55,7 @@ void main() {
     expect(saves, 1);
     expect(competition.americanoTurnStatus, 'live');
     expect(find.text('Turno 1 di 3 · In corso'), findsOneWidget);
+    expect(find.byKey(const ValueKey('americano-live')), findsOneWidget);
     expect(find.byKey(const ValueKey('americano-start-round')), findsNothing);
     expect(
         League.fromJson(league.toJson())
@@ -62,9 +63,5 @@ void main() {
             .single
             .americanoTurnStatus,
         'live');
-    await tester.tap(find.byKey(const ValueKey('americano-cancel-start')));
-    await tester.pumpAndSettle();
-    expect(saves, 2);
-    expect(competition.americanoTurnStatus, 'scheduled');
   });
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:calcetto_mvp/core/domain/domain.dart';
+import 'package:calcetto_mvp/core/domain/americano_flow.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_calendar_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_live_page.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 
 /// The confirmed Americano calendar, before the current round begins.
@@ -61,12 +63,38 @@ class _PadelAmericanoScheduledPageState
   Future<void> changeStatus(String nextStatus) async {
     if (saving) return;
     final previous = widget.competition.americanoTurnStatus;
+    final previousResults = [
+      for (final round in widget.competition.americanoResults)
+        [for (final result in round) result.copy()],
+    ];
+    ensureAmericanoResults(widget.competition);
+    if (nextStatus == 'live') {
+      final now = DateTime.now().toUtc().toIso8601String();
+      for (final result in currentAmericanoResults(widget.competition)) {
+        result.startedAt ??= now;
+      }
+    }
     widget.competition.americanoTurnStatus = nextStatus;
     setState(() => saving = true);
     try {
       await widget.save();
+      if (mounted && nextStatus == 'live') {
+        await Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PadelAmericanoLivePage(
+              league: widget.league,
+              competition: widget.competition,
+              save: widget.save,
+            ),
+          ),
+        );
+      }
     } catch (error) {
       widget.competition.americanoTurnStatus = previous;
+      widget.competition.americanoResults
+        ..clear()
+        ..addAll(previousResults);
       if (mounted) showError(context, error);
     } finally {
       if (mounted) setState(() => saving = false);
@@ -162,21 +190,21 @@ class _PadelAmericanoScheduledPageState
               AccountButton('Modifica calendario',
                   key: const ValueKey('americano-edit-calendar'),
                   outline: true,
-                  onPressed:
-                      saving || !widget.league.manage ? null : editCalendar),
+                  onPressed: saving ||
+                          !widget.league.manage ||
+                          competition.americanoCurrentRound > 0 ||
+                          competition.americanoResults.any((round) => round.any(
+                              (result) =>
+                                  result.points.isNotEmpty || result.finished))
+                      ? null
+                      : editCalendar),
               const SizedBox(height: 10),
               AccountButton('Inizia turno',
                   key: const ValueKey('americano-start-round'),
                   onPressed: saving || !widget.league.manage || fixtures.isEmpty
                       ? null
                       : () => changeStatus('live')),
-            ] else if (competition.americanoTurnStatus == 'live')
-              AccountButton('Annulla avvio turno',
-                  key: const ValueKey('americano-cancel-start'),
-                  outline: true,
-                  onPressed: saving || !widget.league.manage
-                      ? null
-                      : () => changeStatus('scheduled')),
+            ],
           ],
         ),
       ),

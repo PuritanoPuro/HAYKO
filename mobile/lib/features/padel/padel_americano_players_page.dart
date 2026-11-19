@@ -79,6 +79,14 @@ class _PadelAmericanoPlayersPageState extends State<PadelAmericanoPlayersPage> {
   }
 
   Future<void> confirm() async {
+    if (widget.competition.americanoTurnStatus != 'scheduled' ||
+        widget.competition.americanoCurrentRound > 0 ||
+        widget.competition.americanoResults.any((round) => round
+            .any((result) => result.points.isNotEmpty || result.finished))) {
+      showError(context,
+          'I giocatori si possono modificare solo prima dell’avvio di un turno.');
+      return;
+    }
     if (saving || selected.length != widget.competition.americanoPlayerCount) {
       return;
     }
@@ -91,12 +99,17 @@ class _PadelAmericanoPlayersPageState extends State<PadelAmericanoPlayersPage> {
     ];
     final previousRound = widget.competition.americanoCurrentRound;
     final previousStatus = widget.competition.americanoTurnStatus;
+    final previousResults = [
+      for (final round in widget.competition.americanoResults)
+        [for (final result in round) result.copy()],
+    ];
     widget.competition.americanoPlayerIds
       ..clear()
       ..addAll(selected);
     if (previous.toSet().difference(selected).isNotEmpty ||
         selected.difference(previous.toSet()).isNotEmpty) {
       widget.competition.americanoSchedule.clear();
+      widget.competition.americanoResults.clear();
       widget.competition.americanoCurrentRound = 0;
       widget.competition.americanoTurnStatus = 'scheduled';
     }
@@ -134,6 +147,9 @@ class _PadelAmericanoPlayersPageState extends State<PadelAmericanoPlayersPage> {
       widget.competition.americanoSchedule
         ..clear()
         ..addAll(previousSchedule);
+      widget.competition.americanoResults
+        ..clear()
+        ..addAll(previousResults);
       widget.competition.americanoCurrentRound = previousRound;
       widget.competition.americanoTurnStatus = previousStatus;
       if (mounted) showError(context, error);
