@@ -27,6 +27,17 @@ void main() {
     expect(AmericanoCourtResult.fromJson(result.toJson()).scoreFor(0), 5);
   });
 
+  test('sospensione e ripresa escludono la pausa dal tempo', () {
+    final result = AmericanoCourtResult(startedAt: '2026-11-20T10:00:00.000Z');
+    result.pause(DateTime.utc(2026, 11, 20, 10, 2));
+    expect(result.elapsed(DateTime.utc(2026, 11, 20, 10, 4)).inSeconds, 120);
+    result.resume(DateTime.utc(2026, 11, 20, 10, 5));
+    expect(result.elapsed(DateTime.utc(2026, 11, 20, 10, 6)).inSeconds, 180);
+    final restored = AmericanoCourtResult.fromJson(result.toJson());
+    expect(restored.pausedSeconds, 180);
+    expect(restored.elapsed(DateTime.utc(2026, 11, 20, 10, 6)).inSeconds, 180);
+  });
+
   testWidgets('un doppio tocco durante il salvataggio conta un solo punto',
       (tester) async {
     final players = [

@@ -47,6 +47,20 @@ class _PadelAmericanoLivePageState extends State<PadelAmericanoLivePage> {
   Future<void> changeStatus(String next) async {
     if (saving) return;
     final previous = widget.competition.americanoTurnStatus;
+    final oldResults = [
+      for (final round in widget.competition.americanoResults)
+        [for (final result in round) result.copy()],
+    ];
+    final now = DateTime.now().toUtc();
+    if (next == 'paused') {
+      for (final result in currentAmericanoResults(widget.competition)) {
+        result.pause(now);
+      }
+    } else if (previous == 'paused' && next == 'live') {
+      for (final result in currentAmericanoResults(widget.competition)) {
+        result.resume(now);
+      }
+    }
     widget.competition.americanoTurnStatus = next;
     setState(() => saving = true);
     try {
@@ -65,6 +79,9 @@ class _PadelAmericanoLivePageState extends State<PadelAmericanoLivePage> {
       }
     } catch (error) {
       widget.competition.americanoTurnStatus = previous;
+      widget.competition.americanoResults
+        ..clear()
+        ..addAll(oldResults);
       if (mounted) showError(context, error);
     } finally {
       if (mounted) setState(() => saving = false);

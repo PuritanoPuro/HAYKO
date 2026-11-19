@@ -55,13 +55,8 @@ class _PadelAmericanoScorePageState extends State<PadelAmericanoScorePage> {
   }
 
   String get duration {
-    final started = result.startedAt;
-    if (started == null) return '00:00';
-    final seconds = DateTime.now()
-        .toUtc()
-        .difference(DateTime.parse(started).toUtc())
-        .inSeconds
-        .clamp(0, 99999);
+    final seconds =
+        result.elapsed(DateTime.now().toUtc()).inSeconds.clamp(0, 99999);
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:'
         '${(seconds % 60).toString().padLeft(2, '0')}';
   }
@@ -88,6 +83,9 @@ class _PadelAmericanoScorePageState extends State<PadelAmericanoScorePage> {
         ..addAll(previous.points);
       current.finished = previous.finished;
       current.startedAt = previous.startedAt;
+      current.pausedAt = previous.pausedAt;
+      current.finishedAt = previous.finishedAt;
+      current.pausedSeconds = previous.pausedSeconds;
       widget.competition.americanoTurnStatus = previousStatus;
       if (mounted) showError(context, error);
     } finally {
@@ -209,7 +207,7 @@ class _PadelAmericanoScorePageState extends State<PadelAmericanoScorePage> {
                   onPressed: saving || !widget.league.manage
                       ? null
                       : () => change((result) {
-                            result.finished = false;
+                            result.reopen(DateTime.now().toUtc());
                             competition.americanoTurnStatus = 'live';
                           }))
             else
