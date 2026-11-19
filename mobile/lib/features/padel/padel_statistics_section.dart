@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_standings_page.dart';
+import 'package:calcetto_mvp/shared/ui.dart';
 
 class PadelStatisticsSection extends StatefulWidget {
   const PadelStatisticsSection({
     super.key,
     required this.league,
+    this.save,
     this.initialCouplesMode = false,
   });
 
   final League league;
+  final Save? save;
   final bool initialCouplesMode;
 
   @override
@@ -27,11 +31,69 @@ class _PadelStatisticsSectionState extends State<PadelStatisticsSection> {
     final current = _currentPlayerStatistics(rows, league.myPlayer);
     final coupleRows = _coupleStatistics(league);
     final currentCouple = _currentCoupleStatistics(coupleRows, league.myPlayer);
+    final americanos = league.competitions.where((competition) =>
+        competition.kind == 'americano' &&
+        competition.americanoResults.any((round) =>
+            round.isNotEmpty && round.every((result) => result.finished)));
 
     return ListView(
       key: const ValueKey('padel-player-statistics'),
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 92),
       children: [
+        if (widget.save != null) ...[
+          for (final competition in americanos) ...[
+            InkWell(
+              key: ValueKey('americano-standings-open-${competition.id}'),
+              borderRadius: BorderRadius.circular(12),
+              onTap: () async {
+                await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PadelAmericanoStandingsPage(
+                        league: league,
+                        competition: competition,
+                        save: widget.save!,
+                      ),
+                    ));
+                if (mounted) setState(() {});
+              },
+              child: Container(
+                height: 76,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: HaykoColors.fieldSurface,
+                  border: Border.all(
+                      color: HaykoColors.padelAccent.withValues(alpha: .5)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(children: [
+                  Expanded(
+                      child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(competition.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(
+                          competition.americanoTurnStatus == 'finished'
+                              ? 'Classifica finale Americano'
+                              : 'Classifica Americano',
+                          style: const TextStyle(
+                              color: HaykoColors.mutedText, fontSize: 13)),
+                    ],
+                  )),
+                  const Icon(Icons.chevron_right,
+                      color: HaykoColors.padelAccent),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ],
         const _PeriodField(),
         const SizedBox(height: 8),
         _StatisticsModeTabs(

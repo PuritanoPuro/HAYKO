@@ -7,6 +7,7 @@ import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_live_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_scheduled_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_score_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_standings_page.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
 
 class PadelAmericanoRoundCompletePage extends StatefulWidget {
@@ -205,6 +206,20 @@ class _PadelAmericanoRoundCompletePageState
                 outline: true,
                 onPressed:
                     saving || !widget.league.manage ? null : chooseCorrection),
+            const SizedBox(height: 10),
+            AccountButton('Vedi classifica',
+                key: const ValueKey('americano-view-standings'),
+                outline: true, onPressed: () async {
+              await Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PadelAmericanoStandingsPage(
+                      league: widget.league,
+                      competition: competition,
+                      save: widget.save,
+                    ),
+                  ));
+            }),
             const SizedBox(height: 10),
             if (!tournamentFinished)
               AccountButton(

@@ -15,6 +15,7 @@ import 'package:calcetto_mvp/features/padel/padel_americano_players_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_scheduled_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_live_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_round_complete_page.dart';
+import 'package:calcetto_mvp/features/padel/padel_americano_standings_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_live_match_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_match_stats_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_match_creation_page.dart';
@@ -273,7 +274,8 @@ class _PadelLeaguePageState extends State<PadelLeaguePage> {
                     openMembers: openMembers,
                     addPlayer: addPlayer,
                     editPlayer: editPlayer),
-                PadelStatisticsSection(league: widget.league),
+                PadelStatisticsSection(
+                    league: widget.league, save: widget.save),
               ],
             ),
           ),
@@ -453,9 +455,12 @@ class _PadelMatchesSection extends StatelessWidget {
                             competition: competition,
                             save: save,
                           ),
-                        'completed' ||
-                        'finished' =>
-                          PadelAmericanoRoundCompletePage(
+                        'finished' => PadelAmericanoStandingsPage(
+                            league: league,
+                            competition: competition,
+                            save: save,
+                          ),
+                        'completed' => PadelAmericanoRoundCompletePage(
                             league: league,
                             competition: competition,
                             save: save,
