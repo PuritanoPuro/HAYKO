@@ -299,6 +299,8 @@ class _SportSwitcher extends StatelessWidget {
               _SportTab(
                   label: 'PADEL',
                   asset: 'assets/icons/sport_padel.svg',
+                  iconSize: 29,
+                  whiteIcon: true,
                   selected: sport == LeagueSport.padel,
                   onTap: () => onChanged(LeagueSport.padel)),
               const SizedBox(width: 6),
@@ -318,11 +320,15 @@ class _SportTab extends StatelessWidget {
       {required this.label,
       required this.asset,
       required this.selected,
+      this.iconSize = 20,
+      this.whiteIcon = false,
       this.onTap});
 
   final String label;
   final String asset;
   final bool selected;
+  final double iconSize;
+  final bool whiteIcon;
   final VoidCallback? onTap;
 
   @override
@@ -345,15 +351,21 @@ class _SportTab extends StatelessWidget {
                         duration: const Duration(milliseconds: 260),
                         curve: Curves.easeInOut,
                         tween: ColorTween(
-                            end: selected
-                                ? const Color(0xff081a15)
-                                : HaykoColors.chalk),
+                            end: whiteIcon
+                                ? Colors.white
+                                : selected
+                                    ? const Color(0xff081a15)
+                                    : HaykoColors.chalk),
                         builder: (context, color, child) => SvgPicture.asset(
                             asset,
-                            width: 20,
-                            height: 20,
+                            width: iconSize,
+                            height: iconSize,
                             colorFilter: ColorFilter.mode(
-                                color ?? HaykoColors.chalk, BlendMode.srcIn)),
+                                color ??
+                                    (whiteIcon
+                                        ? Colors.white
+                                        : HaykoColors.chalk),
+                                BlendMode.srcIn)),
                       ),
                       const SizedBox(width: 6),
                       AnimatedDefaultTextStyle(

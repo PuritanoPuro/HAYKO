@@ -309,15 +309,9 @@ class _PadelLeaguePageState extends State<PadelLeaguePage> {
             destinations: [
               NavigationDestination(
                   icon: SvgPicture.asset('assets/icons/sport_padel.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: const ColorFilter.mode(
-                          HaykoColors.mutedText, BlendMode.srcIn)),
+                      width: 34, height: 34),
                   selectedIcon: SvgPicture.asset('assets/icons/sport_padel.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: const ColorFilter.mode(
-                          HaykoColors.chalk, BlendMode.srcIn)),
+                      width: 34, height: 34),
                   label: 'Partite'),
               const NavigationDestination(
                   icon: Icon(Icons.group), label: 'Giocatori'),
