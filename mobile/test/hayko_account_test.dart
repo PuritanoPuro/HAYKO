@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:calcetto_mvp/features/account/auth_pages.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
 import 'package:calcetto_mvp/features/account/invite_links.dart';
@@ -199,6 +200,109 @@ void main() {
     expect(store.pending, 0);
     expect(savedState!['name'], 'Nome dal secondo dispositivo');
     expect(savedState!['primaryColor'], 42);
+    expect(store.problem, isNull);
+  });
+
+  test('colore lega sincronizzato è visibile da un secondo dispositivo',
+      () async {
+    var remote = row('scheduled');
+    remote['state']['primaryColor'] = 0xff63c7f2;
+    Future<dynamic> rpc(String name, Map<String, dynamic> params) async {
+      if (name == 'bc_list') return [remote];
+      if (name == 'bc_save') {
+        expect(params['p_revision'], remote['revision']);
+        remote = {
+          ...remote,
+          'state': params['p_state'],
+          'revision': (remote['revision'] as int) + 1,
+        };
+        return remote['revision'];
+      }
+      throw StateError('RPC inattesa: $name');
+    }
+
+    final firstDevice = LeagueStore('first-device', rpc);
+    final secondDevice = LeagueStore('second-device', rpc);
+    await firstDevice.list();
+    final local = row('scheduled');
+    local['state']['primaryColor'] = 0xffe35b82;
+
+    await firstDevice.queue(local);
+    await firstDevice.flush();
+
+    expect(firstDevice.pending, 0);
+    expect(firstDevice.problem, isNull);
+    expect((await secondDevice.list()).single['state']['primaryColor'],
+        0xffe35b82);
+  });
+
+  test('colore lega non modifica partite Padel terminate legacy', () async {
+    final old = row('finished');
+    old['state']['sport'] = 'padel';
+    old['state']['primaryColor'] = 0xff63c7f2;
+    final updated = row('finished');
+    updated['state']['sport'] = 'padel';
+    updated['state']['primaryColor'] = 0xffe35b82;
+    updated['state']['matches'][0]['padelPointTotals'] = [0, 0];
+    updated['state']['matches'][0]['padelSetDurationsSeconds'] = [];
+    updated['state']['matches'][0]['padelSetStartedAt'] = null;
+    updated['state']['matches'][0]['padelFirstServerId'] = null;
+    final store = LeagueStore('padel-color', (name, params) async {
+      if (name == 'bc_list') return [old];
+      if (name == 'bc_save') {
+        final match = params['p_state']['matches'][0] as Map;
+        expect(match.containsKey('padelPointTotals'), isFalse);
+        expect(match.containsKey('padelSetDurationsSeconds'), isFalse);
+        expect(match.containsKey('padelSetStartedAt'), isFalse);
+        expect(match.containsKey('padelFirstServerId'), isFalse);
+        return 1;
+      }
+      throw StateError('RPC inattesa: $name');
+    });
+    await store.list();
+    await store.queue(updated);
+    await store.flush();
+    expect(store.pending, 0);
+    expect(store.problem, isNull);
+  });
+
+  test('coda legacy viene riparata dopo MATCH_FINISHED', () async {
+    final old = row('finished');
+    old['state']['sport'] = 'padel';
+    final updated = row('finished');
+    updated['state']['sport'] = 'padel';
+    updated['state']['primaryColor'] = 0xffe35b82;
+    updated['state']['matches'][0]['padelPointTotals'] = [0, 0];
+    updated['state']['matches'][0]['padelSetDurationsSeconds'] = [];
+    updated['state']['matches'][0]['padelSetStartedAt'] = null;
+    updated['state']['matches'][0]['padelFirstServerId'] = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'hayko.leagues.legacy',
+        jsonEncode({
+          'rows': [updated],
+          'operations': [
+            {
+              'id': 'league',
+              'revision': 0,
+              'state': updated['state'],
+              'base_state': old['state'],
+            }
+          ],
+        }));
+    var attempts = 0;
+    final store = LeagueStore('legacy', (name, params) async {
+      attempts++;
+      final match = params['p_state']['matches'][0] as Map;
+      if (match.containsKey('padelPointTotals') ||
+          match.containsKey('padelSetStartedAt')) {
+        throw StateError('MATCH_FINISHED');
+      }
+      return 1;
+    });
+    await store.flush();
+    expect(attempts, 2);
+    expect(store.pending, 0);
     expect(store.problem, isNull);
   });
 

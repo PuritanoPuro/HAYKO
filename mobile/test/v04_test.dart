@@ -326,6 +326,26 @@ void main() {
     expect(find.text('Colore secondario'), findsNothing);
     expect(find.text('Elimina lega'), findsOneWidget);
   });
+  testWidgets('colore lega Padel viene selezionato e incluso nel salvataggio',
+      (tester) async {
+    final padel = League('p', 'Padel', [], [],
+        sport: LeagueSport.padel, primaryColor: 0xff63c7f2);
+    Map<String, dynamic>? saved;
+    await tester.pumpWidget(MaterialApp(
+        home: LeagueSettingsPage(
+            league: padel, save: () async => saved = padel.toJson())));
+
+    await tester.tap(find.text('#63C7F2'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Colore personalizzato'), 'E35B82');
+    await tester.tap(find.text('Seleziona'));
+    await tester.pumpAndSettle();
+
+    expect(padel.primaryColor, 0xffe35b82);
+    expect(saved?['primaryColor'], 0xffe35b82);
+    expect(find.text('#E35B82'), findsOneWidget);
+  });
   testWidgets('squadra partecipante apre direttamente la modifica',
       (tester) async {
     final l = league();

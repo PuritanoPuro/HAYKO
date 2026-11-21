@@ -443,6 +443,8 @@ class _LeagueCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final competition = league.type == 'competition';
     final padel = league.sport == LeagueSport.padel;
+    final accent = padel ? HaykoColors.padelAccent : const Color(0xffbbf568);
+    final leagueColor = Color(league.primaryColor);
     return Material(
       color: HaykoColors.fieldSurface,
       borderRadius: BorderRadius.circular(12),
@@ -454,33 +456,22 @@ class _LeagueCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             child: Row(children: [
-              if (padel) ...[
-                Container(
-                    width: 4,
-                    height: 44,
-                    decoration: BoxDecoration(
-                        color: HaykoColors.padelAccent,
-                        borderRadius: BorderRadius.circular(2))),
-                const SizedBox(width: 10),
-              ],
               Container(
+                  key: ValueKey('league-accent-${league.id}'),
+                  width: 4,
+                  height: 44,
+                  decoration: BoxDecoration(
+                      color: accent, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 10),
+              Container(
+                key: ValueKey('league-icon-${league.id}'),
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                    color: padel
-                        ? HaykoColors.padelAccent
-                        : Color(league.primaryColor),
-                    shape: BoxShape.circle),
+                decoration:
+                    BoxDecoration(color: leagueColor, shape: BoxShape.circle),
                 alignment: Alignment.center,
-                child: padel
-                    ? Text(_initials(league.name),
-                        style: const TextStyle(
-                            color: Color(0xff081a15),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800))
-                    : Icon(competition ? Icons.emoji_events : Icons.groups,
-                        size: 24,
-                        color: _iconColor(Color(league.primaryColor))),
+                child: Icon(competition ? Icons.emoji_events : Icons.groups,
+                    size: 24, color: _iconColor(leagueColor)),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -520,11 +511,7 @@ class _LeagueCard extends StatelessWidget {
                 height: 24,
                 child: Align(
                     alignment: Alignment.centerRight,
-                    child: Icon(Icons.chevron_right,
-                        size: 22,
-                        color: padel
-                            ? HaykoColors.padelAccent
-                            : HaykoColors.chalk)),
+                    child: Icon(Icons.chevron_right, size: 22, color: accent)),
               ),
             ]),
           ),
@@ -532,15 +519,6 @@ class _LeagueCard extends StatelessWidget {
       ),
     );
   }
-
-  String _initials(String name) => name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .take(2)
-      .map((word) => word[0])
-      .join()
-      .toUpperCase();
 
   String _padelSubtitle(League league) {
     final scheduled = league.matches

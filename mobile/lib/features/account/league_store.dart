@@ -57,6 +57,10 @@ class LeagueStore extends ChangeNotifier {
         final baseState = previous.isEmpty
             ? null
             : jsonDecode(jsonEncode(previous.first['state']));
+        if (baseState is Map) {
+          _removeLegacyMatchDefaults(
+              copy['state'] as Map<String, dynamic>, baseState);
+        }
         final oldRows = [...rows];
         rows = [...rows.where((r) => r['state']['id'] != id), copy];
         operations.add({
@@ -103,6 +107,10 @@ class LeagueStore extends ChangeNotifier {
           }).timeout(const Duration(seconds: 8));
         } catch (error) {
           if (_isRevisionConflict(error) && await _rebaseConflict(op)) {
+            continue;
+          }
+          if (error.toString().contains('MATCH_FINISHED') &&
+              await _repairLegacyMatchDefaults(op)) {
             continue;
           }
           if (!_isPermissionRejection(error)) rethrow;
@@ -164,6 +172,61 @@ class LeagueStore extends ChangeNotifier {
 
   bool _isRevisionConflict(Object error) =>
       error.toString().contains('REVISION_CONFLICT');
+
+  /// Vecchie partite Padel non contengono i contatori aggiunti in seguito.
+  /// La serializzazione non deve farli apparire come modifiche a partite chiuse.
+  static bool _removeLegacyMatchDefaults(
+      Map<String, dynamic> state, Map baseState) {
+    final oldMatches = {
+      for (final old in baseState['matches'] as List? ?? [])
+        if (old is Map && old['id'] != null) old['id']: old,
+    };
+    var changed = false;
+    for (final match in state['matches'] as List? ?? []) {
+      if (match is! Map || match['status'] != 'finished') continue;
+      final old = oldMatches[match['id']];
+      if (old is! Map || old['status'] != 'finished') continue;
+      if (!old.containsKey('padelPointTotals') &&
+          _sameJson(match['padelPointTotals'], [0, 0])) {
+        match.remove('padelPointTotals');
+        changed = true;
+      }
+      if (!old.containsKey('padelSetDurationsSeconds') &&
+          _sameJson(match['padelSetDurationsSeconds'], [])) {
+        match.remove('padelSetDurationsSeconds');
+        changed = true;
+      }
+      for (final key in ['padelSetStartedAt', 'padelFirstServerId']) {
+        if (!old.containsKey(key) &&
+            match.containsKey(key) &&
+            match[key] == null) {
+          match.remove(key);
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  Future<bool> _repairLegacyMatchDefaults(
+      Map<String, dynamic> operation) async {
+    var repaired = false;
+    await locked(() async {
+      if (operations.isEmpty || !identical(operations.first, operation)) return;
+      final base = operation['base_state'];
+      if (base is! Map) return;
+      repaired = _removeLegacyMatchDefaults(
+          operation['state'] as Map<String, dynamic>, base);
+      if (!repaired) return;
+      for (final row
+          in rows.where((r) => r['state']['id'] == operation['id'])) {
+        _removeLegacyMatchDefaults(row['state'] as Map<String, dynamic>, base);
+      }
+      await persist();
+      notifyListeners();
+    });
+    return repaired;
+  }
 
   /// Replays the local changes over the latest server document only when the
   /// two devices changed different top-level areas. A real overlap remains a

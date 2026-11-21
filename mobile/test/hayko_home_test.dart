@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:calcetto_mvp/design_system/hayko_home.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/home/home_page.dart';
 import 'package:calcetto_mvp/design_system/hayko_theme.dart';
 import 'package:calcetto_mvp/core/domain/domain.dart';
@@ -78,6 +79,16 @@ void main() {
     expect(find.text('Competizione · 0 squadre · 0 partite'), findsOneWidget);
     expect(find.byIcon(Icons.groups), findsOneWidget);
     expect(find.byIcon(Icons.emoji_events), findsOneWidget);
+    final footballAccent =
+        tester.widget<Container>(find.byKey(const ValueKey('league-accent-a')));
+    expect((footballAccent.decoration as BoxDecoration).color,
+        const Color(0xffbbf568));
+    final footballIcon =
+        tester.widget<Container>(find.byKey(const ValueKey('league-icon-a')));
+    expect((footballIcon.decoration as BoxDecoration).color,
+        const Color(0xffe3f24a));
+    expect(tester.widget<Icon>(find.byIcon(Icons.chevron_right).first).color,
+        const Color(0xffbbf568));
     await tester.tap(find.text('Coppa'));
     expect(selected, same(competition));
     await tester.tap(find.text('+ NUOVA LEGA'));
@@ -94,17 +105,30 @@ void main() {
     expect(find.text('TENNIS'), findsOneWidget);
   });
 
-  testWidgets('home distingue una lega Padel senza cambiare la palette',
+  testWidgets('home Padel usa accento sport e icone del tipo di lega',
       (tester) async {
-    final padel =
-        League('p', 'Padel del giovedì', [], [], sport: LeagueSport.padel);
-    await tester.pumpWidget(home(leagues: [padel]));
+    final padel = League('p', 'Padel del giovedì', [], [],
+        sport: LeagueSport.padel, primaryColor: 0xffffab64);
+    final tournament = League('t', 'Torneo Padel', [], [],
+        sport: LeagueSport.padel, type: 'competition');
+    await tester.pumpWidget(home(leagues: [padel, tournament]));
     await tester.pumpAndSettle();
     await tester.tap(find.text('PADEL'));
     await tester.pumpAndSettle();
 
     expect(find.text('0 giocatori · 0 coppie'), findsOneWidget);
-    expect(find.text('PD'), findsOneWidget);
+    expect(find.byIcon(Icons.groups), findsOneWidget);
+    expect(find.byIcon(Icons.emoji_events), findsOneWidget);
+    final padelAccent =
+        tester.widget<Container>(find.byKey(const ValueKey('league-accent-p')));
+    expect((padelAccent.decoration as BoxDecoration).color,
+        HaykoColors.padelAccent);
+    final padelIcon =
+        tester.widget<Container>(find.byKey(const ValueKey('league-icon-p')));
+    expect(
+        (padelIcon.decoration as BoxDecoration).color, const Color(0xffffab64));
+    expect(tester.widget<Icon>(find.byIcon(Icons.chevron_right).first).color,
+        HaykoColors.padelAccent);
   });
 
   testWidgets('selettore sport usa geometria Figma e pillola animata',
