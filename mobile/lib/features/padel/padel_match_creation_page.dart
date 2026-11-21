@@ -27,6 +27,7 @@ class _PadelMatchCreationPageState extends State<PadelMatchCreationPage> {
   final colors = <int>[0xff63c7f2, 0xffff7a3d];
   final teams = <Set<String>>[<String>{}, <String>{}];
   final presetIds = <String?>[null, null];
+  String? firstServerId;
   late DateTime scheduled;
   final venue = TextEditingController();
   final search = TextEditingController();
@@ -155,7 +156,10 @@ class _PadelMatchCreationPageState extends State<PadelMatchCreationPage> {
     if (teams[team].length != 2) return;
     search.clear();
     searchFocus.unfocus();
-    setState(() => step = team == 0 ? 2 : 3);
+    setState(() {
+      if (team == 1) firstServerId = teams[0].first;
+      step = team == 0 ? 2 : 3;
+    });
   }
 
   void createMatch() {
@@ -177,7 +181,8 @@ class _PadelMatchCreationPageState extends State<PadelMatchCreationPage> {
         presetIds: [...presetIds],
         padelBestOf: bestOf,
         padelGameRule: gameRule,
-        padelDecidingSet: decidingSet);
+        padelDecidingSet: decidingSet,
+        padelFirstServerId: firstServerId);
     Navigator.pop(context, match);
   }
 
@@ -362,6 +367,14 @@ class _PadelMatchCreationPageState extends State<PadelMatchCreationPage> {
                 color: colors[team]),
             const SizedBox(height: 10),
           ],
+          _PadelDropdownField<String>(
+              label: 'Prima battuta',
+              value: firstServerId ?? teams[0].first,
+              items: [...teams[0], ...teams[1]],
+              itemLabel: (id) =>
+                  '${widget.league.playerName(id)} · Coppia ${teams[0].contains(id) ? 'A' : 'B'}',
+              onChanged: (value) => setState(() => firstServerId = value)),
+          const SizedBox(height: 10),
           _PadelField(label: 'Data e ora', value: scheduledLabel),
           const SizedBox(height: 10),
           _PadelField(

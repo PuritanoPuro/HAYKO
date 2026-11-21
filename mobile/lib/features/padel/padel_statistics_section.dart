@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:calcetto_mvp/core/domain/domain.dart';
+import 'package:calcetto_mvp/core/domain/padel_scoring.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/padel/padel_americano_standings_page.dart';
 import 'package:calcetto_mvp/shared/ui.dart';
@@ -23,13 +24,16 @@ class PadelStatisticsSection extends StatefulWidget {
 
 class _PadelStatisticsSectionState extends State<PadelStatisticsSection> {
   late bool couplesMode = widget.initialCouplesMode;
+  int? bestOfFilter;
 
   @override
   Widget build(BuildContext context) {
     final league = widget.league;
-    final rows = _playerStatistics(league);
-    final current = _currentPlayerStatistics(rows, league.myPlayer);
-    final coupleRows = _coupleStatistics(league);
+    final finishedMatches = league.matches.where((match) =>
+        match.status == 'finished' &&
+        (bestOfFilter == null || match.padelBestOf == bestOfFilter));
+    final rows = _playerStatistics(league, finishedMatches);
+    final coupleRows = _coupleStatistics(league, finishedMatches);
     final currentCouple = _currentCoupleStatistics(coupleRows, league.myPlayer);
     final americanos = league.competitions.where((competition) =>
         competition.kind == 'americano' &&
@@ -94,7 +98,10 @@ class _PadelStatisticsSectionState extends State<PadelStatisticsSection> {
             const SizedBox(height: 12),
           ],
         ],
-        const _PeriodField(),
+        _FormatField(
+          value: bestOfFilter,
+          onChanged: (value) => setState(() => bestOfFilter = value),
+        ),
         const SizedBox(height: 8),
         _StatisticsModeTabs(
           couplesMode: couplesMode,
@@ -117,7 +124,7 @@ class _PadelStatisticsSectionState extends State<PadelStatisticsSection> {
         const SizedBox(height: 8),
         const Text(
           'PG partite · V vittorie · S sconfitte\n'
-          'SV set vinti · % percentuale vittorie',
+          'SV set vinti · SP set persi · % percentuale vittorie',
           style: TextStyle(
             color: HaykoColors.mutedText,
             fontSize: 12,
@@ -132,20 +139,21 @@ class _PadelStatisticsSectionState extends State<PadelStatisticsSection> {
               league: league,
               couple: currentCouple,
               allCouples: coupleRows,
+              bestOfFilter: bestOfFilter,
             )
           else
             const _EmptyStatisticsCard(),
-        ] else if (current != null)
-          _CurrentPlayerCard(row: current)
-        else
-          const _EmptyStatisticsCard(),
+        ],
       ],
     );
   }
 }
 
-class _PeriodField extends StatelessWidget {
-  const _PeriodField();
+class _FormatField extends StatelessWidget {
+  const _FormatField({required this.value, required this.onChanged});
+
+  final int? value;
+  final ValueChanged<int?> onChanged;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -156,11 +164,11 @@ class _PeriodField extends StatelessWidget {
           border: Border.all(color: HaykoColors.fieldLine),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Periodo',
+            const Text(
+              'Formato partita',
               style: TextStyle(
                 color: HaykoColors.mutedText,
                 fontSize: 12,
@@ -169,18 +177,22 @@ class _PeriodField extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Tutte le partite',
-                      style: TextStyle(fontSize: 16, height: 24 / 16),
-                    ),
-                  ),
-                  Icon(Icons.arrow_drop_down, size: 20),
+                child: DropdownButtonHideUnderline(
+              child: DropdownButton<int?>(
+                key: const ValueKey('padel-format-filter'),
+                value: value,
+                isExpanded: true,
+                dropdownColor: HaykoColors.fieldSurface,
+                borderRadius: BorderRadius.circular(12),
+                items: const [
+                  DropdownMenuItem(
+                      value: null, child: Text('Tutte le partite')),
+                  DropdownMenuItem(value: 3, child: Text('Meglio di 3 set')),
+                  DropdownMenuItem(value: 5, child: Text('Meglio di 5 set')),
                 ],
+                onChanged: onChanged,
               ),
-            ),
+            )),
           ],
         ),
       );
@@ -195,7 +207,7 @@ class _PadelStatisticsTable extends StatelessWidget {
   final List<_PadelPlayerStatistics> rows;
   final String? currentPlayerId;
 
-  static const _columnWidths = <double>[146, 36, 34, 34, 40, 44];
+  static const _columnWidths = <double>[140, 34, 32, 32, 36, 36, 42];
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -218,7 +230,15 @@ class _PadelStatisticsTable extends StatelessWidget {
                   _StatisticsRow(
                     widths: widths,
                     header: true,
-                    values: const ['Giocatore', 'PG', 'V', 'S', 'SV', '%'],
+                    values: const [
+                      'Giocatore',
+                      'PG',
+                      'V',
+                      'S',
+                      'SV',
+                      'SP',
+                      '%'
+                    ],
                   ),
                   if (rows.isEmpty)
                     const SizedBox(
@@ -247,6 +267,7 @@ class _PadelStatisticsTable extends StatelessWidget {
                           '${row.wins}',
                           '${row.losses}',
                           '${row.setWins}',
+                          '${row.setLosses}',
                           '${row.winPercentage}%',
                         ],
                       ),
@@ -412,7 +433,7 @@ class _PadelCoupleStatisticsTable extends StatelessWidget {
 
   final List<_PadelCoupleStatistics> rows;
 
-  static const _columnWidths = <double>[146, 36, 34, 34, 40, 44];
+  static const _columnWidths = <double>[140, 34, 32, 32, 36, 36, 42];
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -435,7 +456,7 @@ class _PadelCoupleStatisticsTable extends StatelessWidget {
                   _StatisticsRow(
                     widths: widths,
                     header: true,
-                    values: const ['Coppia', 'PG', 'V', 'S', 'SV', '%'],
+                    values: const ['Coppia', 'PG', 'V', 'S', 'SV', 'SP', '%'],
                   ),
                   if (rows.isEmpty)
                     const SizedBox(
@@ -461,6 +482,7 @@ class _PadelCoupleStatisticsTable extends StatelessWidget {
                           '${row.wins}',
                           '${row.losses}',
                           '${row.setWins}',
+                          '${row.setLosses}',
                           '${row.winPercentage}%',
                         ],
                       ),
@@ -477,15 +499,17 @@ class _HeadToHeadSection extends StatelessWidget {
     required this.league,
     required this.couple,
     required this.allCouples,
+    required this.bestOfFilter,
   });
 
   final League league;
   final _PadelCoupleStatistics couple;
   final List<_PadelCoupleStatistics> allCouples;
+  final int? bestOfFilter;
 
   @override
   Widget build(BuildContext context) {
-    final rows = _headToHead(league, couple);
+    final rows = _headToHead(league, couple, bestOfFilter);
     return Column(
       key: const ValueKey('padel-couple-head-to-head'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -511,6 +535,7 @@ class _HeadToHeadSection extends StatelessWidget {
                     league: league,
                     initialCoupleIds: couple.playerIds,
                     initialOpponentIds: rows[index].opponentIds,
+                    bestOfFilter: bestOfFilter,
                   ),
                 ),
               ),
@@ -627,11 +652,13 @@ class _PadelHeadToHeadPage extends StatefulWidget {
     required this.league,
     required this.initialCoupleIds,
     required this.initialOpponentIds,
+    required this.bestOfFilter,
   });
 
   final League league;
   final List<String> initialCoupleIds;
   final List<String> initialOpponentIds;
+  final int? bestOfFilter;
 
   @override
   State<_PadelHeadToHeadPage> createState() => _PadelHeadToHeadPageState();
@@ -641,7 +668,12 @@ class _PadelHeadToHeadPageState extends State<_PadelHeadToHeadPage> {
   late String coupleKey = _coupleKey(widget.initialCoupleIds);
   late String opponentKey = _coupleKey(widget.initialOpponentIds);
 
-  List<_PadelCoupleStatistics> get couples => _coupleStatistics(widget.league);
+  List<_PadelCoupleStatistics> get couples => _coupleStatistics(
+      widget.league,
+      widget.league.matches.where((match) =>
+          match.status == 'finished' &&
+          (widget.bestOfFilter == null ||
+              match.padelBestOf == widget.bestOfFilter)));
 
   @override
   Widget build(BuildContext context) {
@@ -653,7 +685,9 @@ class _PadelHeadToHeadPageState extends State<_PadelHeadToHeadPage> {
     final availableOpponents = rows
         .where((row) =>
             row.key != selected.key &&
-            _matchesBetween(widget.league, selected.key, row.key).isNotEmpty)
+            _matchesBetween(
+                    widget.league, selected.key, row.key, widget.bestOfFilter)
+                .isNotEmpty)
         .toList();
     if (availableOpponents.isNotEmpty &&
         !availableOpponents.any((row) => row.key == opponentKey)) {
@@ -664,7 +698,8 @@ class _PadelHeadToHeadPageState extends State<_PadelHeadToHeadPage> {
         : availableOpponents.firstWhere((row) => row.key == opponentKey);
     final history = opponent == null
         ? <Match>[]
-        : _matchesBetween(widget.league, selected.key, opponent.key);
+        : _matchesBetween(
+            widget.league, selected.key, opponent.key, widget.bestOfFilter);
     final wins =
         history.where((match) => _coupleWon(match, selected.key)).length;
     final losses = history.length - wins;
@@ -991,60 +1026,6 @@ class _HistoryMatchCard extends StatelessWidget {
   }
 }
 
-class _CurrentPlayerCard extends StatelessWidget {
-  const _CurrentPlayerCard({required this.row});
-
-  final _PadelPlayerStatistics row;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        key: const ValueKey('padel-current-player-summary'),
-        height: 80,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: HaykoColors.fieldSurface,
-          border: Border.all(color: HaykoColors.chalk),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    row.player.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, height: 24 / 16),
-                  ),
-                  Text(
-                    '${row.wins} vittorie · ${row.played} partite',
-                    style: const TextStyle(
-                      color: HaykoColors.mutedText,
-                      fontSize: 12,
-                      height: 16 / 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${row.winPercentage}%',
-              style: const TextStyle(
-                fontSize: 14,
-                height: 20 / 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
 class _EmptyStatisticsCard extends StatelessWidget {
   const _EmptyStatisticsCard();
 
@@ -1071,22 +1052,23 @@ class _PadelPlayerStatistics {
   int wins = 0;
   int losses = 0;
   int setWins = 0;
+  int setLosses = 0;
 
   int get winPercentage => played == 0 ? 0 : (wins * 100 / played).round();
 }
 
-List<_PadelPlayerStatistics> _playerStatistics(League league) {
+List<_PadelPlayerStatistics> _playerStatistics(
+    League league, Iterable<Match> matches) {
   final totals = {
     for (final player in league.players)
       player.id: _PadelPlayerStatistics(player),
   };
 
-  for (final match
-      in league.matches.where((match) => match.status == 'finished')) {
+  for (final match in matches) {
     final setWins = [0, 0];
-    for (final score in match.padelSetScores) {
-      if (score.length < 2 || score[0] == score[1]) continue;
-      setWins[score[0] > score[1] ? 0 : 1]++;
+    for (var i = 0; i < match.padelSetScores.length; i++) {
+      final winner = PadelScoring.setWinner(match, i);
+      if (winner != null) setWins[winner]++;
     }
 
     for (var team = 0; team < 2; team++) {
@@ -1095,6 +1077,7 @@ List<_PadelPlayerStatistics> _playerStatistics(League league) {
         if (row == null) continue;
         row.played++;
         row.setWins += setWins[team];
+        row.setLosses += setWins[1 - team];
         if (setWins[team] > setWins[1 - team]) {
           row.wins++;
         } else if (setWins[team] < setWins[1 - team]) {
@@ -1116,15 +1099,6 @@ List<_PadelPlayerStatistics> _playerStatistics(League league) {
     });
 }
 
-_PadelPlayerStatistics? _currentPlayerStatistics(
-    List<_PadelPlayerStatistics> rows, String? playerId) {
-  if (playerId == null) return rows.isEmpty ? null : rows.first;
-  for (final row in rows) {
-    if (row.player.id == playerId) return row;
-  }
-  return null;
-}
-
 class _PadelCoupleStatistics {
   _PadelCoupleStatistics(this.playerIds, this.name);
 
@@ -1134,6 +1108,7 @@ class _PadelCoupleStatistics {
   int wins = 0;
   int losses = 0;
   int setWins = 0;
+  int setLosses = 0;
 
   String get key => _coupleKey(playerIds);
   int get winPercentage => played == 0 ? 0 : (wins * 100 / played).round();
@@ -1151,11 +1126,11 @@ class _PadelHeadToHead {
   DateTime? lastPlayedAt;
 }
 
-List<_PadelCoupleStatistics> _coupleStatistics(League league) {
+List<_PadelCoupleStatistics> _coupleStatistics(
+    League league, Iterable<Match> matches) {
   final totals = <String, _PadelCoupleStatistics>{};
 
-  for (final match
-      in league.matches.where((match) => match.status == 'finished')) {
+  for (final match in matches) {
     if (match.teams.length != 2 ||
         match.teams.any((team) => team.length != 2)) {
       continue;
@@ -1170,6 +1145,7 @@ List<_PadelCoupleStatistics> _coupleStatistics(League league) {
       );
       row.played++;
       row.setWins += setWins[team];
+      row.setLosses += setWins[1 - team];
       if (setWins[team] > setWins[1 - team]) {
         row.wins++;
       } else if (setWins[team] < setWins[1 - team]) {
@@ -1201,10 +1177,11 @@ _PadelCoupleStatistics? _currentCoupleStatistics(
 }
 
 List<_PadelHeadToHead> _headToHead(
-    League league, _PadelCoupleStatistics selected) {
+    League league, _PadelCoupleStatistics selected, int? bestOfFilter) {
   final result = <String, _PadelHeadToHead>{};
-  for (final match
-      in league.matches.where((match) => match.status == 'finished')) {
+  for (final match in league.matches.where((match) =>
+      match.status == 'finished' &&
+      (bestOfFilter == null || match.padelBestOf == bestOfFilter))) {
     if (match.teams.length != 2 ||
         match.teams.any((team) => team.length != 2)) {
       continue;
@@ -1250,9 +1227,9 @@ List<_PadelHeadToHead> _headToHead(
 
 List<int> _matchSetWins(Match match) {
   final setWins = [0, 0];
-  for (final score in match.padelSetScores) {
-    if (score.length < 2 || score[0] == score[1]) continue;
-    setWins[score[0] > score[1] ? 0 : 1]++;
+  for (var i = 0; i < match.padelSetScores.length; i++) {
+    final winner = PadelScoring.setWinner(match, i);
+    if (winner != null) setWins[winner]++;
   }
   return setWins;
 }
@@ -1265,9 +1242,11 @@ String _coupleKey(Iterable<String> ids) {
 String _coupleName(League league, Iterable<String> ids) =>
     ids.map(league.playerName).join(' / ');
 
-List<Match> _matchesBetween(League league, String firstKey, String secondKey) {
+List<Match> _matchesBetween(
+    League league, String firstKey, String secondKey, int? bestOfFilter) {
   final matches = league.matches.where((match) {
     if (match.status != 'finished' ||
+        (bestOfFilter != null && match.padelBestOf != bestOfFilter) ||
         match.teams.length != 2 ||
         match.teams.any((team) => team.length != 2)) {
       return false;

@@ -513,7 +513,7 @@ class _LeaguePageState extends State<LeaguePage> with WidgetsBindingObserver {
         if (l.shared) ...[
           const SizedBox(height: 12),
           _LeagueOutlineButton(
-              label: 'Giocatori e inviti',
+              label: 'Utenti e inviti',
               showNotification: hasPendingRequests,
               onPressed: openLeagueSocial),
         ],

@@ -109,6 +109,7 @@ class Cloud {
           ..clear()
           ..addAll(updated.padelSetDurationsSeconds);
         m.padelSetStartedAt = updated.padelSetStartedAt;
+        m.padelFirstServerId = updated.padelFirstServerId;
         if (updated.status == 'scheduled') {
           m.teams[0] = [...updated.teams[0]];
           m.teams[1] = [...updated.teams[1]];

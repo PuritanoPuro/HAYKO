@@ -140,6 +140,44 @@ class _PadelLiveMatchPageState extends State<PadelLiveMatchPage> {
               currentSet: currentSet,
             ),
             const SizedBox(height: 10),
+            Builder(builder: (context) {
+              final serverId = PadelScoring.servingPlayerId(match);
+              final team = match.teams[0].contains(serverId) ? 0 : 1;
+              return Container(
+                key: const ValueKey('padel-current-server'),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: HaykoColors.fieldSurface,
+                  border: Border.all(color: HaykoColors.fieldLine),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(children: [
+                  Container(
+                      width: 4,
+                      height: 28,
+                      color: Color(match.teamColors[team])),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('AL SERVIZIO',
+                          style: TextStyle(
+                              color: HaykoColors.mutedText,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
+                      Text(widget.league.playerName(serverId),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w700)),
+                    ],
+                  )),
+                ]),
+              );
+            }),
+            const SizedBox(height: 10),
             Row(children: [
               for (var team = 0; team < 2; team++) ...[
                 if (team > 0) const SizedBox(width: 12),

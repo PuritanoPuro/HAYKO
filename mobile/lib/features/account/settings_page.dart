@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:calcetto_mvp/features/account/app_preferences.dart';
 import 'package:calcetto_mvp/core/services/cloud.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
@@ -44,6 +45,16 @@ class SettingsPage extends StatelessWidget {
             'L’intervallo e l’ordine dei cambi portiere si configurano durante la creazione della partita.',
             style: TextStyle(
                 fontSize: 14, height: 20 / 14, color: HaykoColors.mutedText)),
+        FutureBuilder<PackageInfo>(
+          future: PackageInfo.fromPlatform(),
+          builder: (context, snapshot) => Text(
+            snapshot.hasData
+                ? 'Versione ${snapshot.data!.version} · build ${snapshot.data!.buildNumber}'
+                : 'Versione app',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: HaykoColors.mutedText),
+          ),
+        ),
       ]);
 }
 

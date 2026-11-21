@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -92,13 +94,15 @@ void main() {
         find.byKey(const ValueKey('padel-statistics-header')), findsOneWidget);
     expect(find.byKey(const ValueKey('padel-statistics-current-player')),
         findsOneWidget);
-    expect(find.text('2'), findsNWidgets(2));
+    expect(find.text('SP'), findsOneWidget);
     expect(find.text('100%'), findsNWidgets(2));
-    await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('padel-current-player-summary')), 200,
-        scrollable: find.byType(Scrollable).first);
     expect(find.byKey(const ValueKey('padel-current-player-summary')),
-        findsOneWidget);
+        findsNothing);
+    await tester.tap(find.byKey(const ValueKey('padel-format-filter')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Meglio di 5 set').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Nessuna partita terminata.'), findsOneWidget);
   });
 
   testWidgets('schermata 22 mostra statistiche e testa a testa delle coppie',
@@ -182,6 +186,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Riepilogo partita'), findsOneWidget);
+    expect(find.text('Prima battuta'), findsOneWidget);
     expect(find.text('Andrea Rossi · Filippo Fuschini'), findsOneWidget);
     expect(find.text('Luca Bianchi · Marco Verdi'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -700));
@@ -201,12 +206,66 @@ void main() {
         keepers: [KeeperPlan.none(), KeeperPlan.none()],
         padelBestOf: 5,
         padelGameRule: 'advantages',
-        padelDecidingSet: 'full_set');
+        padelDecidingSet: 'full_set',
+        padelFirstServerId: 'f');
 
     final restored = Match.fromJson(match.toJson());
     expect(restored.padelBestOf, 5);
     expect(restored.padelGameRule, 'advantages');
     expect(restored.padelDecidingSet, 'full_set');
+    expect(restored.padelFirstServerId, 'f');
+  });
+
+  test('servizio Padel alterna giocatori e segue il tie-break', () {
+    final match = Match(
+      id: 'service',
+      format: 2,
+      names: const ['Coppia A', 'Coppia B'],
+      teams: const [
+        ['a', 'f'],
+        ['l', 'm']
+      ],
+      status: 'live',
+      keepers: [KeeperPlan.none(), KeeperPlan.none()],
+      padelFirstServerId: 'f',
+      padelSetScores: [
+        [0, 0]
+      ],
+    );
+    expect(PadelScoring.servingPlayerId(match), 'f');
+    match.padelSetScores[0][0] = 1;
+    expect(PadelScoring.servingPlayerId(match), 'l');
+    match.padelSetScores[0][1] = 1;
+    expect(PadelScoring.servingPlayerId(match), 'a');
+    match.padelSetScores[0] = [6, 6];
+    expect(PadelScoring.servingPlayerId(match), 'f');
+    match.padelPoints[0] = '1';
+    expect(PadelScoring.servingPlayerId(match), 'l');
+    match.padelPoints[0] = '2';
+    expect(PadelScoring.servingPlayerId(match), 'l');
+    match.padelPoints[0] = '3';
+    expect(PadelScoring.servingPlayerId(match), 'a');
+  });
+
+  test('un set interrotto non assegna la vittoria del set', () {
+    final match = Match(
+      id: 'early',
+      format: 2,
+      names: const ['Coppia A', 'Coppia B'],
+      teams: const [
+        ['a', 'f'],
+        ['l', 'm']
+      ],
+      status: 'finished',
+      keepers: [KeeperPlan.none(), KeeperPlan.none()],
+      padelSetScores: [
+        [6, 4],
+        [3, 1]
+      ],
+    );
+    expect(PadelScoring.setWinner(match, 0), 0);
+    expect(PadelScoring.setWinner(match, 1), isNull);
+    expect(PadelScoring.wonSets(match, 0), 1);
   });
 
   testWidgets('card partita usa colonne set dinamiche e punti solo live',
@@ -300,10 +359,16 @@ void main() {
       KeeperPlan.none()
     ]);
     value.matches.add(match);
+    final saved = Completer<void>();
     await tester.pumpWidget(MaterialApp(
-        home: MatchPage(league: value, match: match, save: () async {})));
+        home:
+            MatchPage(league: value, match: match, save: () => saved.future)));
 
     await tester.tap(find.text('Inizia partita'));
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Registro gol'), findsNothing);
+    saved.complete();
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('padel-live-match')), findsOneWidget);

@@ -93,6 +93,7 @@ class Match {
   final List<int> padelPointTotals;
   final List<int> padelSetDurationsSeconds;
   String? padelSetStartedAt;
+  String? padelFirstServerId;
   Match(
       {required this.id,
       required this.format,
@@ -119,7 +120,8 @@ class Match {
       List<String>? padelPoints,
       List<int>? padelPointTotals,
       List<int>? padelSetDurationsSeconds,
-      this.padelSetStartedAt})
+      this.padelSetStartedAt,
+      this.padelFirstServerId})
       : goals = goals ?? [],
         keepers = keepers ?? [KeeperPlan.manual(), KeeperPlan.manual()],
         teamColors = teamColors ?? [0xff8ebcff, 0xffffab64],
@@ -149,6 +151,10 @@ class Match {
     }
     if (![3, 5].contains(padelBestOf)) {
       throw ArgumentError('Formula Padel non valida.');
+    }
+    if (padelFirstServerId != null &&
+        !teams.expand((team) => team).contains(padelFirstServerId)) {
+      throw ArgumentError('Primo battitore Padel non valido.');
     }
     if (this
             .padelSetScores
@@ -315,7 +321,8 @@ class Match {
         'padelPoints': padelPoints,
         'padelPointTotals': padelPointTotals,
         'padelSetDurationsSeconds': padelSetDurationsSeconds,
-        'padelSetStartedAt': padelSetStartedAt
+        'padelSetStartedAt': padelSetStartedAt,
+        'padelFirstServerId': padelFirstServerId
       };
   factory Match.fromJson(Map<String, dynamic> j) => Match(
       id: j['id'],
@@ -350,6 +357,7 @@ class Match {
       padelSetDurationsSeconds:
           List<int>.from(j['padelSetDurationsSeconds'] ?? const []),
       padelSetStartedAt: j['padelSetStartedAt'],
+      padelFirstServerId: j['padelFirstServerId'],
       keepers: (j['keepers'] as List?)
           ?.map((k) => KeeperPlan.fromJson(Map<String, dynamic>.from(k)))
           .toList());

@@ -136,6 +136,10 @@ class _FinishedScoreboard extends StatelessWidget {
             _ResultRow(
                 name: names[0],
                 color: match.teamColors[0],
+                dimmedSets: {
+                  for (var i = 0; i < match.padelSetScores.length; i++)
+                    if (PadelScoring.setWinner(match, i) == 1) i
+                },
                 width: nameWidth,
                 setWidth: setWidth,
                 scores: [
@@ -148,6 +152,10 @@ class _FinishedScoreboard extends StatelessWidget {
             _ResultRow(
                 name: names[1],
                 color: match.teamColors[1],
+                dimmedSets: {
+                  for (var i = 0; i < match.padelSetScores.length; i++)
+                    if (PadelScoring.setWinner(match, i) == 0) i
+                },
                 width: nameWidth,
                 setWidth: setWidth,
                 scores: [
@@ -190,11 +198,13 @@ class _ResultRow extends StatelessWidget {
   const _ResultRow(
       {required this.name,
       required this.color,
+      required this.dimmedSets,
       required this.width,
       required this.setWidth,
       required this.scores});
   final String name;
   final int color;
+  final Set<int> dimmedSets;
   final double width;
   final double setWidth;
   final List<String> scores;
@@ -220,13 +230,17 @@ class _ResultRow extends StatelessWidget {
                           fontSize: 14, fontWeight: FontWeight.w600))),
             ]),
           ),
-          for (final score in scores)
+          for (var index = 0; index < scores.length; index++)
             SizedBox(
                 width: setWidth,
-                child: Text(score,
+                child: Text(scores[index],
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600))),
+                    style: TextStyle(
+                        color: dimmedSets.contains(index)
+                            ? HaykoColors.mutedText
+                            : HaykoColors.chalk,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600))),
         ]),
       );
 }

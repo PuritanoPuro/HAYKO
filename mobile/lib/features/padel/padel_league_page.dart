@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:calcetto_mvp/core/domain/domain.dart';
+import 'package:calcetto_mvp/core/domain/padel_scoring.dart';
 import 'package:calcetto_mvp/core/services/cloud.dart';
 import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/account/components.dart';
@@ -304,12 +306,22 @@ class _PadelLeaguePageState extends State<PadelLeaguePage> {
             selectedIndex: tab,
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             onDestinationSelected: (value) => setState(() => tab = value),
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                  icon: Icon(Icons.sports_tennis), label: 'Partite'),
-              NavigationDestination(
+                  icon: SvgPicture.asset('assets/icons/sport_padel.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(
+                          HaykoColors.mutedText, BlendMode.srcIn)),
+                  selectedIcon: SvgPicture.asset('assets/icons/sport_padel.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(
+                          HaykoColors.chalk, BlendMode.srcIn)),
+                  label: 'Partite'),
+              const NavigationDestination(
                   icon: Icon(Icons.group), label: 'Giocatori'),
-              NavigationDestination(
+              const NavigationDestination(
                   icon: Icon(Icons.bar_chart), label: 'Statistiche'),
             ],
           ),
@@ -621,6 +633,14 @@ class _PadelMatchCard extends StatelessWidget {
                   _PadelScoreRow(
                       name: teamName(0),
                       color: match.teamColors[0],
+                      dimmedSets: match.status == 'finished'
+                          ? {
+                              for (var i = 0;
+                                  i < match.padelSetScores.length;
+                                  i++)
+                                if (PadelScoring.setWinner(match, i) == 1) i
+                            }
+                          : const {},
                       nameWidth: nameWidth,
                       setWidth: setWidth,
                       values: [
@@ -633,6 +653,14 @@ class _PadelMatchCard extends StatelessWidget {
                   _PadelScoreRow(
                       name: teamName(1),
                       color: match.teamColors[1],
+                      dimmedSets: match.status == 'finished'
+                          ? {
+                              for (var i = 0;
+                                  i < match.padelSetScores.length;
+                                  i++)
+                                if (PadelScoring.setWinner(match, i) == 0) i
+                            }
+                          : const {},
                       nameWidth: nameWidth,
                       setWidth: setWidth,
                       values: [
@@ -705,6 +733,7 @@ class _PadelScoreRow extends StatelessWidget {
   const _PadelScoreRow(
       {required this.name,
       required this.color,
+      required this.dimmedSets,
       required this.nameWidth,
       required this.setWidth,
       required this.values,
@@ -712,19 +741,23 @@ class _PadelScoreRow extends StatelessWidget {
       required this.pointsWidth});
   final String name;
   final int color;
+  final Set<int> dimmedSets;
   final double nameWidth;
   final double setWidth;
   final List<String> values;
   final String? points;
   final double pointsWidth;
 
-  Widget score(String value, double width, {Key? key}) => SizedBox(
+  Widget score(String value, double width, {Key? key, bool dimmed = false}) =>
+      SizedBox(
         key: key,
         width: width,
         child: Text(value,
             textAlign: TextAlign.center,
             style: TextStyle(
-                color: value == '—' ? HaykoColors.mutedText : HaykoColors.chalk,
+                color: value == '—' || dimmed
+                    ? HaykoColors.mutedText
+                    : HaykoColors.chalk,
                 fontSize: 16,
                 height: 20 / 16,
                 fontWeight: value == '—' ? FontWeight.w400 : FontWeight.w600)),
@@ -755,6 +788,7 @@ class _PadelScoreRow extends StatelessWidget {
               ])),
           for (var index = 0; index < values.length; index++)
             score(values[index], setWidth,
+                dimmed: dimmedSets.contains(index),
                 key: ValueKey('padel-set-score-$name-$index')),
           if (points != null) score(points!, pointsWidth),
         ]),
