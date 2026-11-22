@@ -857,7 +857,7 @@ class _PlayersSection extends StatelessWidget {
         _PadelOutlineButton(label: 'Coppie salvate', onPressed: openCouples),
         if (league.shared) ...[
           const SizedBox(height: 8),
-          AccountButton('Membri e inviti',
+          AccountButton('Utenti e inviti',
               outline: true, onPressed: openMembers),
         ],
         const SizedBox(height: 8),

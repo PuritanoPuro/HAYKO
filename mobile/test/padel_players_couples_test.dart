@@ -21,6 +21,19 @@ League padelLeague() => League(
     );
 
 void main() {
+  testWidgets('lega Padel condivisa usa Utenti e inviti', (tester) async {
+    final league = padelLeague()
+      ..shared = true
+      ..myRole = 'president';
+    await tester.pumpWidget(
+        MaterialApp(home: PadelLeaguePage(league: league, save: () async {})));
+
+    await tester.tap(find.text('Giocatori'));
+    await tester.pumpAndSettle();
+    expect(find.text('Utenti e inviti'), findsOneWidget);
+    expect(find.text('Membri e inviti'), findsNothing);
+  });
+
   testWidgets('sezione Padel mostra giocatori e apre le coppie salvate',
       (tester) async {
     final league = padelLeague();
