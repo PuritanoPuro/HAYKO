@@ -83,6 +83,7 @@ class PadelMatchStatsPage extends StatelessWidget {
               _SetSummary(
                 index: set,
                 score: match.padelSetScores[set],
+                winner: PadelScoring.setWinner(match, set),
                 durationSeconds: set < match.padelSetDurationsSeconds.length
                     ? match.padelSetDurationsSeconds[set]
                     : null,
@@ -313,10 +314,12 @@ class _SetSummary extends StatelessWidget {
   const _SetSummary(
       {required this.index,
       required this.score,
+      required this.winner,
       required this.durationSeconds,
       required this.color});
   final int index;
   final List<int> score;
+  final int? winner;
   final int? durationSeconds;
   final Color color;
   @override
@@ -334,10 +337,22 @@ class _SetSummary extends StatelessWidget {
                       fontSize: 13, fontWeight: FontWeight.w600))),
           SizedBox(
               width: 72,
-              child: Text('${score[0]} – ${score[1]}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700))),
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    for (var team = 0; team < 2; team++) ...[
+                      if (team == 1)
+                        const Text(' – ', style: TextStyle(fontSize: 16)),
+                      Text('${score[team]}',
+                          key: ValueKey('padel-set-$index-team-$team-score'),
+                          style: TextStyle(
+                              color: winner != null && winner != team
+                                  ? HaykoColors.mutedText
+                                  : HaykoColors.chalk,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700)),
+                    ],
+                  ]))),
           Expanded(
               child: Text(
                   durationSeconds == null

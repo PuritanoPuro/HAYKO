@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:calcetto_mvp/core/domain/domain.dart';
 import 'package:calcetto_mvp/core/domain/padel_scoring.dart';
+import 'package:calcetto_mvp/design_system/hayko_colors.dart';
 import 'package:calcetto_mvp/features/matches/match_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_couple_edit_page.dart';
 import 'package:calcetto_mvp/features/padel/padel_league_page.dart';
@@ -96,6 +97,12 @@ void main() {
         findsOneWidget);
     expect(find.text('SP'), findsOneWidget);
     expect(find.text('100%'), findsNWidgets(2));
+    expect(
+        tester
+            .getSize(
+                find.byKey(const ValueKey('padel-statistics-percentage-f')))
+            .width,
+        greaterThanOrEqualTo(52));
     expect(find.byKey(const ValueKey('padel-current-player-summary')),
         findsNothing);
     await tester.tap(find.byKey(const ValueKey('padel-format-filter')));
@@ -149,6 +156,13 @@ void main() {
         findsOneWidget);
     expect(find.byKey(const ValueKey('padel-head-to-head-latest')),
         findsOneWidget);
+    expect(
+        tester
+            .widget<Text>(
+                find.byKey(const ValueKey('padel-head-to-head-set-0-team-1')))
+            .style!
+            .color,
+        HaykoColors.mutedText);
   });
 
   testWidgets('flusso 13-16 seleziona due coppie e mostra il riepilogo',
@@ -511,6 +525,32 @@ void main() {
     expect(find.byKey(const ValueKey('padel-match-stats')), findsOneWidget);
     expect(find.text('Confronto coppie'), findsOneWidget);
     expect(find.text('Dettaglio set'), findsOneWidget);
+    expect(
+        tester
+            .widget<Text>(
+                find.byKey(const ValueKey('padel-set-0-team-1-score')))
+            .style!
+            .color,
+        HaykoColors.mutedText);
     expect(find.text('Registro gol'), findsNothing);
+  });
+
+  testWidgets('la selezione del proprio giocatore include la matita',
+      (tester) async {
+    final value = league()..myPlayer = 'f';
+    await tester.pumpWidget(
+        MaterialApp(home: PadelLeaguePage(league: value, save: () async {})));
+    await tester.tap(find.text('Giocatori'));
+    await tester.pump();
+
+    final row = tester
+        .widget<Container>(find.byKey(const ValueKey('padel-player-row-f')));
+    expect((row.decoration! as BoxDecoration).border,
+        Border.all(color: HaykoColors.chalk));
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('padel-player-row-f')),
+            matching: find.byIcon(Icons.edit)),
+        findsOneWidget);
   });
 }

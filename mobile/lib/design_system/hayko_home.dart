@@ -292,7 +292,7 @@ class _SportSwitcher extends StatelessWidget {
             Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _SportTab(
                   label: 'CALCIO',
-                  asset: 'assets/icons/sport_football.svg',
+                  icon: Icons.sports_soccer,
                   selected: sport == LeagueSport.football,
                   onTap: () => onChanged(LeagueSport.football)),
               const SizedBox(width: 6),
@@ -300,7 +300,6 @@ class _SportSwitcher extends StatelessWidget {
                   label: 'PADEL',
                   asset: 'assets/icons/sport_padel.svg',
                   iconSize: 29,
-                  whiteIcon: true,
                   selected: sport == LeagueSport.padel,
                   onTap: () => onChanged(LeagueSport.padel)),
               const SizedBox(width: 6),
@@ -318,17 +317,17 @@ class _SportSwitcher extends StatelessWidget {
 class _SportTab extends StatelessWidget {
   const _SportTab(
       {required this.label,
-      required this.asset,
+      this.asset,
+      this.icon,
       required this.selected,
       this.iconSize = 20,
-      this.whiteIcon = false,
       this.onTap});
 
   final String label;
-  final String asset;
+  final String? asset;
+  final IconData? icon;
   final bool selected;
   final double iconSize;
-  final bool whiteIcon;
   final VoidCallback? onTap;
 
   @override
@@ -351,21 +350,17 @@ class _SportTab extends StatelessWidget {
                         duration: const Duration(milliseconds: 260),
                         curve: Curves.easeInOut,
                         tween: ColorTween(
-                            end: whiteIcon
-                                ? Colors.white
-                                : selected
-                                    ? const Color(0xff081a15)
-                                    : HaykoColors.chalk),
-                        builder: (context, color, child) => SvgPicture.asset(
-                            asset,
-                            width: iconSize,
-                            height: iconSize,
-                            colorFilter: ColorFilter.mode(
-                                color ??
-                                    (whiteIcon
-                                        ? Colors.white
-                                        : HaykoColors.chalk),
-                                BlendMode.srcIn)),
+                            end: selected
+                                ? const Color(0xff081a15)
+                                : HaykoColors.chalk),
+                        builder: (context, color, child) => icon != null
+                            ? Icon(icon, size: iconSize, color: color)
+                            : SvgPicture.asset(asset!,
+                                width: iconSize,
+                                height: iconSize,
+                                colorFilter: ColorFilter.mode(
+                                    color ?? HaykoColors.chalk,
+                                    BlendMode.srcIn)),
                       ),
                       const SizedBox(width: 6),
                       AnimatedDefaultTextStyle(

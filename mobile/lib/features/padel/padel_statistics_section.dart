@@ -207,15 +207,10 @@ class _PadelStatisticsTable extends StatelessWidget {
   final List<_PadelPlayerStatistics> rows;
   final String? currentPlayerId;
 
-  static const _columnWidths = <double>[140, 34, 32, 32, 36, 36, 42];
-
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          final total =
-              _columnWidths.fold<double>(0, (sum, value) => sum + value);
-          final scale = constraints.maxWidth / total;
-          final widths = [for (final width in _columnWidths) width * scale];
+          final widths = _statisticsColumnWidths(constraints.maxWidth);
           return ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: DecoratedBox(
@@ -279,6 +274,14 @@ class _PadelStatisticsTable extends StatelessWidget {
       );
 }
 
+List<double> _statisticsColumnWidths(double availableWidth) {
+  const otherColumns = <double>[140, 34, 32, 32, 36, 36];
+  final percentageWidth = availableWidth < 260 ? availableWidth / 5 : 52.0;
+  final otherWidth = otherColumns.fold<double>(0, (sum, width) => sum + width);
+  final scale = (availableWidth - percentageWidth) / otherWidth;
+  return [for (final width in otherColumns) width * scale, percentageWidth];
+}
+
 class _StatisticsRow extends StatelessWidget {
   const _StatisticsRow({
     required this.widths,
@@ -315,9 +318,20 @@ class _StatisticsRow extends StatelessWidget {
           children: [
             for (var index = 0; index < values.length; index++)
               SizedBox(
+                key: index == 6 && !header
+                    ? ValueKey('padel-statistics-percentage-$playerId')
+                    : null,
                 width: widths[index],
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(index == 0 ? 12 : 4, 4, 4, 4),
+                  padding: EdgeInsets.fromLTRB(
+                      index == 0
+                          ? 12
+                          : index == 6
+                              ? 2
+                              : 4,
+                      4,
+                      index == 6 ? 2 : 4,
+                      4),
                   child: Align(
                     alignment:
                         index == 0 ? Alignment.centerLeft : Alignment.center,
@@ -348,19 +362,39 @@ class _StatisticsRow extends StatelessWidget {
                               ),
                             ],
                           )
-                        : Text(
-                            values[index],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign:
-                                index == 0 ? TextAlign.left : TextAlign.center,
-                            style: TextStyle(
-                              fontSize: header ? 12 : 14,
-                              height: header ? 16 / 12 : 20 / 14,
-                              fontWeight:
-                                  header ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                          ),
+                        : index == 6
+                            ? FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  values[index],
+                                  maxLines: 1,
+                                  textAlign: index == 0
+                                      ? TextAlign.left
+                                      : TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: header ? 12 : 14,
+                                    height: header ? 16 / 12 : 20 / 14,
+                                    fontWeight: header
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                values[index],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: index == 0
+                                    ? TextAlign.left
+                                    : TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: header ? 12 : 14,
+                                  height: header ? 16 / 12 : 20 / 14,
+                                  fontWeight: header
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
+                              ),
                   ),
                 ),
               ),
@@ -433,15 +467,10 @@ class _PadelCoupleStatisticsTable extends StatelessWidget {
 
   final List<_PadelCoupleStatistics> rows;
 
-  static const _columnWidths = <double>[140, 34, 32, 32, 36, 36, 42];
-
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          final total =
-              _columnWidths.fold<double>(0, (sum, value) => sum + value);
-          final scale = constraints.maxWidth / total;
-          final widths = [for (final width in _columnWidths) width * scale];
+          final widths = _statisticsColumnWidths(constraints.maxWidth);
           return ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: DecoratedBox(
@@ -974,9 +1003,15 @@ class _LatestMatchCard extends StatelessWidget {
           for (var set = 0; set < sets; set++)
             Expanded(
               child: Text('${match.padelSetScores[set][team]}',
+                  key: ValueKey('padel-head-to-head-set-$set-team-$team'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      color: PadelScoring.setWinner(match, set) != null &&
+                              PadelScoring.setWinner(match, set) != team
+                          ? HaykoColors.mutedText
+                          : HaykoColors.chalk,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600)),
             ),
         ]),
       );

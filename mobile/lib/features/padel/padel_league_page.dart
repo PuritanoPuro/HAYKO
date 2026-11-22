@@ -309,9 +309,15 @@ class _PadelLeaguePageState extends State<PadelLeaguePage> {
             destinations: [
               NavigationDestination(
                   icon: SvgPicture.asset('assets/icons/sport_padel.svg',
-                      width: 34, height: 34),
+                      width: 34,
+                      height: 34,
+                      colorFilter: const ColorFilter.mode(
+                          HaykoColors.mutedText, BlendMode.srcIn)),
                   selectedIcon: SvgPicture.asset('assets/icons/sport_padel.svg',
-                      width: 34, height: 34),
+                      width: 34,
+                      height: 34,
+                      colorFilter: const ColorFilter.mode(
+                          HaykoColors.chalk, BlendMode.srcIn)),
                   label: 'Partite'),
               const NavigationDestination(
                   icon: Icon(Icons.group), label: 'Giocatori'),
@@ -908,17 +914,16 @@ class _PadelPlayerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
+        key: ValueKey('padel-player-row-${player.id}'),
         height: 80,
         decoration: BoxDecoration(
             color: HaykoColors.fieldSurface,
+            border: current ? Border.all(color: HaykoColors.chalk) : null,
             borderRadius: BorderRadius.circular(12)),
         child: Row(children: [
           Expanded(
-            child: Container(
+            child: Padding(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  border: current ? Border.all(color: HaykoColors.chalk) : null,
-                  borderRadius: BorderRadius.circular(12)),
               child: Row(children: [
                 CircleAvatar(
                     radius: 18,
